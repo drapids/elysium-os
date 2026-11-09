@@ -12,7 +12,7 @@ namespace Heft
 {
     public partial class App : Application
     {
-        const int HotkeyWheel = 1;
+        const int HotkeyDock = 1;
         const int HotkeyPanel = 2;
 
         Mutex? _single;
@@ -21,7 +21,7 @@ namespace Heft
         AppCatalog _catalog = null!;
         EdgeTab _tab = null!;
         SidePanel _panel = null!;
-        Wheel _wheel = null!;
+        ArcDock _dock = null!;
         HwndSource? _hotkeys;
         Forms.NotifyIcon? _tray;
         Forms.ToolStripMenuItem? _pauseItem;
@@ -47,15 +47,12 @@ namespace Heft
             _catalog = new AppCatalog(_s);
             _tab = new EdgeTab();
             _panel = new SidePanel(_s, _catalog);
-            _wheel = new Wheel(_catalog);
+            _dock = new ArcDock(_s, _catalog);
 
-            _tab.OpenRequested += () => _panel.Open();
-            _tab.WheelRequested += () => _wheel.ShowAtCursor();
-            _panel.WheelRequested += () =>
-            {
-                _panel.SlideOut();
-                _wheel.ShowAtCursor();
-            };
+            _tab.DockRequested += () => _dock.ShowDock(true, false);
+            _tab.SettingsRequested += () => _panel.Open();
+            _dock.SettingsRequested += () => _panel.Open();
+            _panel.DockRequested += () => _dock.ShowDock(false, false);
             _panel.QuitRequested += Quit;
 
             _s.Changed += Sync;
@@ -77,6 +74,7 @@ namespace Heft
 
         void Sync()
         {
+            _tab.SetSide(_s.DockSide);
             if (_s.ShowHandle && !_tab.IsVisible) _tab.Show();
             else if (!_s.ShowHandle && _tab.IsVisible) _tab.Hide();
 
@@ -97,7 +95,7 @@ namespace Heft
             _hotkeys = new HwndSource(p);
             _hotkeys.AddHook(HotkeyHook);
             const uint mods = Native.MOD_CONTROL | Native.MOD_ALT | Native.MOD_NOREPEAT;
-            Native.RegisterHotKey(_hotkeys.Handle, HotkeyWheel, mods, 0x20);
+            Native.RegisterHotKey(_hotkeys.Handle, HotkeyDock, mods, 0x20);
             Native.RegisterHotKey(_hotkeys.Handle, HotkeyPanel, mods, 0x48);
         }
 
@@ -106,8 +104,8 @@ namespace Heft
             if (msg != Native.WM_HOTKEY) return IntPtr.Zero;
             switch (wParam.ToInt32())
             {
-                case HotkeyWheel:
-                    _wheel.ShowAtCursor();
+                case HotkeyDock:
+                    _dock.ShowDock(false, true);
                     handled = true;
                     break;
                 case HotkeyPanel:
@@ -122,7 +120,7 @@ namespace Heft
         {
             var menu = new Forms.ContextMenuStrip();
             menu.Items.Add("open panel", null, (_, _) => _panel.Open());
-            menu.Items.Add("open wheel", null, (_, _) => _wheel.ShowAtCursor());
+            menu.Items.Add("open dock", null, (_, _) => _dock.ShowDock(false, false));
             menu.Items.Add(new Forms.ToolStripSeparator());
             _pauseItem = new Forms.ToolStripMenuItem("pause physics") { Checked = !_s.Enabled };
             _pauseItem.Click += (_, _) =>
@@ -192,7 +190,7 @@ namespace Heft
             _physics?.Dispose();
             if (_hotkeys != null)
             {
-                Native.UnregisterHotKey(_hotkeys.Handle, HotkeyWheel);
+                Native.UnregisterHotKey(_hotkeys.Handle, HotkeyDock);
                 Native.UnregisterHotKey(_hotkeys.Handle, HotkeyPanel);
                 _hotkeys.Dispose();
                 _hotkeys = null;

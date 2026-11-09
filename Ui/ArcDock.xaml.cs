@@ -14,7 +14,7 @@ using System.Windows.Media.Effects;
 
 namespace Heft.Ui
 {
-    public partial class Dock : Window
+    public partial class ArcDock : Window
     {
         sealed class Tile
         {
@@ -63,7 +63,7 @@ namespace Heft.Ui
 
         public event Action? SettingsRequested;
 
-        internal Dock(Settings settings, AppCatalog catalog)
+        internal ArcDock(Settings settings, AppCatalog catalog)
         {
             InitializeComponent();
             _s = settings;
