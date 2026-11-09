@@ -12,6 +12,7 @@
     <AssemblyName>heft</AssemblyName>
     <RootNamespace>Heft</RootNamespace>
     <Version>0.1.0</Version>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
 </Project>

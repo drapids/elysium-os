@@ -289,6 +289,53 @@ namespace Heft
             return ordered.Take(800).Select(e => e.item).ToList();
         }
 
+        public async void Scan()
+        {
+            if (Scanning) return;
+            Scanning = true;
+            Updated?.Invoke();
+
+            var keywords = _s.ProjectNames.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(k => k.Trim()).Where(k => Norm(k).Length >= 3).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (!keywords.Any(k => Norm(k) == "hangar29")) keywords.Insert(0, "hangar29");
+
+            List<WheelItem> found;
+            try
+            {
+                found = await Task.Run(() => Find(keywords));
+            }
+            catch
+            {
+                found = new List<WheelItem>();
+            }
+
+            Projects = found.Where(f => Norm(f.Name) != "hangar29").ToList();
+            HangarPath = found.FirstOrDefault(f => Norm(f.Name) == "hangar29")?.Path;
+
+            if (HangarPath != null)
+            {
+                var pinned = _s.Pinned.FirstOrDefault(p => Norm(p.Name) == "hangar29");
+                if (pinned != null && !Exists(pinned.Path))
+                {
+                    pinned.Path = HangarPath;
+                    _s.Touch();
+                }
+                else if (pinned == null && !_s.HangarPinned)
+                {
+                    SetHangar(HangarPath);
+                }
+            }
+            else
+            {
+                HangarPath = _s.Pinned.FirstOrDefault(p => Norm(p.Name) == "hangar29" && Exists(p.Path))?.Path;
+            }
+
+            Scanning = false;
+            Scanned = true;
+            Prewarm();
+            Updated?.Invoke();
+        }
+
         static string Norm(string s)
         {
             var sb = new StringBuilder(s.Length);
