@@ -143,6 +143,19 @@ namespace Heft.Ui
             Toggle(crossS, v => _s.CrossMonitors = v);
             Toggle(handleS, v => _s.ShowHandle = v);
             Toggle(drivesS, v => _s.ShowDrives = v);
+            Toggle(foldersFirstS, v => _s.FoldersFirst = v);
+            Toggle(hiddenS, v => _s.ShowHidden = v);
+            Toggle(filterS, v => _s.TypeToFilter = v);
+
+            foreach (var rb in new[] { sortName, sortRecent, sortType, sortSize })
+            {
+                rb.Checked += (_, _) =>
+                {
+                    if (_loading) return;
+                    _s.FolderSort = (string)rb.Tag;
+                    _s.Touch();
+                };
+            }
             Toggle(startupS, v =>
             {
                 _s.StartWithWindows = v;
@@ -324,6 +337,13 @@ namespace Heft.Ui
             startupS.IsChecked = _s.StartWithWindows;
             handleS.IsChecked = _s.ShowHandle;
             drivesS.IsChecked = _s.ShowDrives;
+            foldersFirstS.IsChecked = _s.FoldersFirst;
+            hiddenS.IsChecked = _s.ShowHidden;
+            filterS.IsChecked = _s.TypeToFilter;
+            sortRecent.IsChecked = _s.FolderSort == "recent";
+            sortType.IsChecked = _s.FolderSort == "type";
+            sortSize.IsChecked = _s.FolderSort == "size";
+            sortName.IsChecked = _s.FolderSort is not ("recent" or "type" or "size");
             sizeS.Value = _s.IconSize;
             magS.Value = _s.Magnify;
 
@@ -361,7 +381,12 @@ namespace Heft.Ui
             sizeVal.Text = $"{_s.IconSize:0}";
             magVal.Text = _s.Magnify < 0.01 ? "Off" : Pct(_s.Magnify);
             shakeRow.Visibility = _s.ShakeToMinimize ? Visibility.Visible : Visibility.Collapsed;
-            status.Text = _s.Enabled ? "throw your windows around" : "paused";
+            status.Text = _s.Enabled ? "throw your windows around" : "physics off, dock still works";
+            physicsCaption.Text = _s.Enabled ? "fling windows and they keep going" : "off. windows move like normal";
+            physicsBody.IsEnabled = _s.Enabled;
+            physicsBody.Opacity = _s.Enabled ? 1 : 0.45;
+            behaviorGroup.IsEnabled = _s.Enabled;
+            behaviorGroup.Opacity = _s.Enabled ? 1 : 0.45;
         }
 
         void RefreshItems()

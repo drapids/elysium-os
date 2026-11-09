@@ -35,6 +35,10 @@ namespace Heft
         public double Magnify { get; set; } = 0.6;
         public List<string> Places { get; set; } = new();
         public bool ShowDrives { get; set; } = true;
+        public string FolderSort { get; set; } = "name";
+        public bool FoldersFirst { get; set; } = true;
+        public bool ShowHidden { get; set; } = false;
+        public bool TypeToFilter { get; set; } = true;
 
         public List<WheelItem> Pinned { get; set; } = new();
         public List<string> Hidden { get; set; } = new();

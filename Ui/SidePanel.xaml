@@ -23,7 +23,6 @@
                     <TextBlock Text="heft" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text}"/>
                     <TextBlock x:Name="status" Style="{StaticResource Caption}" Text="throw your windows around"/>
                 </StackPanel>
-                <CheckBox x:Name="enabled" Grid.Column="1" Style="{StaticResource Switch}" Margin="0,0,10,0" ToolTip="physics on/off"/>
                 <Button x:Name="close" Grid.Column="2" Style="{StaticResource Plain}" ToolTip="close">
                     <TextBlock Style="{StaticResource Icon}" Text="&#xE8BB;" FontSize="10" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                 </Button>
@@ -40,6 +39,15 @@
                     <TextBlock Style="{StaticResource H}" Text="Physics"/>
                     <Border Style="{StaticResource Group}">
                         <StackPanel>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Window physics"/>
+                                    <TextBlock x:Name="physicsCaption" Style="{StaticResource Caption}" Text="fling windows and they keep going"/>
+                                </StackPanel>
+                                <CheckBox x:Name="enabled" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <StackPanel x:Name="physicsBody">
                             <Border Style="{StaticResource SegGroup}" Margin="12,12,12,8">
                                 <UniformGrid Rows="1">
                                     <RadioButton x:Name="presetChill" Style="{StaticResource Seg}" GroupName="preset" Tag="chill" Content="Chill"/>
@@ -90,11 +98,12 @@
                                 <Slider x:Name="gravityS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0" Maximum="1"/>
                                 <TextBlock x:Name="gravityVal" Grid.Column="2" Style="{StaticResource Value}"/>
                             </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
                     <TextBlock Style="{StaticResource H}" Text="Behavior"/>
-                    <Border Style="{StaticResource Group}">
+                    <Border x:Name="behaviorGroup" Style="{StaticResource Group}">
                         <StackPanel>
                             <Grid Style="{StaticResource Row}">
                                 <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
@@ -239,6 +248,37 @@
                             <Grid Style="{StaticResource Row}">
                                 <TextBlock Style="{StaticResource Body}" Text="Show drives"/>
                                 <CheckBox x:Name="drivesS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <StackPanel Margin="14,10,12,10">
+                                <TextBlock Style="{StaticResource Body}" Text="Sort folders by"/>
+                                <TextBlock Style="{StaticResource Caption}" Text="you can also flip this right on the dock" Margin="0,1,0,8"/>
+                                <Border Style="{StaticResource SegGroup}">
+                                    <UniformGrid Rows="1">
+                                        <RadioButton x:Name="sortName" Style="{StaticResource Seg}" GroupName="sort" Tag="name" Content="Name"/>
+                                        <RadioButton x:Name="sortRecent" Style="{StaticResource Seg}" GroupName="sort" Tag="recent" Content="Recent"/>
+                                        <RadioButton x:Name="sortType" Style="{StaticResource Seg}" GroupName="sort" Tag="type" Content="Type"/>
+                                        <RadioButton x:Name="sortSize" Style="{StaticResource Seg}" GroupName="sort" Tag="size" Content="Size"/>
+                                    </UniformGrid>
+                                </Border>
+                            </StackPanel>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <TextBlock Style="{StaticResource Body}" Text="Folders first"/>
+                                <CheckBox x:Name="foldersFirstS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <TextBlock Style="{StaticResource Body}" Text="Show hidden files"/>
+                                <CheckBox x:Name="hiddenS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Type to filter"/>
+                                    <TextBlock Style="{StaticResource Caption}" Text="start typing while the dock is open to filter by name"/>
+                                </StackPanel>
+                                <CheckBox x:Name="filterS" Style="{StaticResource Switch}"/>
                             </Grid>
                             <Border Style="{StaticResource Sep}"/>
                             <Grid Margin="12,10">
