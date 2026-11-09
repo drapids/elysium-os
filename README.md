@@ -18,15 +18,15 @@ ctrl + scroll (or pinch) zooms out to places like desktop, downloads, documents 
 | right-click the edge handle | settings |
 | tray icon | settings, dock, pause, quit |
 
-on the dock: scroll, drag or arrow keys to spin, enter to open, ctrl + scroll / pinch to zoom, backspace to go back, esc to close.
+on the dock: scroll, drag or arrow keys to spin, enter to open, ctrl + scroll / pinch to zoom, backspace to go back, esc to close. start typing to filter by name. in a folder, the sort button flips between a to z, recent, type and size.
 
 ## settings
 
-- **physics**: chill / bouncy / chaos presets, or tune throw strength, friction, bounciness and gravity yourself
+- **physics**: one switch to turn it all off (the dock keeps working), chill / bouncy / chaos presets, or tune throw strength, friction, bounciness and gravity yourself
 - **behavior**: stack on other windows, shake to minimize, fly between monitors
 - **dock**: which side, icon size, magnification, edge trigger on/off
 - **apps on the dock**: favorites, your projects and stuff you use a lot. star to pin, x to take it off
-- **places**: the folders you zoom out to, plus drives
+- **places**: the folders you zoom out to, plus drives, how folders sort, folders first, hidden files, type to filter
 - **general**: auto / light / dark, start with windows, apps to leave alone, project names to look for
 
 settings live in `%AppData%\heft\settings.json`.
@@ -50,5 +50,6 @@ dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile
 - windows from apps running as admin can't be thrown unless heft is also running as admin
 - windows 11 has its own "title bar window shake" setting. if it's on, turn it off so it doesn't fight with shake to minimize
 - maximized and snapped windows are left alone
+- if throwing ever stops working, `%AppData%\heft\log.txt` shows what it saw (drags, throws, and why it skipped one)
 
 made by mason arcieri
