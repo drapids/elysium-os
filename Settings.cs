@@ -30,6 +30,12 @@ namespace Heft
         public bool ShowHandle { get; set; } = true;
         public string Preset { get; set; } = "chill";
 
+        public string DockSide { get; set; } = "right";
+        public double IconSize { get; set; } = 56;
+        public double Magnify { get; set; } = 0.6;
+        public List<string> Places { get; set; } = new();
+        public bool ShowDrives { get; set; } = true;
+
         public List<WheelItem> Pinned { get; set; } = new();
         public List<string> Hidden { get; set; } = new();
         public string ProjectNames { get; set; } = "hangar29, underlay, veneer, driftwood, substrate, gnatty, hyperboi, handoff, wintd, tox-shelf";
