@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,12 +14,14 @@ namespace Heft.Ui
 {
     public partial class SidePanel : Window
     {
+        const double Gap = 10;
+
         readonly Settings _s;
         readonly AppCatalog _cat;
         readonly DispatcherTimer _outside = new() { Interval = TimeSpan.FromMilliseconds(60) };
         bool _loading, _open, _suppress;
 
-        public event Action? WheelRequested;
+        public event Action? DockRequested;
         public event Action? QuitRequested;
 
         internal SidePanel(Settings settings, AppCatalog catalog)
@@ -26,7 +30,14 @@ namespace Heft.Ui
             _s = settings;
             _cat = catalog;
 
-            SourceInitialized += (_, _) => Native.MakeToolWindow(new WindowInteropHelper(this).Handle, false);
+            SourceInitialized += (_, _) =>
+            {
+                var h = new WindowInteropHelper(this).Handle;
+                Native.MakeToolWindow(h, false);
+                Theme.Glass(this);
+            };
+            Theme.Applied += () => Theme.Glass(this);
+
             Deactivated += (_, _) =>
             {
                 if (!_suppress) SlideOut();
@@ -39,7 +50,11 @@ namespace Heft.Ui
 
             close.Click += (_, _) => SlideOut();
             quit.Click += (_, _) => QuitRequested?.Invoke();
-            openWheel.Click += (_, _) => WheelRequested?.Invoke();
+            openDock.Click += (_, _) =>
+            {
+                SlideOut();
+                DockRequested?.Invoke();
+            };
 
             Wire();
             Load();
@@ -64,18 +79,23 @@ namespace Heft.Ui
             _open = true;
 
             var wa = SystemParameters.WorkArea;
-            Height = wa.Height;
-            Top = wa.Top;
-            Left = wa.Right - Width;
+            Height = wa.Height - Gap * 2;
+            Top = wa.Top + Gap;
+            double target = wa.Right - Width - Gap;
 
             Load();
+            BeginAnimation(LeftProperty, null);
+            Left = wa.Right + 4;
+            frame.Opacity = 0;
             Show();
             Activate();
             _outside.Start();
 
-            slide.BeginAnimation(TranslateTransform.XProperty,
-                new DoubleAnimation(380, 0, TimeSpan.FromMilliseconds(240)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
+            BeginAnimation(LeftProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(280))
+            {
+                EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut }
+            });
+            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
         }
 
         public void SlideOut()
@@ -85,13 +105,17 @@ namespace Heft.Ui
             _outside.Stop();
             Keyboard.ClearFocus();
 
-            var anim = new DoubleAnimation(380, TimeSpan.FromMilliseconds(170)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+            var wa = SystemParameters.WorkArea;
+            var anim = new DoubleAnimation(wa.Right + 4, TimeSpan.FromMilliseconds(200))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
             anim.Completed += (_, _) =>
             {
                 if (!_open) Hide();
             };
-            slide.BeginAnimation(TranslateTransform.XProperty, anim);
-            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(170)));
+            BeginAnimation(LeftProperty, anim);
+            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(200)));
         }
 
         void CheckOutsideClick()
@@ -105,24 +129,20 @@ namespace Heft.Ui
 
         void Wire()
         {
-            Slide(throwS, v => _s.Throw = v);
-            Slide(frictionS, v => _s.Friction = v);
-            Slide(bounceS, v => _s.Bounce = v);
-            Slide(gravityS, v => _s.Gravity = v < 0.02 ? 0 : v);
-
-            shakeSens.ValueChanged += (_, e) =>
-            {
-                if (_loading) return;
-                _s.ShakeSensitivity = e.NewValue;
-                Labels();
-                _s.Touch();
-            };
+            Slide(throwS, v => _s.Throw = v, true);
+            Slide(frictionS, v => _s.Friction = v, true);
+            Slide(bounceS, v => _s.Bounce = v, true);
+            Slide(gravityS, v => _s.Gravity = v < 0.02 ? 0 : v, true);
+            Slide(shakeSens, v => _s.ShakeSensitivity = v, false);
+            Slide(sizeS, v => _s.IconSize = Math.Round(v), false);
+            Slide(magS, v => _s.Magnify = v, false);
 
             Toggle(enabled, v => _s.Enabled = v);
             Toggle(stackS, v => _s.Stacking = v);
             Toggle(shakeS, v => _s.ShakeToMinimize = v);
             Toggle(crossS, v => _s.CrossMonitors = v);
             Toggle(handleS, v => _s.ShowHandle = v);
+            Toggle(drivesS, v => _s.ShowDrives = v);
             Toggle(startupS, v =>
             {
                 _s.StartWithWindows = v;
@@ -136,6 +156,16 @@ namespace Heft.Ui
                     if (_loading) return;
                     _s.ApplyPreset((string)rb.Tag);
                     Load();
+                };
+            }
+
+            foreach (var rb in new[] { sideLeft, sideRight, sideTop, sideBottom })
+            {
+                rb.Checked += (_, _) =>
+                {
+                    if (_loading) return;
+                    _s.DockSide = (string)rb.Tag;
+                    _s.Touch();
                 };
             }
 
@@ -167,8 +197,17 @@ namespace Heft.Ui
 
             addApp.Click += (_, _) =>
             {
-                var path = Pick("add to the wheel", "apps and shortcuts|*.exe;*.lnk;*.bat;*.cmd;*.url|anything|*.*");
+                var path = PickFile("Add to the dock", "Apps and shortcuts|*.exe;*.lnk;*.bat;*.cmd;*.url|Anything|*.*");
                 if (path != null) _cat.AddFile(path);
+            };
+
+            addPlace.Click += (_, _) =>
+            {
+                var path = PickFolder();
+                if (path == null || _s.Places.Contains(path, StringComparer.OrdinalIgnoreCase)) return;
+                _s.Places.Add(path);
+                _s.Touch();
+                RefreshPlaces();
             };
 
             locate.Click += (_, _) =>
@@ -178,20 +217,20 @@ namespace Heft.Ui
                     _cat.SetHangar(_cat.HangarPath);
                     return;
                 }
-                var path = Pick("where's hangar29?", "hangar29|*.exe;*.lnk|anything|*.*");
+                var path = PickFile("Where's hangar29?", "hangar29|*.exe;*.lnk|Anything|*.*");
                 if (path != null) _cat.SetHangar(path);
             };
 
             rescan.Click += (_, _) => _cat.Scan();
         }
 
-        void Slide(Slider slider, Action<double> set)
+        void Slide(Slider slider, Action<double> set, bool physics)
         {
             slider.ValueChanged += (_, e) =>
             {
                 if (_loading) return;
                 set(e.NewValue);
-                if (_s.Preset != "custom")
+                if (physics && _s.Preset != "custom")
                 {
                     _s.Preset = "custom";
                     _loading = true;
@@ -221,7 +260,7 @@ namespace Heft.Ui
             };
         }
 
-        string? Pick(string title, string filter)
+        string? PickFile(string title, string filter)
         {
             var dlg = new OpenFileDialog { Title = title, Filter = filter, DereferenceLinks = false, CheckFileExists = true };
             _suppress = true;
@@ -236,6 +275,23 @@ namespace Heft.Ui
             }
             Activate();
             return ok ? dlg.FileName : null;
+        }
+
+        string? PickFolder()
+        {
+            var dlg = new OpenFolderDialog { Title = "Add a place" };
+            _suppress = true;
+            bool ok;
+            try
+            {
+                ok = dlg.ShowDialog(this) == true;
+            }
+            finally
+            {
+                _suppress = false;
+            }
+            Activate();
+            return ok ? dlg.FolderName : null;
         }
 
         static void SetStartup(bool on)
@@ -267,10 +323,18 @@ namespace Heft.Ui
             crossS.IsChecked = _s.CrossMonitors;
             startupS.IsChecked = _s.StartWithWindows;
             handleS.IsChecked = _s.ShowHandle;
+            drivesS.IsChecked = _s.ShowDrives;
+            sizeS.Value = _s.IconSize;
+            magS.Value = _s.Magnify;
 
             presetChill.IsChecked = _s.Preset == "chill";
             presetBouncy.IsChecked = _s.Preset == "bouncy";
             presetChaos.IsChecked = _s.Preset == "chaos";
+
+            sideLeft.IsChecked = _s.DockSide == "left";
+            sideTop.IsChecked = _s.DockSide == "top";
+            sideBottom.IsChecked = _s.DockSide == "bottom";
+            sideRight.IsChecked = _s.DockSide != "left" && _s.DockSide != "top" && _s.DockSide != "bottom";
 
             themeSystem.IsChecked = _s.Theme != "light" && _s.Theme != "dark";
             themeLight.IsChecked = _s.Theme == "light";
@@ -282,6 +346,7 @@ namespace Heft.Ui
             _loading = false;
             Labels();
             RefreshItems();
+            RefreshPlaces();
         }
 
         static string Pct(double v) => $"{Math.Round(v * 100)}%";
@@ -291,8 +356,10 @@ namespace Heft.Ui
             throwVal.Text = $"{_s.Throw:0.0}x";
             frictionVal.Text = Pct(_s.Friction);
             bounceVal.Text = Pct(_s.Bounce);
-            gravityVal.Text = _s.Gravity < 0.001 ? "off" : Pct(_s.Gravity);
-            shakeVal.Text = _s.ShakeSensitivity < 0.34 ? "low" : _s.ShakeSensitivity < 0.67 ? "medium" : "high";
+            gravityVal.Text = _s.Gravity < 0.001 ? "Off" : Pct(_s.Gravity);
+            shakeVal.Text = _s.ShakeSensitivity < 0.34 ? "Low" : _s.ShakeSensitivity < 0.67 ? "Mid" : "High";
+            sizeVal.Text = $"{_s.IconSize:0}";
+            magVal.Text = _s.Magnify < 0.01 ? "Off" : Pct(_s.Magnify);
             shakeRow.Visibility = _s.ShakeToMinimize ? Visibility.Visible : Visibility.Collapsed;
             status.Text = _s.Enabled ? "throw your windows around" : "paused";
         }
@@ -300,36 +367,44 @@ namespace Heft.Ui
         void RefreshItems()
         {
             itemsHost.Children.Clear();
-            var items = _cat.WheelItems();
+            var items = _cat.WheelItems(24);
             emptyHint.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            foreach (var it in items) itemsHost.Children.Add(Row(it));
+            itemsHost.Visibility = items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+            foreach (var it in items) itemsHost.Children.Add(Row(it, false));
 
             rescan.IsEnabled = !_cat.Scanning;
-            rescanText.Text = _cat.Scanning ? "scanning..." : "rescan";
+            rescanText.Text = _cat.Scanning ? "Scanning..." : "Rescan";
 
             var hp = _cat.HangarPath;
             if (hp != null)
             {
                 bool pinned = _cat.IsPinned(hp);
-                hangarStatus.Text = pinned ? "pinned to the wheel" : "found it, not pinned";
-                locate.Content = pinned ? "change" : "pin";
-                var icon = _cat.Icon(hp);
+                hangarStatus.Text = pinned ? "pinned to the dock" : "found it, not pinned";
+                locate.Content = pinned ? "Change" : "Pin";
+                var icon = _cat.Icon(hp, 64);
                 hangarIcon.Source = icon;
                 hangarGlyph.Visibility = icon == null ? Visibility.Visible : Visibility.Collapsed;
+                hangarIcon.ToolTip = hp;
             }
             else
             {
                 hangarStatus.Text = _cat.Scanning || !_cat.Scanned ? "looking for it..." : "couldn't find it, point me to it";
-                locate.Content = "locate";
+                locate.Content = "Locate";
                 hangarIcon.Source = null;
                 hangarGlyph.Visibility = Visibility.Visible;
             }
         }
 
-        FrameworkElement Row(WheelItem item)
+        void RefreshPlaces()
         {
-            var row = new Border { CornerRadius = new CornerRadius(4), Padding = new Thickness(8, 4, 2, 4), Background = Brushes.Transparent };
-            row.MouseEnter += (_, _) => row.SetResourceReference(Border.BackgroundProperty, "CardHover");
+            placesHost.Children.Clear();
+            foreach (var p in _cat.PlaceItems()) placesHost.Children.Add(Row(p, true));
+        }
+
+        FrameworkElement Row(WheelItem item, bool place)
+        {
+            var row = new Border { CornerRadius = new CornerRadius(8), Padding = new Thickness(8, 5, 4, 5), Background = Brushes.Transparent };
+            row.MouseEnter += (_, _) => row.SetResourceReference(Border.BackgroundProperty, "RowHover");
             row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
 
             var g = new Grid();
@@ -339,17 +414,16 @@ namespace Heft.Ui
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             FrameworkElement glyph;
-            var icon = _cat.Icon(item.Path);
+            var icon = _cat.Icon(item.Path, 64);
             if (icon != null)
             {
-                glyph = new Image { Source = icon, Width = 22, Height = 22 };
+                glyph = new Image { Source = icon, Width = 26, Height = 26 };
             }
             else
             {
-                var t = new TextBlock { Text = "", FontSize = 14 };
-                t.Style = (Style)FindResource("Icon");
-                glyph = t;
+                glyph = new TextBlock { Text = place ? "" : "", FontSize = 15, Style = (Style)FindResource("Icon") };
             }
+            glyph.Width = 26;
             glyph.Margin = new Thickness(0, 0, 12, 0);
             glyph.VerticalAlignment = VerticalAlignment.Center;
             g.Children.Add(glyph);
@@ -362,37 +436,57 @@ namespace Heft.Ui
                 {
                     "favorite" => "favorite",
                     "project" => "one of yours",
+                    "drive" => "drive",
+                    "place" => item.Path,
                     _ => "you use this a lot"
                 },
                 Style = (Style)FindResource("Caption"),
-                FontSize = 11
+                TextWrapping = TextWrapping.NoWrap,
+                TextTrimming = TextTrimming.CharacterEllipsis
             });
             Grid.SetColumn(text, 1);
             g.Children.Add(text);
 
-            var star = new CheckBox
+            if (!place)
             {
-                Style = (Style)FindResource("Star"),
-                IsChecked = item.Kind == "favorite",
-                ToolTip = "favorite",
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            star.Checked += (_, _) => _cat.Pin(item);
-            star.Unchecked += (_, _) => _cat.Unpin(item.Path);
-            Grid.SetColumn(star, 2);
-            g.Children.Add(star);
+                var star = new CheckBox
+                {
+                    Style = (Style)FindResource("Star"),
+                    IsChecked = item.Kind == "favorite",
+                    ToolTip = "favorite"
+                };
+                star.Checked += (_, _) => _cat.Pin(item);
+                star.Unchecked += (_, _) => _cat.Unpin(item.Path);
+                Grid.SetColumn(star, 2);
+                g.Children.Add(star);
+            }
 
-            var remove = new Button
+            bool removable = !place || _s.Places.Contains(item.Path, StringComparer.OrdinalIgnoreCase);
+            if (removable)
             {
-                Style = (Style)FindResource("Ghost"),
-                Width = 28,
-                Height = 28,
-                ToolTip = "take it off the wheel",
-                Content = new TextBlock { Text = "", FontSize = 10, Style = (Style)FindResource("Icon") }
-            };
-            remove.Click += (_, _) => _cat.Hide(item.Path);
-            Grid.SetColumn(remove, 3);
-            g.Children.Add(remove);
+                var remove = new Button
+                {
+                    Style = (Style)FindResource("Plain"),
+                    ToolTip = place ? "remove this place" : "take it off the dock",
+                    Content = new TextBlock { Text = "", FontSize = 10, Style = (Style)FindResource("Icon"), Foreground = null }
+                };
+                if (remove.Content is TextBlock tb) tb.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = remove });
+                remove.Click += (_, _) =>
+                {
+                    if (place)
+                    {
+                        _s.Places.RemoveAll(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
+                        _s.Touch();
+                        RefreshPlaces();
+                    }
+                    else
+                    {
+                        _cat.Hide(item.Path);
+                    }
+                };
+                Grid.SetColumn(remove, 3);
+                g.Children.Add(remove);
+            }
 
             row.Child = g;
             row.ToolTip = item.Path;

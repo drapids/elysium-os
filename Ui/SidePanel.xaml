@@ -1,225 +1,291 @@
 <Window x:Class="Heft.Ui.SidePanel"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
-        WindowStartupLocation="Manual" Width="372" Title="heft"
+        WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="False" Background="Transparent"
+        Topmost="True" ShowInTaskbar="False" WindowStartupLocation="Manual" Width="380" Title="heft"
         FontFamily="{StaticResource UiFont}" UseLayoutRounding="True">
 
-    <Grid x:Name="frame" Margin="16,12,16,12">
-        <Grid.RenderTransform>
-            <TranslateTransform x:Name="slide" X="380"/>
-        </Grid.RenderTransform>
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="-1" CaptionHeight="0" ResizeBorderThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
 
-        <Border Background="{DynamicResource PanelBg}" CornerRadius="8">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="28" ShadowDepth="6" Direction="270" Opacity="0.32" Color="Black"/>
-            </Border.Effect>
-        </Border>
+    <Grid x:Name="frame" Background="#01000000">
+        <Border Height="140" VerticalAlignment="Top" Background="{DynamicResource Sheen}" Opacity="0.18" IsHitTestVisible="False"/>
 
-        <Border Background="{DynamicResource PanelBg}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
-            <DockPanel>
+        <DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="22,20,14,2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="heft" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text}"/>
+                    <TextBlock x:Name="status" Style="{StaticResource Caption}" Text="throw your windows around"/>
+                </StackPanel>
+                <CheckBox x:Name="enabled" Grid.Column="1" Style="{StaticResource Switch}" Margin="0,0,10,0" ToolTip="physics on/off"/>
+                <Button x:Name="close" Grid.Column="2" Style="{StaticResource Plain}" ToolTip="close">
+                    <TextBlock Style="{StaticResource Icon}" Text="&#xE8BB;" FontSize="10" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                </Button>
+            </Grid>
 
-                <Grid DockPanel.Dock="Top" Margin="20,16,12,4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <TextBlock Text="heft" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource Text}"/>
-                        <TextBlock x:Name="status" Style="{StaticResource Caption}" Text="throw your windows around" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <CheckBox x:Name="enabled" Grid.Column="1" Style="{StaticResource Switch}" Margin="0,0,8,0" ToolTip="physics on/off"/>
-                    <Button x:Name="close" Grid.Column="2" Style="{StaticResource Ghost}" VerticalAlignment="Center" ToolTip="close">
-                        <TextBlock Style="{StaticResource Icon}" Text="&#xE8BB;" FontSize="10"/>
-                    </Button>
-                </Grid>
+            <Grid DockPanel.Dock="Bottom" Margin="22,8,16,14">
+                <TextBlock Text="made by mason arcieri" FontSize="11" Foreground="{DynamicResource Faint}" VerticalAlignment="Center"/>
+                <Button x:Name="quit" Style="{StaticResource Push}" HorizontalAlignment="Right" Content="Quit"/>
+            </Grid>
 
-                <Grid DockPanel.Dock="Bottom" Margin="20,6,12,12">
-                    <TextBlock Text="made by mason arcieri" FontSize="11" Foreground="{DynamicResource Faint}" VerticalAlignment="Center"/>
-                    <Button x:Name="quit" Style="{StaticResource Subtle}" HorizontalAlignment="Right" Padding="10,4" FontSize="12" Content="quit"/>
-                </Grid>
+            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <StackPanel Margin="14,0,14,10">
 
-                <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <StackPanel Margin="16,0,16,8">
+                    <TextBlock Style="{StaticResource H}" Text="Physics"/>
+                    <Border Style="{StaticResource Group}">
+                        <StackPanel>
+                            <Border Style="{StaticResource SegGroup}" Margin="12,12,12,8">
+                                <UniformGrid Rows="1">
+                                    <RadioButton x:Name="presetChill" Style="{StaticResource Seg}" GroupName="preset" Tag="chill" Content="Chill"/>
+                                    <RadioButton x:Name="presetBouncy" Style="{StaticResource Seg}" GroupName="preset" Tag="bouncy" Content="Bouncy"/>
+                                    <RadioButton x:Name="presetChaos" Style="{StaticResource Seg}" GroupName="preset" Tag="chaos" Content="Chaos"/>
+                                </UniformGrid>
+                            </Border>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Throw strength"/>
+                                <Slider x:Name="throwS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0.2" Maximum="2.5"/>
+                                <TextBlock x:Name="throwVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Friction"/>
+                                <Slider x:Name="frictionS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0" Maximum="1"/>
+                                <TextBlock x:Name="frictionVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Bounciness"/>
+                                <Slider x:Name="bounceS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0" Maximum="0.95"/>
+                                <TextBlock x:Name="bounceVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Gravity"/>
+                                <Slider x:Name="gravityS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0" Maximum="1"/>
+                                <TextBlock x:Name="gravityVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
-                        <TextBlock Style="{StaticResource H}" Text="feel"/>
-                        <Border Style="{StaticResource SegGroup}" Margin="0,0,0,6">
-                            <UniformGrid Rows="1">
-                                <RadioButton x:Name="presetChill" Style="{StaticResource Seg}" GroupName="preset" Tag="chill" Content="chill"/>
-                                <RadioButton x:Name="presetBouncy" Style="{StaticResource Seg}" GroupName="preset" Tag="bouncy" Content="bouncy"/>
-                                <RadioButton x:Name="presetChaos" Style="{StaticResource Seg}" GroupName="preset" Tag="chaos" Content="chaos"/>
-                            </UniformGrid>
-                        </Border>
-
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <Grid>
-                                    <TextBlock Style="{StaticResource Body}" Text="throw strength"/>
-                                    <TextBlock x:Name="throwVal" Style="{StaticResource Value}"/>
-                                </Grid>
-                                <Slider x:Name="throwS" Style="{StaticResource Fluent}" Minimum="0.2" Maximum="2.5"/>
-
-                                <Grid Margin="0,12,0,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="friction"/>
-                                    <TextBlock x:Name="frictionVal" Style="{StaticResource Value}"/>
-                                </Grid>
-                                <Slider x:Name="frictionS" Style="{StaticResource Fluent}" Minimum="0" Maximum="1"/>
-
-                                <Grid Margin="0,12,0,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="bounciness"/>
-                                    <TextBlock x:Name="bounceVal" Style="{StaticResource Value}"/>
-                                </Grid>
-                                <Slider x:Name="bounceS" Style="{StaticResource Fluent}" Minimum="0" Maximum="0.95"/>
-
-                                <Grid Margin="0,12,0,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="gravity"/>
-                                    <TextBlock x:Name="gravityVal" Style="{StaticResource Value}"/>
-                                </Grid>
-                                <Slider x:Name="gravityS" Style="{StaticResource Fluent}" Minimum="0" Maximum="1"/>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Style="{StaticResource H}" Text="behavior"/>
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
-                                <StackPanel Margin="0,0,52,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="stack on other windows"/>
+                    <TextBlock Style="{StaticResource H}" Text="Behavior"/>
+                    <Border Style="{StaticResource Group}">
+                        <StackPanel>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Stack on other windows"/>
                                     <TextBlock Style="{StaticResource Caption}" Text="only does anything with gravity on"/>
                                 </StackPanel>
-                                <CheckBox x:Name="stackS" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
+                                <CheckBox x:Name="stackS" Style="{StaticResource Switch}"/>
                             </Grid>
-                        </Border>
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <Grid>
-                                    <StackPanel Margin="0,0,52,0">
-                                        <TextBlock Style="{StaticResource Body}" Text="shake to minimize"/>
-                                        <TextBlock Style="{StaticResource Caption}" Text="wiggle a window fast while dragging it"/>
-                                    </StackPanel>
-                                    <CheckBox x:Name="shakeS" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
-                                </Grid>
-                                <StackPanel x:Name="shakeRow" Margin="0,12,0,0">
-                                    <Grid>
-                                        <TextBlock Style="{StaticResource Body}" Text="sensitivity"/>
-                                        <TextBlock x:Name="shakeVal" Style="{StaticResource Value}"/>
-                                    </Grid>
-                                    <Slider x:Name="shakeSens" Style="{StaticResource Fluent}" Minimum="0" Maximum="1"/>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Shake to minimize"/>
+                                    <TextBlock Style="{StaticResource Caption}" Text="wiggle a window fast while you drag it"/>
                                 </StackPanel>
+                                <CheckBox x:Name="shakeS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <StackPanel x:Name="shakeRow">
+                                <Border Style="{StaticResource Sep}"/>
+                                <Grid Style="{StaticResource Row}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="140"/>
+                                        <ColumnDefinition Width="46"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Body}" Text="Sensitivity"/>
+                                    <Slider x:Name="shakeSens" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0" Maximum="1"/>
+                                    <TextBlock x:Name="shakeVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                                </Grid>
                             </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
-                                <StackPanel Margin="0,0,52,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="fly between monitors"/>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Fly between monitors"/>
                                     <TextBlock Style="{StaticResource Caption}" Text="off = every screen edge is a wall"/>
                                 </StackPanel>
-                                <CheckBox x:Name="crossS" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
+                                <CheckBox x:Name="crossS" Style="{StaticResource Switch}"/>
                             </Grid>
-                        </Border>
+                        </StackPanel>
+                    </Border>
 
-                        <TextBlock Style="{StaticResource H}" Text="wheel"/>
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
-                                <StackPanel Margin="0,0,80,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="spin wheel"/>
-                                    <TextBlock Style="{StaticResource Caption}" Text="ctrl + alt + space, or right-click the edge"/>
+                    <TextBlock Style="{StaticResource H}" Text="Dock"/>
+                    <Border Style="{StaticResource Group}">
+                        <StackPanel>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,70,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Open dock"/>
+                                    <TextBlock Style="{StaticResource Caption}" Text="ctrl + alt + space, or push your mouse into the edge"/>
                                 </StackPanel>
-                                <Button x:Name="openWheel" Style="{StaticResource AccentBtn}" HorizontalAlignment="Right" VerticalAlignment="Center" Content="open"/>
+                                <Button x:Name="openDock" Style="{StaticResource AccentBtn}" HorizontalAlignment="Right" Content="Open"/>
                             </Grid>
-                        </Border>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Side" Margin="0,0,16,0"/>
+                                <Border Grid.Column="1" Style="{StaticResource SegGroup}">
+                                    <UniformGrid Rows="1">
+                                        <RadioButton x:Name="sideLeft" Style="{StaticResource Seg}" GroupName="side" Tag="left" Content="Left"/>
+                                        <RadioButton x:Name="sideRight" Style="{StaticResource Seg}" GroupName="side" Tag="right" Content="Right"/>
+                                        <RadioButton x:Name="sideTop" Style="{StaticResource Seg}" GroupName="side" Tag="top" Content="Top"/>
+                                        <RadioButton x:Name="sideBottom" Style="{StaticResource Seg}" GroupName="side" Tag="bottom" Content="Bottom"/>
+                                    </UniformGrid>
+                                </Border>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Icon size"/>
+                                <Slider x:Name="sizeS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="40" Maximum="76"/>
+                                <TextBlock x:Name="sizeVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="46"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Magnification"/>
+                                <Slider x:Name="magS" Grid.Column="1" Style="{StaticResource Mac}" Minimum="0" Maximum="1"/>
+                                <TextBlock x:Name="magVal" Grid.Column="2" Style="{StaticResource Value}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <StackPanel VerticalAlignment="Center" Margin="0,8,56,8">
+                                    <TextBlock Style="{StaticResource Body}" Text="Edge trigger"/>
+                                    <TextBlock Style="{StaticResource Caption}" Text="the little handle that opens the dock"/>
+                                </StackPanel>
+                                <CheckBox x:Name="handleS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
+                    <TextBlock Style="{StaticResource H}" Text="Apps on the dock"/>
+                    <Border Style="{StaticResource Group}">
+                        <StackPanel>
+                            <Grid Style="{StaticResource Row}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Width="32" Height="32" CornerRadius="6" Background="{DynamicResource CardHover}" Margin="0,0,12,0">
-                                    <Grid>
-                                        <TextBlock x:Name="hangarGlyph" Style="{StaticResource Icon}" Text="&#xE714;" FontSize="14"/>
-                                        <Image x:Name="hangarIcon" Width="22" Height="22"/>
-                                    </Grid>
-                                </Border>
+                                <Grid Width="30" Height="30" Margin="0,8,12,8">
+                                    <TextBlock x:Name="hangarGlyph" Style="{StaticResource Icon}" Text="&#xE714;" FontSize="15"/>
+                                    <Image x:Name="hangarIcon" Width="30" Height="30"/>
+                                </Grid>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource Body}" Text="hangar29"/>
                                     <TextBlock x:Name="hangarStatus" Style="{StaticResource Caption}" Text="looking for it..."/>
                                 </StackPanel>
-                                <Button x:Name="locate" Grid.Column="2" Style="{StaticResource Subtle}" Padding="10,4" FontSize="12" VerticalAlignment="Center" Content="locate"/>
+                                <Button x:Name="locate" Grid.Column="2" Style="{StaticResource Push}" Content="Locate"/>
                             </Grid>
-                        </Border>
-
-                        <Border Style="{StaticResource Card}" Padding="6">
-                            <StackPanel>
-                                <StackPanel x:Name="itemsHost"/>
-                                <TextBlock x:Name="emptyHint" Style="{StaticResource Caption}" Margin="8,6,8,8"
-                                           Text="nothing on the wheel yet. add an app or use your pc for a bit and your most used stuff shows up here."/>
-                                <Grid Margin="2,6,2,2">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition Width="6"/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button x:Name="addApp" Style="{StaticResource Subtle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" Margin="0,0,8,0"/>
-                                            <TextBlock Text="add app"/>
-                                        </StackPanel>
+                            <Border Style="{StaticResource Sep}"/>
+                            <StackPanel x:Name="itemsHost" Margin="6,4"/>
+                            <TextBlock x:Name="emptyHint" Style="{StaticResource Caption}" Margin="14,8,14,10"
+                                       Text="nothing here yet. add an app or just use your pc for a bit and your most used stuff shows up"/>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Margin="12,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="addApp" Style="{StaticResource Push}" Content="Add app..." Margin="0,0,8,0"/>
+                                    <Button x:Name="rescan" Style="{StaticResource Push}">
+                                        <TextBlock x:Name="rescanText" Text="Rescan"/>
                                     </Button>
-                                    <Button x:Name="rescan" Grid.Column="2" Style="{StaticResource Subtle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE72C;" Margin="0,0,8,0"/>
-                                            <TextBlock x:Name="rescanText" Text="rescan"/>
-                                        </StackPanel>
-                                    </Button>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Body}" Text="my projects"/>
-                                <TextBlock Style="{StaticResource Caption}" Text="names it looks for on your pc, comma separated" Margin="0,0,0,8"/>
-                                <TextBox x:Name="projects" Style="{StaticResource Field}" TextWrapping="Wrap" Tag="hangar29, underlay, veneer"/>
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Style="{StaticResource H}" Text="general"/>
-                        <Border Style="{StaticResource SegGroup}" Margin="0,0,0,6">
-                            <UniformGrid Rows="1">
-                                <RadioButton x:Name="themeSystem" Style="{StaticResource Seg}" GroupName="theme" Tag="system" Content="system"/>
-                                <RadioButton x:Name="themeLight" Style="{StaticResource Seg}" GroupName="theme" Tag="light" Content="light"/>
-                                <RadioButton x:Name="themeDark" Style="{StaticResource Seg}" GroupName="theme" Tag="dark" Content="dark"/>
-                            </UniformGrid>
-                        </Border>
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
-                                <TextBlock Style="{StaticResource Body}" Text="start with windows"/>
-                                <CheckBox x:Name="startupS" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource Card}">
-                            <Grid>
-                                <StackPanel Margin="0,0,52,0">
-                                    <TextBlock Style="{StaticResource Body}" Text="show edge handle"/>
-                                    <TextBlock Style="{StaticResource Caption}" Text="ctrl + alt + h opens this either way"/>
                                 </StackPanel>
-                                <CheckBox x:Name="handleS" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
                             </Grid>
-                        </Border>
-                        <Border Style="{StaticResource Card}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource Body}" Text="leave these apps alone"/>
-                                <TextBlock Style="{StaticResource Caption}" Text="process names, comma separated" Margin="0,0,0,8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Style="{StaticResource H}" Text="Places"/>
+                    <Border Style="{StaticResource Group}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Caption}" Margin="14,10,14,6"
+                                       Text="ctrl + scroll (or pinch) on the dock to zoom out to these"/>
+                            <StackPanel x:Name="placesHost" Margin="6,0,6,4"/>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <TextBlock Style="{StaticResource Body}" Text="Show drives"/>
+                                <CheckBox x:Name="drivesS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Margin="12,10">
+                                <Button x:Name="addPlace" Style="{StaticResource Push}" HorizontalAlignment="Left" Content="Add folder..."/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Style="{StaticResource H}" Text="General"/>
+                    <Border Style="{StaticResource Group}">
+                        <StackPanel>
+                            <Grid Style="{StaticResource Row}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Body}" Text="Appearance" Margin="0,0,16,0"/>
+                                <Border Grid.Column="1" Style="{StaticResource SegGroup}">
+                                    <UniformGrid Rows="1">
+                                        <RadioButton x:Name="themeSystem" Style="{StaticResource Seg}" GroupName="theme" Tag="system" Content="Auto"/>
+                                        <RadioButton x:Name="themeLight" Style="{StaticResource Seg}" GroupName="theme" Tag="light" Content="Light"/>
+                                        <RadioButton x:Name="themeDark" Style="{StaticResource Seg}" GroupName="theme" Tag="dark" Content="Dark"/>
+                                    </UniformGrid>
+                                </Border>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <Grid Style="{StaticResource Row}">
+                                <TextBlock Style="{StaticResource Body}" Text="Start with Windows"/>
+                                <CheckBox x:Name="startupS" Style="{StaticResource Switch}"/>
+                            </Grid>
+                            <Border Style="{StaticResource Sep}"/>
+                            <StackPanel Margin="14,10,14,12">
+                                <TextBlock Style="{StaticResource Body}" Text="Leave these apps alone"/>
+                                <TextBlock Style="{StaticResource Caption}" Text="process names, comma separated" Margin="0,1,0,8"/>
                                 <TextBox x:Name="ignored" Style="{StaticResource Field}" Tag="obs64, valorant"/>
                             </StackPanel>
-                        </Border>
+                            <Border Style="{StaticResource Sep}"/>
+                            <StackPanel Margin="14,10,14,12">
+                                <TextBlock Style="{StaticResource Body}" Text="My projects"/>
+                                <TextBlock Style="{StaticResource Caption}" Text="names it looks for on your pc, newest build wins" Margin="0,1,0,8"/>
+                                <TextBox x:Name="projects" Style="{StaticResource Field}" TextWrapping="Wrap" Tag="hangar29, underlay, veneer"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
-        </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Grid>
 </Window>
