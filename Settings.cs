@@ -27,6 +27,7 @@ namespace Heft
         public string IgnoredApps { get; set; } = "";
         public string Theme { get; set; } = "system";
         public bool StartWithWindows { get; set; } = false;
+        public bool ShowHandle { get; set; } = true;
         public string Preset { get; set; } = "chill";
 
         public List<WheelItem> Pinned { get; set; } = new();
