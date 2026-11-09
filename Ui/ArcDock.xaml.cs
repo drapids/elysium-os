@@ -10,7 +10,6 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Effects;
 
 namespace Heft.Ui
 {
@@ -20,6 +19,8 @@ namespace Heft.Ui
         {
             public WheelItem Item = null!;
             public int Index;
+            public Layer Owner = null!;
+            public bool Built;
             public Grid Root = null!;
             public Image Img = null!;
             public ScaleTransform Scale = null!;
@@ -38,13 +39,15 @@ namespace Heft.Ui
             public Canvas Canvas = null!;
             public ScaleTransform Zoom = null!;
             public List<Tile> Tiles = new();
+            public List<WheelItem> All = new();
             public string Key => Kind + "|" + (Path ?? "");
         }
 
         const double R = 380;
         const double Across = 360;
 
-        static readonly DropShadowEffect IconShadow = MakeShadow();
+        static readonly RadialGradientBrush ShadowBrush = MakeShadow();
+        static readonly string[] Sorts = { "name", "recent", "type", "size" };
 
         readonly Settings _s;
         readonly AppCatalog _cat;
@@ -59,6 +62,9 @@ namespace Heft.Ui
         double _lastPointer, _travel, _lastMoveT;
         bool _running, _closing, _coasting, _dragging, _entered, _hoverOpened, _snapPending;
         Tile? _hover, _press;
+        string _query = "";
+        bool _chromeDirty = true;
+        Size _crumbSize, _emptySize, _pillSize;
         int _focus = -1;
 
         public event Action? SettingsRequested;
@@ -75,6 +81,12 @@ namespace Heft.Ui
                 if (!_dragging) HideDock();
             };
             PreviewKeyDown += OnKey;
+            PreviewTextInput += OnText;
+            root.MouseEnter += (_, _) =>
+            {
+                if (!IsActive) Activate();
+            };
+            sortBtn.Click += (_, _) => CycleSort();
 
             root.MouseLeftButtonDown += OnDown;
             root.MouseMove += OnMove;
@@ -90,11 +102,14 @@ namespace Heft.Ui
             };
         }
 
-        static DropShadowEffect MakeShadow()
+        static RadialGradientBrush MakeShadow()
         {
-            var e = new DropShadowEffect { BlurRadius = 10, ShadowDepth = 3, Direction = 270, Opacity = 0.35, Color = Colors.Black };
-            e.Freeze();
-            return e;
+            var b = new RadialGradientBrush();
+            b.GradientStops.Add(new GradientStop(Color.FromArgb(0x60, 0, 0, 0), 0));
+            b.GradientStops.Add(new GradientStop(Color.FromArgb(0x28, 0, 0, 0), 0.55));
+            b.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 0, 0, 0), 1));
+            b.Freeze();
+            return b;
         }
 
         double Now => _clock.Elapsed.TotalSeconds;
@@ -169,6 +184,7 @@ namespace Heft.Ui
             Geometry();
 
             _trail.Clear();
+            _query = "";
             foreach (var c in layers.Children.OfType<Canvas>().ToList()) layers.Children.Remove(c);
             _cur = null;
             SetLayer(BuildApps(), 0);
@@ -227,77 +243,95 @@ namespace Heft.Ui
             return BuildLayer("apps", "Apps", null, items);
         }
 
-        Layer BuildLayer(string kind, string title, string? path, List<WheelItem> items)
+        Layer BuildLayer(string kind, string title, string? path, List<WheelItem> items, List<WheelItem>? all = null)
         {
             var canvas = new Canvas { Width = Width, Height = Height };
             var origin = Map(0, -_d);
             var zoom = new ScaleTransform(1, 1, origin.X, origin.Y);
             canvas.RenderTransform = zoom;
-            var layer = new Layer { Kind = kind, Title = title, Path = path, Canvas = canvas, Zoom = zoom };
-
+            var layer = new Layer { Kind = kind, Title = title, Path = path, Canvas = canvas, Zoom = zoom, All = all ?? items };
             for (int i = 0; i < items.Count; i++)
-            {
-                var item = items[i];
-                var scale = new ScaleTransform(1, 1);
-                var rootGrid = new Grid
-                {
-                    Width = _size,
-                    Height = _size,
-                    RenderTransformOrigin = new Point(0.5, 0.5),
-                    RenderTransform = scale,
-                    Visibility = Visibility.Collapsed,
-                    IsHitTestVisible = false
-                };
-                var img = new Image { Stretch = Stretch.Uniform, Effect = IconShadow };
-                RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
-
-                if (item.Kind == "settings")
-                {
-                    var tile = new Border { CornerRadius = new CornerRadius(_size * 0.24), Effect = IconShadow };
-                    tile.SetResourceReference(Border.BackgroundProperty, "PillBg");
-                    tile.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
-                    tile.BorderThickness = new Thickness(1);
-                    var glyph = new TextBlock
-                    {
-                        Text = "\uE713",
-                        FontSize = _size * 0.42,
-                        Style = (Style)FindResource("Icon")
-                    };
-                    tile.Child = glyph;
-                    rootGrid.Children.Add(tile);
-                }
-                rootGrid.Children.Add(img);
-
-                var t = new Tile { Item = item, Index = i, Root = rootGrid, Img = img, Scale = scale, Size = _size, Loaded = item.Kind == "settings" };
-                canvas.Children.Add(rootGrid);
-
-                if (kind != "apps" && Vertical)
-                {
-                    var label = new Border
-                    {
-                        CornerRadius = new CornerRadius(7),
-                        Padding = new Thickness(8, 2, 8, 3),
-                        BorderThickness = new Thickness(1),
-                        IsHitTestVisible = false,
-                        Visibility = Visibility.Collapsed,
-                        Child = new TextBlock
-                        {
-                            Text = item.Name,
-                            FontSize = 12,
-                            MaxWidth = 170,
-                            TextTrimming = TextTrimming.CharacterEllipsis
-                        }
-                    };
-                    label.SetResourceReference(Border.BackgroundProperty, "PillBg");
-                    label.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
-                    ((TextBlock)label.Child).SetResourceReference(TextBlock.ForegroundProperty, "Text");
-                    t.Label = label;
-                    canvas.Children.Add(label);
-                }
-
-                layer.Tiles.Add(t);
-            }
+                layer.Tiles.Add(new Tile { Item = items[i], Index = i, Owner = layer, Size = _size, Loaded = items[i].Kind == "settings" });
             return layer;
+        }
+
+        void Build(Tile t)
+        {
+            t.Built = true;
+            var item = t.Item;
+            var scale = new ScaleTransform(1, 1);
+            var rootGrid = new Grid
+            {
+                Width = _size,
+                Height = _size,
+                RenderTransformOrigin = new Point(0.5, 0.5),
+                RenderTransform = scale,
+                Visibility = Visibility.Collapsed,
+                IsHitTestVisible = false
+            };
+
+            rootGrid.Children.Add(new System.Windows.Shapes.Ellipse
+            {
+                Width = _size * 0.95,
+                Height = _size * 0.32,
+                Fill = ShadowBrush,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(0, 0, 0, -_size * 0.12)
+            });
+
+            var img = new Image { Stretch = Stretch.Uniform };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.Linear);
+
+            if (item.Kind == "settings")
+            {
+                var tile = new Border { CornerRadius = new CornerRadius(_size * 0.24), BorderThickness = new Thickness(1), Margin = new Thickness(_size * 0.06) };
+                tile.SetResourceReference(Border.BackgroundProperty, "PillBg");
+                tile.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
+                tile.Child = new TextBlock { Text = "\uE713", FontSize = _size * 0.4, Style = (Style)FindResource("Icon") };
+                rootGrid.Children.Add(tile);
+            }
+            rootGrid.Children.Add(img);
+
+            t.Root = rootGrid;
+            t.Img = img;
+            t.Scale = scale;
+            t.Owner.Canvas.Children.Add(rootGrid);
+
+            if (t.Owner.Kind != "apps" && Vertical)
+            {
+                var text = new TextBlock { Text = item.Name, FontSize = 12, MaxWidth = 170, TextTrimming = TextTrimming.CharacterEllipsis };
+                text.SetResourceReference(TextBlock.ForegroundProperty, "Text");
+                var label = new Border
+                {
+                    CornerRadius = new CornerRadius(7),
+                    Padding = new Thickness(8, 2, 8, 3),
+                    BorderThickness = new Thickness(1),
+                    IsHitTestVisible = false,
+                    Visibility = Visibility.Collapsed,
+                    Child = text
+                };
+                label.SetResourceReference(Border.BackgroundProperty, "PillBg");
+                label.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
+                t.Label = label;
+                t.Owner.Canvas.Children.Add(label);
+            }
+        }
+
+        void LoadIcon(Tile t)
+        {
+            t.Loaded = true;
+            bool iconOnly = t.Item.Kind is "favorite" or "project" or "frequent" or "drive";
+            if (_cat.Icons.TryPeek(t.Item.Path, 96, iconOnly, out var cached))
+            {
+                t.Img.Source = cached;
+                return;
+            }
+            t.Img.Opacity = 0;
+            _cat.Icons.Get(t.Item.Path, 96, iconOnly, img =>
+            {
+                t.Img.Source = img;
+                t.Img.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
+            });
         }
 
         (double min, double max) Range()
@@ -334,17 +368,7 @@ namespace Heft.Ui
             _phi = _memo.TryGetValue(layer.Key, out var saved) ? Math.Clamp(saved, min, max) : max;
             _target = _phi;
 
-            crumbTitle.Text = layer.Title;
-            crumbHint.Text = layer.Kind switch
-            {
-                "apps" => "ctrl + scroll to zoom out",
-                "places" => "pick a place",
-                _ => $"{layer.Tiles.Count} item{(layer.Tiles.Count == 1 ? "" : "s")}"
-            };
-            back.Visibility = layer.Kind == "apps" ? Visibility.Collapsed : Visibility.Visible;
-            openHere.Visibility = layer.Kind == "folder" ? Visibility.Visible : Visibility.Collapsed;
-            emptyText.Visibility = layer.Tiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            emptyText.Text = layer.Kind == "folder" ? "nothing in here" : "nothing yet";
+            UpdateCrumb();
 
             if (old == null || dir == 0)
             {
@@ -370,6 +394,71 @@ namespace Heft.Ui
             layer.Zoom.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(inScale, 1, d) { EasingFunction = ease });
         }
 
+        static string SortLabel(string sort) => sort switch
+        {
+            "recent" => "recent first",
+            "type" => "by type",
+            "size" => "biggest first",
+            _ => "a to z"
+        };
+
+        void UpdateCrumb()
+        {
+            if (_cur == null) return;
+            int n = _cur.Tiles.Count;
+            crumbTitle.Text = _cur.Title;
+            if (_query.Length > 0)
+            {
+                crumbHint.Text = $"\"{_query}\" \u00b7 {n} match{(n == 1 ? "" : "es")}";
+            }
+            else
+            {
+                crumbHint.Text = _cur.Kind switch
+                {
+                    "apps" => _s.TypeToFilter ? "type to search \u00b7 ctrl + scroll to zoom" : "ctrl + scroll to zoom out",
+                    "places" => "pick a place",
+                    _ => $"{n} item{(n == 1 ? "" : "s")} \u00b7 {SortLabel(_s.FolderSort)}"
+                };
+            }
+            back.Visibility = _cur.Kind == "apps" ? Visibility.Collapsed : Visibility.Visible;
+            openHere.Visibility = _cur.Kind == "folder" ? Visibility.Visible : Visibility.Collapsed;
+            sortBtn.Visibility = _cur.Kind == "folder" ? Visibility.Visible : Visibility.Collapsed;
+            sortBtn.ToolTip = $"sorted {SortLabel(_s.FolderSort)}, click to change";
+            emptyText.Visibility = n == 0 ? Visibility.Visible : Visibility.Collapsed;
+            emptyText.Text = _query.Length > 0 ? "no matches" : _cur.Kind == "folder" ? "nothing in here" : "nothing yet";
+            _chromeDirty = true;
+        }
+
+        void CycleSort()
+        {
+            int i = Array.IndexOf(Sorts, _s.FolderSort);
+            _s.FolderSort = Sorts[(i + 1 + Sorts.Length) % Sorts.Length];
+            _s.Touch();
+            if (_cur?.Kind == "folder" && _cur.Path != null) ShowFolder(_cur.Path, 0);
+            else UpdateCrumb();
+        }
+
+        void ApplyFilter()
+        {
+            if (_cur == null) return;
+            var all = _cur.All;
+            var items = _query.Length == 0
+                ? all
+                : all.Where(i => i.Kind != "settings" && i.Name.Contains(_query, StringComparison.OrdinalIgnoreCase)).ToList();
+            var key = _cur.Key;
+            SetLayer(BuildLayer(_cur.Kind, _cur.Title, _cur.Path, items, all), 0);
+            _memo.Remove(key);
+            var (_, max) = Range();
+            _phi = _target = max;
+            if (_query.Length > 0 && items.Count > 0)
+            {
+                _focus = 0;
+                _keyAt = Now;
+                _hover = _cur.Tiles[0];
+            }
+            UpdateCrumb();
+        }
+
         void Bump()
         {
             if (_cur == null) return;
@@ -380,16 +469,20 @@ namespace Heft.Ui
 
         void ShowPlaces(int dir)
         {
+            _query = "";
             _trail.Clear();
             SetLayer(BuildLayer("places", "Places", null, _cat.PlaceItems()), dir);
         }
 
         async void ShowFolder(string path, int dir)
         {
+            _query = "";
+            string sort = _s.FolderSort;
+            bool first = _s.FoldersFirst, hidden = _s.ShowHidden;
             List<WheelItem> items;
             try
             {
-                items = await Task.Run(() => AppCatalog.FolderItems(path));
+                items = await Task.Run(() => AppCatalog.FolderItems(path, sort, first, hidden));
             }
             catch
             {
@@ -451,6 +544,7 @@ namespace Heft.Ui
             }
             if (_cur.Kind == "places")
             {
+                _query = "";
                 SetLayer(BuildApps(), 1);
                 return;
             }
@@ -597,7 +691,6 @@ namespace Heft.Ui
             if (_cur == null) return;
             var tiles = _cur.Tiles;
             double hide = (1 - _reveal) * (_apex + _size);
-            int budget = 3;
             Tile? hover = null;
             double best = double.MaxValue;
             bool fan = FanLabels;
@@ -607,7 +700,7 @@ namespace Heft.Ui
                 double theta = t.Index * _step + _phi;
                 if (Math.Abs(theta) > _v + 8)
                 {
-                    if (t.Shown)
+                    if (t.Shown && t.Built)
                     {
                         t.Shown = false;
                         t.Root.Visibility = Visibility.Collapsed;
@@ -617,20 +710,13 @@ namespace Heft.Ui
                     continue;
                 }
 
+                if (!t.Built) Build(t);
                 if (!t.Shown)
                 {
                     t.Shown = true;
                     t.Root.Visibility = Visibility.Visible;
                 }
-
-                if (!t.Loaded && budget > 0)
-                {
-                    budget--;
-                    t.Loaded = true;
-                    bool iconOnly = t.Item.Kind is "favorite" or "project" or "frequent";
-                    t.Img.Source = _cat.Icon(t.Item.Path, 96, iconOnly);
-                    if (t.Img.Source == null && t.Item.Kind != "drive") t.Img.Source = _cat.Icon(t.Item.Path, 96, true);
-                }
+                if (!t.Loaded) LoadIcon(t);
 
                 double rad = theta * Math.PI / 180;
                 double u = R * Math.Sin(rad);
@@ -700,8 +786,15 @@ namespace Heft.Ui
         {
             double alpha = Math.Clamp(_reveal * 1.2, 0, 1);
 
-            crumb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var cs = crumb.DesiredSize;
+            if (_chromeDirty)
+            {
+                _chromeDirty = false;
+                crumb.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                _crumbSize = crumb.DesiredSize;
+                emptyText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                _emptySize = emptyText.DesiredSize;
+            }
+            var cs = _crumbSize;
             const double m = 14;
             double cx = _side == "right" ? Width - m - cs.Width : m;
             double cy = _side == "bottom" ? Height - m - cs.Height : m;
@@ -711,10 +804,9 @@ namespace Heft.Ui
 
             if (emptyText.Visibility == Visibility.Visible)
             {
-                emptyText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
                 var p = Map(0, _apex);
-                Canvas.SetLeft(emptyText, p.X - emptyText.DesiredSize.Width / 2);
-                Canvas.SetTop(emptyText, p.Y - emptyText.DesiredSize.Height / 2);
+                Canvas.SetLeft(emptyText, p.X - _emptySize.Width / 2);
+                Canvas.SetTop(emptyText, p.Y - _emptySize.Height / 2);
                 emptyText.Opacity = alpha;
             }
 
@@ -728,9 +820,13 @@ namespace Heft.Ui
                 return;
             }
 
-            if (hoverText.Text != show!.Item.Name) hoverText.Text = show.Item.Name;
-            hoverPill.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-            var ps = hoverPill.DesiredSize;
+            if (hoverText.Text != show!.Item.Name || _pillSize.Width <= 0)
+            {
+                hoverText.Text = show.Item.Name;
+                hoverPill.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                _pillSize = hoverPill.DesiredSize;
+            }
+            var ps = _pillSize;
             double half = _size * show.Mag / 2;
             double x, y;
             switch (_side)
@@ -874,7 +970,25 @@ namespace Heft.Ui
 
             if (e.Key == Key.Escape)
             {
-                HideDock();
+                if (_query.Length > 0)
+                {
+                    _query = "";
+                    ApplyFilter();
+                }
+                else
+                {
+                    HideDock();
+                }
+            }
+            else if (e.Key == Key.Space && _query.Length > 0 && _s.TypeToFilter)
+            {
+                _query += " ";
+                ApplyFilter();
+            }
+            else if (e.Key == Key.Back && _query.Length > 0)
+            {
+                _query = _query[..^1];
+                ApplyFilter();
             }
             else if (forward || backward || e.Key == Key.Tab)
             {
@@ -898,6 +1012,16 @@ namespace Heft.Ui
             {
                 return;
             }
+            e.Handled = true;
+        }
+
+        void OnText(object sender, TextCompositionEventArgs e)
+        {
+            if (!_s.TypeToFilter || _cur == null || string.IsNullOrEmpty(e.Text)) return;
+            var add = new string(e.Text.Where(ch => !char.IsControl(ch)).ToArray());
+            if (add.Length == 0 || (add == " " && _query.Length == 0)) return;
+            _query += add;
+            ApplyFilter();
             e.Handled = true;
         }
 

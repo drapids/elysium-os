@@ -406,10 +406,12 @@ namespace Heft.Ui
                 bool pinned = _cat.IsPinned(hp);
                 hangarStatus.Text = pinned ? "pinned to the dock" : "found it, not pinned";
                 locate.Content = pinned ? "Change" : "Pin";
-                var icon = _cat.Icon(hp, 64);
-                hangarIcon.Source = icon;
-                hangarGlyph.Visibility = icon == null ? Visibility.Visible : Visibility.Collapsed;
                 hangarIcon.ToolTip = hp;
+                _cat.Icons.Get(hp, 64, true, img =>
+                {
+                    hangarIcon.Source = img;
+                    hangarGlyph.Visibility = img == null ? Visibility.Visible : Visibility.Collapsed;
+                });
             }
             else
             {
@@ -438,19 +440,17 @@ namespace Heft.Ui
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            FrameworkElement glyph;
-            var icon = _cat.Icon(item.Path, 64);
-            if (icon != null)
+            var glyphText = new TextBlock { Text = place ? "\uE8B7" : "\uE71D", FontSize = 15, Style = (Style)FindResource("Icon") };
+            var image = new Image { Width = 26, Height = 26 };
+            var glyph = new Grid { Width = 26, Height = 26, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+            glyph.Children.Add(glyphText);
+            glyph.Children.Add(image);
+            _cat.Icons.Get(item.Path, 64, !place, img =>
             {
-                glyph = new Image { Source = icon, Width = 26, Height = 26 };
-            }
-            else
-            {
-                glyph = new TextBlock { Text = place ? "\uE8B7" : "\uE71D", FontSize = 15, Style = (Style)FindResource("Icon") };
-            }
-            glyph.Width = 26;
-            glyph.Margin = new Thickness(0, 0, 12, 0);
-            glyph.VerticalAlignment = VerticalAlignment.Center;
+                if (img == null) return;
+                image.Source = img;
+                glyphText.Visibility = Visibility.Collapsed;
+            });
             g.Children.Add(glyph);
 
             var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center };

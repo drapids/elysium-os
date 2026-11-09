@@ -69,6 +69,7 @@ namespace Heft
             };
             _autosave.Start();
 
+            _catalog.Prewarm();
             _catalog.Scan();
         }
 
@@ -79,8 +80,8 @@ namespace Heft
             else if (!_s.ShowHandle && _tab.IsVisible) _tab.Hide();
 
             if (!_s.Enabled) _physics.StopAll();
-            if (_pauseItem != null) _pauseItem.Checked = !_s.Enabled;
-            if (_tray != null) _tray.Text = _s.Enabled ? "heft" : "heft (paused)";
+            if (_pauseItem != null) _pauseItem.Checked = _s.Enabled;
+            if (_tray != null) _tray.Text = _s.Enabled ? "heft" : "heft (physics off)";
         }
 
         void SetupHotkeys()
@@ -122,7 +123,7 @@ namespace Heft
             menu.Items.Add("open panel", null, (_, _) => _panel.Open());
             menu.Items.Add("open dock", null, (_, _) => _dock.ShowDock(false, false));
             menu.Items.Add(new Forms.ToolStripSeparator());
-            _pauseItem = new Forms.ToolStripMenuItem("pause physics") { Checked = !_s.Enabled };
+            _pauseItem = new Forms.ToolStripMenuItem("window physics") { Checked = _s.Enabled };
             _pauseItem.Click += (_, _) =>
             {
                 _s.Enabled = !_s.Enabled;

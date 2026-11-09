@@ -24,6 +24,9 @@
                                    MaxWidth="200" TextTrimming="CharacterEllipsis"/>
                         <TextBlock x:Name="crumbHint" FontSize="10.5" Foreground="{DynamicResource SubText}"/>
                     </StackPanel>
+                    <Button x:Name="sortBtn" Style="{StaticResource Plain}" Width="26" Height="26">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE8CB;" FontSize="11"/>
+                    </Button>
                     <Button x:Name="openHere" Style="{StaticResource Plain}" Width="26" Height="26" ToolTip="open in File Explorer">
                         <TextBlock Style="{StaticResource Icon}" Text="&#xE8A7;" FontSize="11"/>
                     </Button>

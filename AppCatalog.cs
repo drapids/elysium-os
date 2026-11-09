@@ -29,7 +29,6 @@ namespace Heft
         readonly Settings _s;
         readonly Native.WinEventProc _proc;
         readonly IntPtr _hook;
-        readonly Dictionary<string, ImageSource?> _icons = new(StringComparer.OrdinalIgnoreCase);
         readonly Dictionary<string, string> _names = new(StringComparer.OrdinalIgnoreCase);
 
         string? _fgPath;
@@ -41,6 +40,8 @@ namespace Heft
         public bool Scanned { get; private set; }
 
         public event Action? Updated;
+
+        public IconCache Icons { get; } = new(Application.Current.Dispatcher);
 
         public AppCatalog(Settings settings)
         {
@@ -186,37 +187,12 @@ namespace Heft
             return name;
         }
 
-        public ImageSource? Icon(string path, int size = 96, bool iconOnly = true)
+        public ImageSource? Icon(string path, int size = 96, bool iconOnly = true) => Icons.Load(path, size, iconOnly);
+
+        public void Prewarm()
         {
-            string key = $"{size}|{(iconOnly ? 1 : 0)}|{path}";
-            if (_icons.TryGetValue(key, out var cached)) return cached;
-            ImageSource? img = ShellImage.Get(path, size, iconOnly);
-            if (img != null)
-            {
-                _icons[key] = img;
-                return img;
-            }
-            try
-            {
-                System.Drawing.Icon? icon = null;
-                if (path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                {
-                    try { icon = System.Drawing.Icon.ExtractIcon(path, 0, 64); } catch { }
-                }
-                icon ??= System.Drawing.Icon.ExtractAssociatedIcon(path);
-                if (icon != null)
-                {
-                    var src = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                    src.Freeze();
-                    img = src;
-                    icon.Dispose();
-                }
-            }
-            catch
-            {
-            }
-            _icons[key] = img;
-            return img;
+            foreach (var it in WheelItems(30)) Icons.Get(it.Path, 96, true, null);
+            foreach (var it in PlaceItems()) Icons.Get(it.Path, 96, false, null);
         }
 
         public List<WheelItem> PlaceItems()
@@ -260,10 +236,9 @@ namespace Heft
             return list;
         }
 
-        public static List<WheelItem> FolderItems(string dir)
+        public static List<WheelItem> FolderItems(string dir, string sort, bool foldersFirst, bool showHidden)
         {
-            var folders = new List<WheelItem>();
-            var files = new List<(WheelItem item, DateTime time)>();
+            var entries = new List<(WheelItem item, bool isDir, DateTime time, long size, string ext)>();
             try
             {
                 var info = new DirectoryInfo(dir);
@@ -271,79 +246,47 @@ namespace Heft
                 {
                     try
                     {
-                        if ((e.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0) continue;
+                        var attr = e.Attributes;
+                        if ((attr & FileAttributes.System) != 0 && (attr & FileAttributes.Hidden) != 0) continue;
+                        if (!showHidden && (attr & FileAttributes.Hidden) != 0) continue;
                         if (e is DirectoryInfo)
                         {
-                            folders.Add(new WheelItem { Name = e.Name, Path = e.FullName, Kind = "folder" });
+                            entries.Add((new WheelItem { Name = e.Name, Path = e.FullName, Kind = "folder" }, true, e.LastWriteTimeUtc, 0, ""));
                         }
                         else
                         {
                             var name = e.Name;
                             if (name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
-                            if (name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".url", StringComparison.OrdinalIgnoreCase))
-                                name = Path.GetFileNameWithoutExtension(name);
-                            files.Add((new WheelItem { Name = name, Path = e.FullName, Kind = "file" }, e.LastWriteTimeUtc));
+                            var ext = e.Extension.ToLowerInvariant();
+                            if (ext == ".lnk" || ext == ".url") name = Path.GetFileNameWithoutExtension(name);
+                            long size = e is FileInfo fi ? fi.Length : 0;
+                            entries.Add((new WheelItem { Name = name, Path = e.FullName, Kind = "file" }, false, e.LastWriteTimeUtc, size, ext));
                         }
                     }
                     catch
                     {
                     }
-                    if (folders.Count + files.Count > 600) break;
+                    if (entries.Count >= 3000) break;
                 }
             }
             catch
             {
             }
 
-            var result = folders.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
-            result.AddRange(files.OrderByDescending(f => f.time).Select(f => f.item));
-            return result;
-        }
+            var cmp = StringComparer.CurrentCultureIgnoreCase;
+            IOrderedEnumerable<(WheelItem item, bool isDir, DateTime time, long size, string ext)> ordered = foldersFirst
+                ? entries.OrderByDescending(e => e.isDir)
+                : entries.OrderBy(_ => 0);
 
-        public async void Scan()
-        {
-            if (Scanning) return;
-            Scanning = true;
-            Updated?.Invoke();
-
-            var keywords = _s.ProjectNames.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(k => k.Trim()).Where(k => Norm(k).Length >= 3).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            if (!keywords.Any(k => Norm(k) == "hangar29")) keywords.Insert(0, "hangar29");
-
-            List<WheelItem> found;
-            try
+            ordered = sort switch
             {
-                found = await Task.Run(() => Find(keywords));
-            }
-            catch
-            {
-                found = new List<WheelItem>();
-            }
+                "recent" => ordered.ThenByDescending(e => e.time),
+                "type" => ordered.ThenBy(e => e.ext, cmp).ThenBy(e => e.item.Name, cmp),
+                "size" => ordered.ThenByDescending(e => e.size).ThenBy(e => e.item.Name, cmp),
+                _ => ordered.ThenBy(e => e.item.Name, cmp)
+            };
 
-            Projects = found.Where(f => Norm(f.Name) != "hangar29").ToList();
-            HangarPath = found.FirstOrDefault(f => Norm(f.Name) == "hangar29")?.Path;
-
-            if (HangarPath != null)
-            {
-                var pinned = _s.Pinned.FirstOrDefault(p => Norm(p.Name) == "hangar29");
-                if (pinned != null && !Exists(pinned.Path))
-                {
-                    pinned.Path = HangarPath;
-                    _s.Touch();
-                }
-                else if (pinned == null && !_s.HangarPinned)
-                {
-                    SetHangar(HangarPath);
-                }
-            }
-            else
-            {
-                HangarPath = _s.Pinned.FirstOrDefault(p => Norm(p.Name) == "hangar29" && Exists(p.Path))?.Path;
-            }
-
-            Scanning = false;
-            Scanned = true;
-            Updated?.Invoke();
+            return ordered.Take(800).Select(e => e.item).ToList();
         }
 
         static string Norm(string s)
@@ -508,6 +451,7 @@ namespace Heft
 
         public void Dispose()
         {
+            Icons.Dispose();
             Flush();
             if (_hook != IntPtr.Zero) Native.UnhookWinEvent(_hook);
         }
