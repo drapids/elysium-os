@@ -421,7 +421,7 @@ namespace Heft.Ui
             }
             else
             {
-                glyph = new TextBlock { Text = place ? "" : "", FontSize = 15, Style = (Style)FindResource("Icon") };
+                glyph = new TextBlock { Text = place ? "\uE8B7" : "\uE71D", FontSize = 15, Style = (Style)FindResource("Icon") };
             }
             glyph.Width = 26;
             glyph.Margin = new Thickness(0, 0, 12, 0);
@@ -468,7 +468,7 @@ namespace Heft.Ui
                 {
                     Style = (Style)FindResource("Plain"),
                     ToolTip = place ? "remove this place" : "take it off the dock",
-                    Content = new TextBlock { Text = "", FontSize = 10, Style = (Style)FindResource("Icon"), Foreground = null }
+                    Content = new TextBlock { Text = "\uE711", FontSize = 10, Style = (Style)FindResource("Icon"), Foreground = null }
                 };
                 if (remove.Content is TextBlock tb) tb.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = remove });
                 remove.Click += (_, _) =>
