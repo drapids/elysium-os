@@ -166,6 +166,24 @@ namespace Heft
 
         public static bool MouseDown() => (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0;
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr WindowFromPoint(POINT point);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+
+        [DllImport("user32.dll")]
+        public static extern int GetSystemMetrics(int index);
+
+        [DllImport("winmm.dll")]
+        public static extern uint timeBeginPeriod(uint period);
+
+        [DllImport("winmm.dll")]
+        public static extern uint timeEndPeriod(uint period);
+
+        public const uint GA_ROOT = 2;
+        public const int SM_SWAPBUTTON = 23;
+
         public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
 
         [StructLayout(LayoutKind.Sequential)]

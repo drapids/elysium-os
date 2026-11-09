@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Windows.Media;
+using System.Threading;
 
 namespace Heft
 {
@@ -14,74 +14,116 @@ namespace Heft
             public double X, Y, Vx, Vy;
             public int W, H, OffX, OffY;
             public int LastX = int.MinValue, LastY = int.MinValue;
-            public double Still, Age;
+            public double Still, Age, Wait;
         }
 
         static readonly HashSet<string> ShellClasses = new(StringComparer.Ordinal)
         {
-            "Shell_TrayWnd", "Shell_SecondaryTrayWnd", "Progman", "WorkerW", "Windows.UI.Core.CoreWindow"
+            "Shell_TrayWnd", "Shell_SecondaryTrayWnd", "Progman", "WorkerW", "Windows.UI.Core.CoreWindow",
+            "TopLevelWindowForOverflowXamlIsland", "XamlExplorerHostIslandWindow", "#32768"
         };
 
+        static readonly string LogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "log.txt");
+
         readonly Settings _s;
-        readonly Native.WinEventProc _proc;
-        readonly IntPtr _hook;
+        readonly Thread _thread;
         readonly Dictionary<IntPtr, Body> _bodies = new();
         readonly Stopwatch _clock = Stopwatch.StartNew();
         readonly List<(double t, double x, double y)> _samples = new();
         readonly List<double> _turns = new();
         readonly uint _pid = (uint)Environment.ProcessId;
 
+        volatile bool _alive = true;
+        volatile bool _clear;
+
         List<Native.RECT> _work = new();
         List<(IntPtr h, Native.RECT r)> _others = new();
-        double _workAt = -10, _othersAt = -10, _last;
-        IntPtr _drag;
-        int _dragW, _dragH, _lastDir;
+        double _workAt = -10, _othersAt = -10, _last, _swapAt = -10;
+        int _button = 0x01;
+        bool _down, _dragging;
+        IntPtr _cand;
+        Native.RECT _startRect;
+        int _offX, _offY, _lastDir;
         double _extremeX;
-        bool _ticking;
 
         public PhysicsEngine(Settings settings)
         {
             _s = settings;
-            _proc = OnEvent;
-            _hook = Native.SetWinEventHook(Native.EVENT_SYSTEM_MOVESIZESTART, Native.EVENT_SYSTEM_MOVESIZEEND, IntPtr.Zero, _proc, 0, 0,
-                Native.WINEVENT_OUTOFCONTEXT | Native.WINEVENT_SKIPOWNPROCESS);
+            _thread = new Thread(Loop) { IsBackground = true, Name = "heft-physics", Priority = ThreadPriority.AboveNormal };
+            _thread.Start();
+            Log("started");
         }
 
         double Now => _clock.Elapsed.TotalSeconds;
 
-        public int Moving => _bodies.Count;
+        public void StopAll() => _clear = true;
 
-        public void StopAll()
+        void Loop()
         {
-            _bodies.Clear();
-            _drag = IntPtr.Zero;
+            Native.timeBeginPeriod(1);
+            try
+            {
+                _last = Now;
+                while (_alive)
+                {
+                    try
+                    {
+                        Frame();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("error " + ex.GetType().Name + ": " + ex.Message);
+                        _bodies.Clear();
+                        _cand = IntPtr.Zero;
+                        _dragging = false;
+                    }
+                    bool busy = _down || _bodies.Count > 0;
+                    Thread.Sleep(busy ? 3 : 10);
+                }
+            }
+            finally
+            {
+                Native.timeEndPeriod(1);
+            }
         }
 
-        void OnEvent(IntPtr hook, uint evt, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
+        void Frame()
         {
-            if (idObject != 0 || !_s.Enabled) return;
+            double now = Now;
+            double dt = Math.Min(now - _last, 1.0 / 30.0);
+            _last = now;
 
-            if (evt == Native.EVENT_SYSTEM_MOVESIZESTART)
+            if (_clear)
             {
-                if (!Eligible(hwnd)) return;
-                _bodies.Remove(hwnd);
-                var r = Native.FrameBounds(hwnd);
-                _drag = hwnd;
-                _dragW = r.Width;
-                _dragH = r.Height;
-                _samples.Clear();
-                _turns.Clear();
-                _lastDir = 0;
-                _extremeX = r.Left;
-                StartTicking();
-                Sample();
+                _clear = false;
+                _bodies.Clear();
             }
-            else if (evt == Native.EVENT_SYSTEM_MOVESIZEEND && hwnd == _drag)
+
+            if (now - _swapAt > 2)
             {
-                Sample();
-                _drag = IntPtr.Zero;
-                Release(hwnd);
+                _swapAt = now;
+                _button = Native.GetSystemMetrics(Native.SM_SWAPBUTTON) != 0 ? 0x02 : 0x01;
             }
+
+            bool enabled = _s.Enabled;
+            bool down = (Native.GetAsyncKeyState(_button) & 0x8000) != 0;
+            Native.GetCursorPos(out var c);
+
+            if (!enabled)
+            {
+                _bodies.Clear();
+                _cand = IntPtr.Zero;
+                _dragging = false;
+                _down = down;
+                return;
+            }
+
+            if (down && !_down) Press(c, now);
+            else if (down && _down) Hold(c, now);
+            else if (!down && _down) Release(now);
+            _down = down;
+
+            if (_bodies.Count > 0 && dt > 0) Step(dt, now);
         }
 
         bool Eligible(IntPtr hwnd)
@@ -89,28 +131,80 @@ namespace Heft
             if (hwnd == IntPtr.Zero || !Native.IsWindow(hwnd) || !Native.IsWindowVisible(hwnd)) return false;
             if (Native.IsIconic(hwnd) || Native.IsZoomed(hwnd)) return false;
             if ((Native.Style(hwnd) & Native.WS_CHILD) != 0) return false;
+            Native.GetWindowThreadProcessId(hwnd, out uint pid);
+            if (pid == _pid) return false;
             if (ShellClasses.Contains(Native.ClassName(hwnd))) return false;
 
             var ignored = _s.IgnoredSet();
             if (ignored.Count > 0)
             {
-                var path = Native.ProcessPath(hwnd);
+                var path = Native.ProcessPath(pid);
                 if (path != null && ignored.Contains(Path.GetFileNameWithoutExtension(path))) return false;
             }
             return true;
         }
 
-        void Sample()
+        void Press(Native.POINT c, double now)
         {
-            if (_drag == IntPtr.Zero) return;
-            var r = Native.FrameBounds(_drag);
-            double t = Now;
-            _samples.Add((t, r.Left, r.Top));
-            while (_samples.Count > 2 && t - _samples[0].t > 0.25) _samples.RemoveAt(0);
+            _cand = IntPtr.Zero;
+            _dragging = false;
+            _samples.Clear();
+            _turns.Clear();
+            _lastDir = 0;
 
+            var h = Native.WindowFromPoint(c);
+            if (h == IntPtr.Zero) return;
+            h = Native.GetAncestor(h, Native.GA_ROOT);
+            if (_bodies.Remove(h)) Log("caught a flying window");
+            if (!Eligible(h)) return;
+
+            var r = Native.FrameBounds(h);
+            _cand = h;
+            _startRect = r;
+            _offX = c.X - r.Left;
+            _offY = c.Y - r.Top;
+            _extremeX = c.X;
+        }
+
+        void Hold(Native.POINT c, double now)
+        {
+            if (_cand == IntPtr.Zero) return;
+            if (!Native.IsWindow(_cand))
+            {
+                _cand = IntPtr.Zero;
+                return;
+            }
+
+            var r = Native.FrameBounds(_cand);
+            if (Math.Abs(r.Width - _startRect.Width) > 2 || Math.Abs(r.Height - _startRect.Height) > 2)
+            {
+                _cand = IntPtr.Zero;
+                _dragging = false;
+                return;
+            }
+
+            if (!_dragging)
+            {
+                bool moved = r.Left != _startRect.Left || r.Top != _startRect.Top;
+                if (!moved) return;
+                bool follows = Math.Abs(c.X - r.Left - _offX) < 48 && Math.Abs(c.Y - r.Top - _offY) < 48;
+                if (!follows)
+                {
+                    _cand = IntPtr.Zero;
+                    return;
+                }
+                _dragging = true;
+                Log("drag " + Describe(_cand));
+            }
+
+            _samples.Add((now, c.X, c.Y));
+            while (_samples.Count > 2 && now - _samples[0].t > 0.25) _samples.RemoveAt(0);
+            Shake(c.X, now);
+        }
+
+        void Shake(double x, double now)
+        {
             if (!_s.ShakeToMinimize) return;
-
-            double x = r.Left;
             double delta = x - _extremeX;
             const double reach = 26;
 
@@ -128,27 +222,35 @@ namespace Heft
             }
             else if (Math.Abs(delta) > reach)
             {
-                _turns.Add(t);
+                _turns.Add(now);
                 _lastDir = -_lastDir;
                 _extremeX = x;
             }
 
-            _turns.RemoveAll(v => t - v > 0.9);
+            _turns.RemoveAll(v => now - v > 0.9);
             int needed = (int)Math.Round(7 - 4 * _s.ShakeSensitivity);
             if (_turns.Count >= needed)
             {
-                var target = _drag;
-                _drag = IntPtr.Zero;
+                var target = _cand;
+                _cand = IntPtr.Zero;
+                _dragging = false;
                 _turns.Clear();
                 Native.ShowWindow(target, Native.SW_MINIMIZE);
+                Log("shake minimized " + Describe(target));
             }
         }
 
-        void Release(IntPtr hwnd)
+        void Release(double now)
         {
-            if (!Native.IsWindow(hwnd) || Native.IsZoomed(hwnd) || Native.IsIconic(hwnd)) return;
-            var r = Native.FrameBounds(hwnd);
-            if (Math.Abs(r.Width - _dragW) > 2 || Math.Abs(r.Height - _dragH) > 2) return;
+            var h = _cand;
+            bool dragging = _dragging;
+            _cand = IntPtr.Zero;
+            _dragging = false;
+            if (h == IntPtr.Zero || !dragging) return;
+            if (!Native.IsWindow(h) || Native.IsZoomed(h) || Native.IsIconic(h)) return;
+
+            var r = Native.FrameBounds(h);
+            if (Math.Abs(r.Width - _startRect.Width) > 2 || Math.Abs(r.Height - _startRect.Height) > 2) return;
 
             double vx = 0, vy = 0;
             if (_samples.Count >= 2)
@@ -157,11 +259,11 @@ namespace Heft
                 var first = last;
                 for (int i = _samples.Count - 1; i >= 0; i--)
                 {
-                    if (last.t - _samples[i].t > 0.09) break;
+                    if (now - _samples[i].t > 0.08) break;
                     first = _samples[i];
                 }
                 double dt = last.t - first.t;
-                if (dt > 0.012)
+                if (dt > 0.01 && now - last.t < 0.05)
                 {
                     vx = (last.x - first.x) / dt;
                     vy = (last.y - first.y) / dt;
@@ -180,12 +282,16 @@ namespace Heft
             }
 
             bool grav = _s.Gravity > 0.001;
-            if (speed < 250 && !grav) return;
-
-            Native.GetWindowRect(hwnd, out var wr);
-            _bodies[hwnd] = new Body
+            if (speed < 220 && !grav)
             {
-                Hwnd = hwnd,
+                Log($"dropped, too slow to throw ({speed:0} px/s)");
+                return;
+            }
+
+            Native.GetWindowRect(h, out var wr);
+            _bodies[h] = new Body
+            {
+                Hwnd = h,
                 X = r.Left,
                 Y = r.Top,
                 W = r.Width,
@@ -193,42 +299,10 @@ namespace Heft
                 OffX = r.Left - wr.Left,
                 OffY = r.Top - wr.Top,
                 Vx = vx,
-                Vy = vy
+                Vy = vy,
+                Wait = 0.03
             };
-            StartTicking();
-        }
-
-        void StartTicking()
-        {
-            if (_ticking) return;
-            _ticking = true;
-            _last = Now;
-            CompositionTarget.Rendering += Tick;
-        }
-
-        void StopTicking()
-        {
-            if (!_ticking) return;
-            _ticking = false;
-            CompositionTarget.Rendering -= Tick;
-        }
-
-        void Tick(object? sender, EventArgs e)
-        {
-            double now = Now;
-            double dt = Math.Min(now - _last, 1.0 / 30.0);
-            _last = now;
-
-            if (_drag != IntPtr.Zero)
-            {
-                if (Native.IsWindow(_drag)) Sample();
-                else _drag = IntPtr.Zero;
-            }
-
-            if (dt > 0 && _bodies.Count > 0 && _s.Enabled) Step(dt, now);
-            if (!_s.Enabled) _bodies.Clear();
-
-            if (_drag == IntPtr.Zero && _bodies.Count == 0) StopTicking();
+            Log($"threw {Describe(h)} at {speed:0} px/s");
         }
 
         void Step(double dt, double now)
@@ -247,6 +321,23 @@ namespace Heft
                 if (b.Age > 15 || !Native.IsWindow(b.Hwnd) || !Native.IsWindowVisible(b.Hwnd) || Native.IsIconic(b.Hwnd) || Native.IsZoomed(b.Hwnd))
                 {
                     dead.Add(b.Hwnd);
+                    continue;
+                }
+
+                if (b.Wait > 0)
+                {
+                    b.Wait -= dt;
+                    if (b.Wait <= 0)
+                    {
+                        var r = Native.FrameBounds(b.Hwnd);
+                        if (Math.Abs(r.Width - b.W) > 2 || Math.Abs(r.Height - b.H) > 2)
+                        {
+                            dead.Add(b.Hwnd);
+                            continue;
+                        }
+                        b.X = r.Left;
+                        b.Y = r.Top;
+                    }
                     continue;
                 }
 
@@ -420,10 +511,35 @@ namespace Heft
             _others = list;
         }
 
+        static string Describe(IntPtr h)
+        {
+            var path = Native.ProcessPath(h);
+            return (path != null ? Path.GetFileName(path) : "?") + " / " + Native.ClassName(h);
+        }
+
+        static readonly object LogLock = new();
+
+        public static void Log(string line)
+        {
+            try
+            {
+                lock (LogLock)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
+                    var info = new FileInfo(LogPath);
+                    if (info.Exists && info.Length > 256 * 1024) info.Delete();
+                    File.AppendAllText(LogPath, $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
+                }
+            }
+            catch
+            {
+            }
+        }
+
         public void Dispose()
         {
-            StopTicking();
-            if (_hook != IntPtr.Zero) Native.UnhookWinEvent(_hook);
+            _alive = false;
+            _thread.Join(500);
         }
     }
 }
