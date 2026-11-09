@@ -3,9 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize" ShowActivated="False"
-        WindowStartupLocation="Manual" Width="14" Height="132" Title="heft handle">
-    <Grid x:Name="hit" Background="#01000000" Cursor="Hand" ToolTip="heft (right-click for the wheel)">
-        <Border x:Name="pill" Width="4" Height="56" CornerRadius="2" HorizontalAlignment="Right" VerticalAlignment="Center"
-                Margin="0,0,4,0" Background="{DynamicResource Text}" Opacity="0.28"/>
+        WindowStartupLocation="Manual" Width="10" Height="160" Title="heft handle">
+    <Grid x:Name="hit" Background="#01000000" ToolTip="heft (right-click for settings)">
+        <Border x:Name="pill" CornerRadius="2" Background="{DynamicResource Text}" Opacity="0.22"/>
     </Grid>
 </Window>
