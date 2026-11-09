@@ -161,6 +161,11 @@ namespace Heft
         [DllImport("user32.dll")]
         public static extern bool DestroyIcon(IntPtr icon);
 
+        [DllImport("user32.dll")]
+        public static extern short GetAsyncKeyState(int vk);
+
+        public static bool MouseDown() => (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0;
+
         public static long Style(IntPtr hwnd) => GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
         public static long ExStyle(IntPtr hwnd) => GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64();
 

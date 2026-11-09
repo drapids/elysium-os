@@ -84,6 +84,9 @@ namespace Heft
                 list.Add(new WheelItem { Name = p.Name, Path = p.Path, Kind = "favorite" });
             }
 
+            if (HangarPath != null && !hidden.Contains(HangarPath) && seen.Add(HangarPath))
+                list.Add(new WheelItem { Name = "hangar29", Path = HangarPath, Kind = "project" });
+
             foreach (var p in Projects)
             {
                 if (list.Count >= max) break;
@@ -244,10 +247,6 @@ namespace Heft
                 else if (pinned == null && !_s.HangarPinned)
                 {
                     SetHangar(HangarPath);
-                }
-                if (pinned == null && _s.HangarPinned && !IsPinned(HangarPath))
-                {
-                    Projects.Insert(0, new WheelItem { Name = "hangar29", Path = HangarPath, Kind = "project" });
                 }
             }
             else
