@@ -186,10 +186,16 @@ namespace Heft
             return name;
         }
 
-        public ImageSource? Icon(string path)
+        public ImageSource? Icon(string path, int size = 96, bool iconOnly = true)
         {
-            if (_icons.TryGetValue(path, out var cached)) return cached;
-            ImageSource? img = null;
+            string key = $"{size}|{(iconOnly ? 1 : 0)}|{path}";
+            if (_icons.TryGetValue(key, out var cached)) return cached;
+            ImageSource? img = ShellImage.Get(path, size, iconOnly);
+            if (img != null)
+            {
+                _icons[key] = img;
+                return img;
+            }
             try
             {
                 System.Drawing.Icon? icon = null;
@@ -209,8 +215,89 @@ namespace Heft
             catch
             {
             }
-            _icons[path] = img;
+            _icons[key] = img;
             return img;
+        }
+
+        public List<WheelItem> PlaceItems()
+        {
+            var list = new List<WheelItem>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            void Add(string name, string path, string kind)
+            {
+                if (string.IsNullOrEmpty(path) || !Directory.Exists(path) || !seen.Add(path)) return;
+                list.Add(new WheelItem { Name = name, Path = path, Kind = kind });
+            }
+
+            Add("Desktop", Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "place");
+            Add("Downloads", Path.Combine(home, "Downloads"), "place");
+            Add("Documents", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "place");
+            Add("Pictures", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "place");
+            Add("Videos", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "place");
+            Add("Music", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "place");
+
+            foreach (var p in _s.Places)
+                Add(Path.GetFileName(p.TrimEnd('\\')) is { Length: > 0 } n ? n : p, p, "place");
+
+            if (_s.ShowDrives)
+            {
+                foreach (var d in DriveInfo.GetDrives())
+                {
+                    try
+                    {
+                        if (!d.IsReady || (d.DriveType != DriveType.Fixed && d.DriveType != DriveType.Removable)) continue;
+                        var letter = d.Name.TrimEnd('\\');
+                        var label = string.IsNullOrWhiteSpace(d.VolumeLabel) ? "Local Disk" : d.VolumeLabel;
+                        Add($"{label} ({letter})", d.RootDirectory.FullName, "drive");
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            return list;
+        }
+
+        public static List<WheelItem> FolderItems(string dir)
+        {
+            var folders = new List<WheelItem>();
+            var files = new List<(WheelItem item, DateTime time)>();
+            try
+            {
+                var info = new DirectoryInfo(dir);
+                foreach (var e in info.EnumerateFileSystemInfos())
+                {
+                    try
+                    {
+                        if ((e.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0) continue;
+                        if (e is DirectoryInfo)
+                        {
+                            folders.Add(new WheelItem { Name = e.Name, Path = e.FullName, Kind = "folder" });
+                        }
+                        else
+                        {
+                            var name = e.Name;
+                            if (name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                            if (name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".url", StringComparison.OrdinalIgnoreCase))
+                                name = Path.GetFileNameWithoutExtension(name);
+                            files.Add((new WheelItem { Name = name, Path = e.FullName, Kind = "file" }, e.LastWriteTimeUtc));
+                        }
+                    }
+                    catch
+                    {
+                    }
+                    if (folders.Count + files.Count > 600) break;
+                }
+            }
+            catch
+            {
+            }
+
+            var result = folders.OrderBy(f => f.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            result.AddRange(files.OrderByDescending(f => f.time).Select(f => f.item));
+            return result;
         }
 
         public async void Scan()
@@ -327,31 +414,44 @@ namespace Heft
                 if (Directory.Exists(dir)) budget = Walk(dir, 6, devExes, ".exe", budget);
                 if (budget <= 0) break;
             }
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                if (budget <= 0) break;
+                try
+                {
+                    if (!drive.IsReady || drive.DriveType != DriveType.Fixed) continue;
+                }
+                catch
+                {
+                    continue;
+                }
+                foreach (var dev in new[] { "code", "dev", "projects", "repos", "src", "GitHub" })
+                {
+                    var dir = Path.Combine(drive.RootDirectory.FullName, dev);
+                    if (Directory.Exists(dir)) budget = Walk(dir, 6, devExes, ".exe", budget);
+                }
+            }
 
             var results = new List<WheelItem>();
             foreach (var kw in keywords)
             {
                 var k = Norm(kw);
-                string? hit = null;
+                var candidates = new List<string>();
+                candidates.AddRange(running.Where(r => r.norm.Contains(k)).Select(r => r.path).Where(p => !Junk(Path.GetFileName(p))));
+                foreach (var dir in installRoots)
+                {
+                    if (!Norm(Path.GetFileName(dir)).Contains(k)) continue;
+                    var exe = BestExe(dir, k);
+                    if (exe != null) candidates.Add(exe);
+                }
+                candidates.AddRange(devExes.Where(e => Norm(Path.GetFileNameWithoutExtension(e)).Contains(k) && !Junk(Path.GetFileName(e))));
 
-                hit = running.Where(r => r.norm.Contains(k)).Select(r => r.path).FirstOrDefault(p => !Junk(Path.GetFileName(p)));
+                string? hit = candidates
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderByDescending(SafeTime)
+                    .FirstOrDefault();
 
                 hit ??= shortcuts.FirstOrDefault(s => Norm(Path.GetFileNameWithoutExtension(s)).Contains(k) && !Junk(Path.GetFileName(s)));
-
-                if (hit == null)
-                {
-                    foreach (var dir in installRoots)
-                    {
-                        if (!Norm(Path.GetFileName(dir)).Contains(k)) continue;
-                        hit = BestExe(dir, k);
-                        if (hit != null) break;
-                    }
-                }
-
-                hit ??= devExes
-                    .Where(e => Norm(Path.GetFileNameWithoutExtension(e)).Contains(k) && !Junk(Path.GetFileName(e)))
-                    .OrderByDescending(e => SafeTime(e))
-                    .FirstOrDefault();
 
                 if (hit != null) results.Add(new WheelItem { Name = kw, Path = hit, Kind = "project" });
             }
