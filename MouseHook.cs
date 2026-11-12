@@ -1,0 +1,232 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Threading;
+
+namespace Heft
+{
+    internal sealed class MouseHook : IDisposable
+    {
+        static readonly HashSet<string> Skip = new(StringComparer.Ordinal)
+        {
+            "Shell_TrayWnd", "Shell_SecondaryTrayWnd", "Progman", "WorkerW", "Windows.UI.Core.CoreWindow", "#32768"
+        };
+
+        readonly Settings _s;
+        readonly Dispatcher _ui;
+        readonly Brightness _brightness;
+        readonly Thread _thread;
+        readonly Native.HookProc _proc;
+        readonly uint _pid = (uint)Environment.ProcessId;
+        readonly object _lock = new();
+        readonly Dictionary<IntPtr, int> _alpha = new();
+        readonly HashSet<IntPtr> _layered = new();
+
+        IntPtr _hook;
+        uint _threadId;
+        bool _swallowMiddleUp;
+        uint _lastDownTime;
+        Native.POINT _lastDown;
+
+        public event Action<string>? Flash;
+        public event Action? DesktopDoubleClick;
+
+        public MouseHook(Settings settings, Dispatcher ui, Brightness brightness)
+        {
+            _s = settings;
+            _ui = ui;
+            _brightness = brightness;
+            _proc = Callback;
+            _thread = new Thread(Run) { IsBackground = true, Name = "heft-mouse" };
+            _thread.Start();
+        }
+
+        void Run()
+        {
+            _threadId = Native.GetCurrentThreadId();
+            _hook = Native.SetWindowsHookEx(Native.WH_MOUSE_LL, _proc, Native.GetModuleHandle(null), 0);
+            PhysicsEngine.Log(_hook == IntPtr.Zero ? "mouse hook failed" : "mouse hook on");
+            while (Native.GetMessage(out var msg, IntPtr.Zero, 0, 0) > 0)
+            {
+                Native.TranslateMessage(ref msg);
+                Native.DispatchMessage(ref msg);
+            }
+            if (_hook != IntPtr.Zero) Native.UnhookWindowsHookEx(_hook);
+            _hook = IntPtr.Zero;
+        }
+
+        IntPtr Callback(int code, IntPtr wParam, IntPtr lParam)
+        {
+            if (code >= 0)
+            {
+                try
+                {
+                    var data = Marshal.PtrToStructure<Native.MSLLHOOKSTRUCT>(lParam);
+                    if ((data.flags & 1) == 0 && Handle(wParam.ToInt32(), data)) return new IntPtr(1);
+                }
+                catch
+                {
+                }
+            }
+            return Native.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+        }
+
+        bool Handle(int msg, Native.MSLLHOOKSTRUCT m)
+        {
+            switch (msg)
+            {
+                case Native.WM_MOUSEWHEEL:
+                    int delta = (short)(m.mouseData >> 16);
+                    if (delta == 0) return false;
+                    int dir = delta > 0 ? 1 : -1;
+                    if (_s.GestureBrightness && AtBrightnessEdge(m.pt))
+                    {
+                        _brightness.Nudge(dir, m.pt.X, m.pt.Y);
+                        return true;
+                    }
+                    if (_s.TitleOpacity)
+                    {
+                        IntPtr target = TitleAt(m.pt);
+                        if (target != IntPtr.Zero)
+                        {
+                            NudgeOpacity(target, dir);
+                            return true;
+                        }
+                    }
+                    return false;
+
+                case Native.WM_MBUTTONDOWN:
+                    if (!_s.TitlePin) return false;
+                    IntPtr win = TitleAt(m.pt);
+                    if (win == IntPtr.Zero) return false;
+                    TogglePin(win);
+                    _swallowMiddleUp = true;
+                    return true;
+
+                case Native.WM_MBUTTONUP:
+                    if (!_swallowMiddleUp) return false;
+                    _swallowMiddleUp = false;
+                    return true;
+
+                case Native.WM_LBUTTONDOWN:
+                    bool dbl = m.time - _lastDownTime <= Native.GetDoubleClickTime()
+                               && Math.Abs(m.pt.X - _lastDown.X) < 5 && Math.Abs(m.pt.Y - _lastDown.Y) < 5;
+                    _lastDownTime = dbl ? 0 : m.time;
+                    _lastDown = m.pt;
+                    if (dbl && _s.HideDesktop && OnDesktop(m.pt)) Post(() => DesktopDoubleClick?.Invoke());
+                    return false;
+            }
+            return false;
+        }
+
+        void Post(Action action) => _ui.BeginInvoke(DispatcherPriority.Normal, action);
+
+        void Say(string text) => Post(() => Flash?.Invoke(text));
+
+        bool AtBrightnessEdge(Native.POINT pt)
+        {
+            IntPtr under = Native.WindowFromPoint(pt);
+            if (under != IntPtr.Zero)
+            {
+                Native.GetWindowThreadProcessId(under, out uint pid);
+                if (pid == _pid) return false;
+            }
+            var mon = Native.MonitorAt(pt.X, pt.Y);
+            return _s.DockSide == "left" ? pt.X >= mon.Right - 2 : pt.X <= mon.Left + 1;
+        }
+
+        static bool OnDesktop(Native.POINT pt)
+        {
+            IntPtr h = Native.WindowFromPoint(pt);
+            if (h == IntPtr.Zero) return false;
+            string cls = Native.ClassName(h);
+            return cls == "SHELLDLL_DefView" || cls == "Progman" || cls == "WorkerW";
+        }
+
+        IntPtr TitleAt(Native.POINT pt)
+        {
+            IntPtr h = Native.WindowFromPoint(pt);
+            if (h == IntPtr.Zero) return IntPtr.Zero;
+            IntPtr root = Native.GetAncestor(h, Native.GA_ROOT);
+            if (root == IntPtr.Zero) return IntPtr.Zero;
+            Native.GetWindowThreadProcessId(root, out uint pid);
+            if (pid == _pid) return IntPtr.Zero;
+            if (Skip.Contains(Native.ClassName(root))) return IntPtr.Zero;
+
+            var bounds = Native.FrameBounds(root);
+            if (pt.Y < bounds.Top - 2 || pt.Y - bounds.Top > 72) return IntPtr.Zero;
+
+            int packed = ((pt.Y & 0xFFFF) << 16) | (pt.X & 0xFFFF);
+            IntPtr ok = Native.SendMessageTimeout(root, Native.WM_NCHITTEST, IntPtr.Zero, new IntPtr(packed), 2, 40, out IntPtr hit);
+            if (ok == IntPtr.Zero) return IntPtr.Zero;
+            return hit.ToInt64() == Native.HTCAPTION ? root : IntPtr.Zero;
+        }
+
+        void NudgeOpacity(IntPtr hwnd, int dir)
+        {
+            int next;
+            lock (_lock)
+            {
+                int cur = _alpha.TryGetValue(hwnd, out int a) ? a : 255;
+                next = Math.Clamp(cur + dir * 20, 55, 255);
+                if (next == cur) return;
+
+                long ex = Native.ExStyle(hwnd);
+                if ((ex & Native.WS_EX_LAYERED) == 0)
+                {
+                    Native.SetWindowLongPtr(hwnd, Native.GWL_EXSTYLE, new IntPtr(ex | Native.WS_EX_LAYERED));
+                    _layered.Add(hwnd);
+                }
+                Native.SetLayeredWindowAttributes(hwnd, 0, (byte)next, 2);
+
+                if (next >= 255)
+                {
+                    Unlayer(hwnd);
+                    _alpha.Remove(hwnd);
+                }
+                else
+                {
+                    _alpha[hwnd] = next;
+                }
+            }
+            Say($"opacity {Math.Round(next / 255.0 * 100)}%");
+        }
+
+        void Unlayer(IntPtr hwnd)
+        {
+            if (!_layered.Remove(hwnd)) return;
+            long ex = Native.ExStyle(hwnd);
+            Native.SetWindowLongPtr(hwnd, Native.GWL_EXSTYLE, new IntPtr(ex & ~Native.WS_EX_LAYERED));
+        }
+
+        void TogglePin(IntPtr hwnd)
+        {
+            bool top = (Native.ExStyle(hwnd) & Native.WS_EX_TOPMOST) != 0;
+            Native.SetWindowPos(hwnd, top ? Native.HWND_NOTOPMOST : Native.HWND_TOPMOST, 0, 0, 0, 0,
+                Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            Say(top ? "unpinned" : "pinned on top");
+        }
+
+        public void RestoreAll()
+        {
+            lock (_lock)
+            {
+                foreach (var hwnd in new List<IntPtr>(_alpha.Keys))
+                {
+                    if (!Native.IsWindow(hwnd)) continue;
+                    Native.SetLayeredWindowAttributes(hwnd, 0, 255, 2);
+                    Unlayer(hwnd);
+                }
+                _alpha.Clear();
+                _layered.Clear();
+            }
+        }
+
+        public void Dispose()
+        {
+            RestoreAll();
+            if (_threadId != 0) Native.PostThreadMessage(_threadId, Native.WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+}
