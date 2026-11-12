@@ -40,6 +40,7 @@ namespace Heft
         public bool Scanned { get; private set; }
 
         public event Action? Updated;
+        public event Action<string?>? Foreground;
 
         public IconCache Icons { get; } = new(Application.Current.Dispatcher);
 
@@ -56,6 +57,7 @@ namespace Heft
             Flush();
             _fgPath = hwnd == IntPtr.Zero ? null : Native.ProcessPath(hwnd);
             _fgSince = DateTime.UtcNow;
+            Foreground?.Invoke(_fgPath);
         }
 
         public void Flush()
