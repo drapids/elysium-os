@@ -78,7 +78,7 @@ namespace Heft.Ui
             Grid.SetColumn(text, 1);
             grid.Children.Add(text);
 
-            var close = Kit.Plain("", () => Close(w), "dismiss", 9);
+            var close = Kit.Plain("\uE8BB", () => Close(w), "dismiss", 9);
             close.VerticalAlignment = VerticalAlignment.Top;
             close.Margin = new Thickness(6, -4, 0, 0);
             Grid.SetColumn(close, 2);

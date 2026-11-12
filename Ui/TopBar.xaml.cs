@@ -66,7 +66,7 @@ namespace Heft.Ui
                 int v = Audio.Nudge(e.Delta > 0 ? 2 : -2);
                 if (v < 0) return;
                 volText.Text = v + "%";
-                volGlyph.Text = v == 0 ? "" : "";
+                volGlyph.Text = v == 0 ? "\uE74F" : "\uE767";
                 Flash($"volume {v}%");
             };
 
@@ -316,7 +316,7 @@ namespace Heft.Ui
                 if (v >= 0)
                 {
                     volText.Text = muted ? "muted" : v + "%";
-                    volGlyph.Text = muted || v == 0 ? "" : "";
+                    volGlyph.Text = muted || v == 0 ? "\uE74F" : "\uE767";
                 }
             }
 
@@ -330,7 +330,7 @@ namespace Heft.Ui
                 if (none) return;
                 bool charging = power.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Online;
                 batText.Text = $"{Math.Round(power.BatteryLifePercent * 100)}%";
-                batGlyph.Text = charging ? "" : "";
+                batGlyph.Text = charging ? "\uE945" : "\uE83F";
             }
             catch
             {
@@ -347,7 +347,7 @@ namespace Heft.Ui
                 media.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
                 if (!show) return;
                 mediaText.Text = _np.Artist.Length > 0 ? $"{_np.Title}  ·  {_np.Artist}" : _np.Title;
-                mediaGlyph.Text = _np.Playing ? "" : "";
+                mediaGlyph.Text = _np.Playing ? "\uE769" : "\uE768";
             }
             catch
             {

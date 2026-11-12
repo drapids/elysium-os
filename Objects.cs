@@ -47,7 +47,7 @@ namespace Heft
     internal sealed class ObjAction
     {
         public string Name = "";
-        public string Glyph = "";
+        public string Glyph = "\uE8A7";
         public string Group = "";
         public bool Danger;
         public Action Run = () => { };
@@ -273,25 +273,42 @@ namespace Heft
             return null;
         }
 
-        public static void FfmpegConvert(string path, string ext, Notifier notes)
+        public static void FfmpegConvert(string path, string mode, Notifier notes)
         {
             var ff = Ffmpeg();
             if (ff == null) return;
-            string target = Unique(System.IO.Path.GetDirectoryName(path)!, System.IO.Path.GetFileNameWithoutExtension(path) + ext);
-            string args = ext == ".gif"
-                ? $"-y -i \"{path}\" -vf \"fps=15,scale=480:-1:flags=lanczos\" \"{target}\""
-                : ext == "-small.mp4"
-                    ? $"-y -i \"{path}\" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 96k \"{target.Replace("-small.mp4", ".mp4")}\""
-                    : $"-y -i \"{path}\" \"{target}\"";
-            if (ext == "-small.mp4") target = Unique(System.IO.Path.GetDirectoryName(path)!, System.IO.Path.GetFileNameWithoutExtension(path) + "-small.mp4");
-            if (ext == "-small.mp4") args = $"-y -i \"{path}\" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 96k \"{target}\"";
+            string dir = System.IO.Path.GetDirectoryName(path)!;
+            string stem = System.IO.Path.GetFileNameWithoutExtension(path);
+            string target;
+            string args;
+            if (mode == ".gif")
+            {
+                target = Unique(dir, stem + ".gif");
+                args = $"-y -i \"{path}\" -vf \"fps=15,scale=480:-1:flags=lanczos\" \"{target}\"";
+            }
+            else
+            {
+                target = Unique(dir, stem + "-small.mp4");
+                args = $"-y -i \"{path}\" -c:v libx264 -preset veryfast -crf 28 -c:a aac -b:a 96k \"{target}\"";
+            }
             try
             {
                 var proc = Process.Start(new ProcessStartInfo(ff, args) { CreateNoWindow = true, UseShellExecute = false });
                 if (proc == null) return;
                 proc.EnableRaisingEvents = true;
                 proc.Exited += (_, _) => Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
-                    notes.Post("Converted", System.IO.Path.GetFileName(target), "", target)));
+                    notes.Post("Converted", System.IO.Path.GetFileName(target), "\uE8AB", target)));
+            }
+            catch
+            {
+            }
+        }
+
+        public static void CopyText(string text)
+        {
+            try
+            {
+                Clipboard.SetText(text);
             }
             catch
             {
@@ -392,52 +409,47 @@ namespace Heft
 
             if (o.Kind == "window" && o.Payload is IntPtr hwnd)
             {
-                Add("Bring back", "", "open", () => Native.Focus(hwnd));
+                Add("Bring back", "\uE8A7", "open", () => Native.Focus(hwnd));
                 return list;
             }
             if (o.Kind == "uwp")
             {
-                Add("Open", "", "open", () => Launch.Uwp(p));
+                Add("Open", "\uE8A7", "open", () => Launch.Uwp(p));
                 return list;
             }
             if (!exists && o.Kind != "url") return list;
 
-            Add(o.Kind is "folder" or "drive" ? "Open in Explorer" : "Open", "", "open", () => Files.Open(p, _s));
-            if (o.Kind is "folder" or "drive" && Browse != null) Add("Browse on the shelf", "", "open", () => Browse(p));
-            if (o.Kind != "drive") Add("Show in folder", "", "open", () => Files.Reveal(p));
-            if (Inspect != null) Add("Inspect", "", "open", () => Inspect(o));
-            if (o.Kind == "file") Add("Open with...", "", "open", () => Launch.Run("rundll32.exe", $"shell32.dll,OpenAs_RunDLL \"{p}\""));
+            Add(o.Kind is "folder" or "drive" ? "Open in Explorer" : "Open", "\uE8A7", "open", () => Files.Open(p, _s));
+            if (o.Kind is "folder" or "drive" && Browse != null) Add("Browse on the shelf", "\uE8B7", "open", () => Browse(p));
+            if (o.Kind != "drive") Add("Show in folder", "\uE838", "open", () => Files.Reveal(p));
+            if (Inspect != null) Add("Inspect", "\uE946", "open", () => Inspect(o));
+            if (o.Kind == "file") Add("Open with...", "\uE7AC", "open", () => Launch.Run("rundll32.exe", $"shell32.dll,OpenAs_RunDLL \"{p}\""));
             if (o.Kind == "app" && p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                Add("Run as admin", "", "open", () => Launch.Admin(p));
+                Add("Run as admin", "\uE7EF", "open", () => Launch.Admin(p));
 
-            if (ToShelf != null) Add("Put on the shelf", "", "organize", () => ToShelf(new[] { p }));
-            if (ToCollection != null) Add("Add to collection...", "", "organize", () => ToCollection(new[] { p }, ""));
-            if (PinToDock != null && o.Kind is "app" or "folder" or "file") Add("Pin to dock", "", "organize", () => PinToDock(p));
-            for (int i = 0; i < Files.Bookmarks.Length; i++)
+            if (ToShelf != null) Add("Put on the shelf", "\uE7B8", "organize", () => ToShelf(new[] { p }));
+            if (ToCollection != null) Add("Add to collection...", "\uE710", "organize", () => ToCollection(new[] { p }, ""));
+            if (PinToDock != null && o.Kind is "app" or "folder" or "file") Add("Pin to dock", "\uE718", "organize", () => PinToDock(p));
+            Add("Color tag (cycle)", "\uE8EC", "organize", () =>
             {
-                int idx = i;
-                if (i == 0)
-                    Add("Color tag...", "", "organize", () =>
-                    {
-                        _s.Bookmarks.TryGetValue(p, out int cur);
-                        int next = (cur + 1) % (Files.Bookmarks.Length + 1);
-                        if (next == 0) _s.Bookmarks.Remove(p);
-                        else _s.Bookmarks[p] = next;
-                        _s.Touch();
-                    });
-            }
+                _s.Bookmarks.TryGetValue(p, out int cur);
+                int next = (cur + 1) % (Files.Bookmarks.Length + 1);
+                if (next == 0) _s.Bookmarks.Remove(p);
+                else _s.Bookmarks[p] = next;
+                _s.Touch();
+            });
 
-            Add("Copy", "", "share", () => Files.CopyFiles(new[] { p }));
-            Add("Copy path", "", "share", () => Clips.PasteNowSilent(p));
-            if (o.Kind is "file" or "folder") Add("Compress to zip", "", "convert", () =>
+            Add("Copy", "\uE8C8", "share", () => Files.CopyFiles(new[] { p }));
+            Add("Copy path", "\uE71B", "share", () => Files.CopyText(p));
+            if (o.Kind is "file" or "folder") Add("Compress to zip", "\uF012", "convert", () =>
             {
                 var z = Files.Zip(new[] { p });
-                if (z != null) _notes.Post("Zipped", System.IO.Path.GetFileName(z), "", z);
+                if (z != null) _notes.Post("Zipped", System.IO.Path.GetFileName(z), "\uF012", z);
             });
-            if (p.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) Add("Extract here", "", "convert", () =>
+            if (p.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) Add("Extract here", "\uE8B7", "convert", () =>
             {
                 var d = Files.Unzip(p);
-                if (d != null) _notes.Post("Extracted", System.IO.Path.GetFileName(d), "", d);
+                if (d != null) _notes.Post("Extracted", System.IO.Path.GetFileName(d), "\uE8B7", d);
             });
             if (Files.IsImage(p))
             {
@@ -445,21 +457,21 @@ namespace Heft
                 {
                     if (p.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) continue;
                     string e = ext;
-                    Add($"Convert to {ext.TrimStart('.').ToUpperInvariant()}", "", "convert", () =>
+                    Add($"Convert to {ext.TrimStart('.').ToUpperInvariant()}", "\uE8AB", "convert", () =>
                     {
                         var r = Files.ConvertImage(p, e);
-                        if (r != null) _notes.Post("Converted", System.IO.Path.GetFileName(r), "", r);
+                        if (r != null) _notes.Post("Converted", System.IO.Path.GetFileName(r), "\uE8AB", r);
                     });
                 }
             }
             if (Files.Category(p) == "video" && Files.Ffmpeg() != null)
             {
-                Add("Make a GIF", "", "convert", () => Files.FfmpegConvert(p, ".gif", _notes));
-                Add("Shrink for Discord", "", "convert", () => Files.FfmpegConvert(p, "-small.mp4", _notes));
+                Add("Make a GIF", "\uE8AB", "convert", () => Files.FfmpegConvert(p, ".gif", _notes));
+                Add("Shrink for Discord", "\uE8AB", "convert", () => Files.FfmpegConvert(p, "-small.mp4", _notes));
             }
 
-            if (Rename != null && o.Kind is "file" or "folder") Add("Rename", "", "edit", () => Rename(p));
-            if (o.Kind is "file" or "folder") Add("Move to recycle bin", "", "edit", () => Files.Recycle(p), true);
+            if (Rename != null && o.Kind is "file" or "folder") Add("Rename", "\uE8AC", "edit", () => Rename(p));
+            if (o.Kind is "file" or "folder") Add("Move to recycle bin", "\uE74D", "edit", () => Files.Recycle(p), true);
 
             return list;
         }

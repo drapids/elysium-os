@@ -17,7 +17,7 @@ namespace Heft
         public DateTime Time { get; set; } = DateTime.Now;
         public string Source { get; set; } = "heft";
         public string? Open { get; set; }
-        public string Glyph { get; set; } = "";
+        public string Glyph { get; set; } = "\uE7E7";
         public bool Seen { get; set; }
     }
 
@@ -81,7 +81,7 @@ namespace Heft
             if (!quiet) Toast?.Invoke(n);
         }
 
-        public void Post(string title, string body, string glyph = "", string? open = null)
+        public void Post(string title, string body, string glyph = "\uE7E7", string? open = null)
         {
             Post(new Note { Title = title, Body = body, Glyph = glyph, Open = open });
         }
@@ -146,8 +146,8 @@ namespace Heft
             foreach (var r in due)
             {
                 _s.Reminders.Remove(r);
-                if (r.Timer) Post(new Note { Title = "Timer done", Body = string.IsNullOrWhiteSpace(r.Text) ? "time's up" : r.Text, Glyph = "" });
-                else Post(new Note { Title = "Reminder", Body = r.Text, Glyph = "" });
+                if (r.Timer) Post(new Note { Title = "Timer done", Body = string.IsNullOrWhiteSpace(r.Text) ? "time's up" : r.Text, Glyph = "\uE916" });
+                else Post(new Note { Title = "Reminder", Body = r.Text, Glyph = "\uE787" });
             }
             _s.Touch();
             Changed?.Invoke();
