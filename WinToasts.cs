@@ -215,14 +215,16 @@ namespace Heft
             if (changed) System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(_s.Touch));
         }
 
-        public void RestoreBanners()
+        public void RestoreBanners() => Restore(_s);
+
+        public static void Restore(Settings s)
         {
             try
             {
                 using var root = Registry.CurrentUser.OpenSubKey(SettingsKey, true);
                 if (root == null) return;
                 Dictionary<string, int> backup;
-                lock (_s.BannerBackup) backup = new Dictionary<string, int>(_s.BannerBackup);
+                lock (s.BannerBackup) backup = new Dictionary<string, int>(s.BannerBackup);
                 foreach (var kv in backup)
                 {
                     try
@@ -236,8 +238,8 @@ namespace Heft
                     {
                     }
                 }
-                lock (_s.BannerBackup) _s.BannerBackup.Clear();
-                _s.SaveNow();
+                lock (s.BannerBackup) s.BannerBackup.Clear();
+                s.SaveNow();
             }
             catch
             {
