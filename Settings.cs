@@ -13,6 +13,16 @@ namespace Heft
         public string Kind { get; set; } = "app";
     }
 
+    public sealed class PocketEntry
+    {
+        public long Hwnd { get; set; }
+        public uint Pid { get; set; }
+        public int X { get; set; }
+        public int Y { get; set; }
+        public bool Max { get; set; }
+        public string Title { get; set; } = "";
+    }
+
     public sealed class Settings
     {
         public bool Enabled { get; set; } = true;
@@ -40,6 +50,43 @@ namespace Heft
         public bool ShowHidden { get; set; } = false;
         public bool TypeToFilter { get; set; } = true;
 
+        public bool AutoStart { get; set; } = true;
+        public bool InstantStart { get; set; } = true;
+
+        public bool BarEnabled { get; set; } = true;
+        public bool BarAutoHide { get; set; } = false;
+        public double BarHeight { get; set; } = 30;
+        public double BarTint { get; set; } = 0.45;
+        public bool BarBlur { get; set; } = true;
+        public bool BarApp { get; set; } = true;
+        public bool BarMedia { get; set; } = true;
+        public bool BarDate { get; set; } = true;
+        public bool BarSeconds { get; set; } = false;
+        public bool Bar24h { get; set; } = false;
+        public bool BarStats { get; set; } = true;
+        public bool BarVolume { get; set; } = true;
+        public bool BarBattery { get; set; } = true;
+
+        public string TaskbarStyle { get; set; } = "blur";
+        public double TaskbarTint { get; set; } = 0.25;
+        public string TaskbarHide { get; set; } = "off";
+        public bool TaskbarCenter { get; set; } = false;
+        public bool HideStart { get; set; } = false;
+        public bool HideTray { get; set; } = false;
+
+        public bool HideDesktop { get; set; } = true;
+        public double PeekSeconds { get; set; } = 8;
+
+        public bool GestureVolume { get; set; } = true;
+        public bool GestureBrightness { get; set; } = true;
+        public bool GestureMedia { get; set; } = true;
+        public bool TitleOpacity { get; set; } = true;
+        public bool TitlePin { get; set; } = true;
+
+        public List<string> ShelfItems { get; set; } = new();
+        public Dictionary<string, int> Bookmarks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<PocketEntry> Pocketed { get; set; } = new();
+
         public List<WheelItem> Pinned { get; set; } = new();
         public List<string> Hidden { get; set; } = new();
         public string ProjectNames { get; set; } = "hangar29, underlay, veneer, driftwood, substrate, gnatty, hyperboi, handoff, wintd, tox-shelf";
@@ -64,6 +111,7 @@ namespace Heft
                     if (s != null)
                     {
                         s.Usage = new Dictionary<string, double>(s.Usage, StringComparer.OrdinalIgnoreCase);
+                        s.Bookmarks = new Dictionary<string, int>(s.Bookmarks, StringComparer.OrdinalIgnoreCase);
                         return s;
                     }
                 }

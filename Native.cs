@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Heft
 {
-    internal static class Native
+    internal static partial class Native
     {
         [StructLayout(LayoutKind.Sequential)]
         public struct RECT
