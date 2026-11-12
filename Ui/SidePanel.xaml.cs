@@ -21,6 +21,9 @@ namespace Heft.Ui
         readonly DispatcherTimer _outside = new() { Interval = TimeSpan.FromMilliseconds(60) };
         bool _loading, _open, _suppress;
 
+        string _tab = "dock";
+        SettingsPages? _pages;
+
         public event Action? DockRequested;
         public event Action? QuitRequested;
 
@@ -58,10 +61,63 @@ namespace Heft.Ui
 
             Wire();
             Load();
+            BuildTabs();
             _cat.Updated += () => Dispatcher.BeginInvoke(new Action(RefreshItems));
         }
 
         public bool IsOpen => _open;
+
+        internal void Attach(SettingsPages pages)
+        {
+            _pages = pages;
+            ShowTab(_tab);
+        }
+
+        public void OpenTab(string tab)
+        {
+            Open();
+            ShowTab(tab);
+        }
+
+        internal void Dialog(Action a)
+        {
+            _suppress = true;
+            try
+            {
+                a();
+            }
+            finally
+            {
+                _suppress = false;
+            }
+            Activate();
+        }
+
+        void BuildTabs()
+        {
+            tabs.Children.Clear();
+            foreach (var (id, label) in SettingsPages.Tabs)
+            {
+                string tid = id;
+                bool on = _tab == id;
+                var chip = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(10, 4, 11, 5), Margin = new Thickness(0, 0, 5, 6), Cursor = Cursors.Hand };
+                chip.SetResourceReference(Border.BackgroundProperty, on ? "AccentFill" : "GroupBg");
+                chip.Child = Kit.Text(label, 12, on, on ? "OnAccent" : "Text");
+                chip.MouseLeftButtonUp += (_, _) => ShowTab(tid);
+                tabs.Children.Add(chip);
+            }
+        }
+
+        void ShowTab(string tab)
+        {
+            _tab = tab;
+            BuildTabs();
+            bool classicTab = tab == "dock" || _pages == null;
+            classic.Visibility = classicTab ? Visibility.Visible : Visibility.Collapsed;
+            pages.Visibility = classicTab ? Visibility.Collapsed : Visibility.Visible;
+            if (!classicTab) _pages!.Build(tab, pages);
+            scroll.ScrollToTop();
+        }
 
         public void Toggle()
         {
@@ -307,19 +363,7 @@ namespace Heft.Ui
             return ok ? dlg.FolderName : null;
         }
 
-        static void SetStartup(bool on)
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-                if (key == null) return;
-                if (on && Environment.ProcessPath != null) key.SetValue("heft", $"\"{Environment.ProcessPath}\"");
-                else key.DeleteValue("heft", false);
-            }
-            catch
-            {
-            }
-        }
+        static void SetStartup(bool on) => Startup.Set(on);
 
         void Load()
         {

@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="False" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False" WindowStartupLocation="Manual" Width="380" Title="heft"
+        Topmost="True" ShowInTaskbar="False" WindowStartupLocation="Manual" Width="420" Title="heft"
         FontFamily="{StaticResource UiFont}" UseLayoutRounding="True">
 
     <WindowChrome.WindowChrome>
@@ -33,8 +33,11 @@
                 <Button x:Name="quit" Style="{StaticResource Push}" HorizontalAlignment="Right" Content="Quit"/>
             </Grid>
 
-            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                <StackPanel Margin="14,0,14,10">
+            <ScrollViewer x:Name="scroll" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+              <StackPanel>
+                <WrapPanel x:Name="tabs" Margin="18,10,14,0"/>
+                <StackPanel x:Name="pages" Margin="14,0,14,10"/>
+                <StackPanel x:Name="classic" Margin="14,0,14,10">
 
                     <TextBlock Style="{StaticResource H}" Text="Physics"/>
                     <Border Style="{StaticResource Group}">
@@ -325,6 +328,7 @@
                     </Border>
 
                 </StackPanel>
+              </StackPanel>
             </ScrollViewer>
         </DockPanel>
     </Grid>
