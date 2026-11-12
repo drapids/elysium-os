@@ -10,8 +10,13 @@ namespace Heft.Ui
     {
         readonly DispatcherTimer _hover = new() { Interval = TimeSpan.FromMilliseconds(110) };
         string _side = "right";
+        Display? _display;
+
+        public Display? Display => _display;
+        public string Side => _side;
 
         public event Action? DockRequested;
+        public event Action? WorkAreaChanged;
         public event Action? SettingsRequested;
 
         public EdgeTab()
@@ -20,7 +25,7 @@ namespace Heft.Ui
             SourceInitialized += (_, _) => Native.MakeToolWindow(new WindowInteropHelper(this).Handle, true);
             SystemParameters.StaticPropertyChanged += (_, e) =>
             {
-                if (e.PropertyName == nameof(SystemParameters.WorkArea)) Dispatcher.BeginInvoke(new Action(Place));
+                if (e.PropertyName == nameof(SystemParameters.WorkArea)) WorkAreaChanged?.Invoke();
             };
 
             _hover.Tick += (_, _) =>
@@ -60,35 +65,57 @@ namespace Heft.Ui
             Place();
         }
 
+        public void SetEdge(Display d, string side)
+        {
+            _display = d;
+            _side = side;
+            Place();
+        }
+
         public void Place()
         {
-            var wa = SystemParameters.WorkArea;
             pill.BeginAnimation(WidthProperty, null);
             pill.BeginAnimation(HeightProperty, null);
-            if (Vertical)
+            bool vertical = Vertical;
+            Width = vertical ? 10 : 160;
+            Height = vertical ? 160 : 10;
+            pill.Width = vertical ? 3 : 56;
+            pill.Height = vertical ? 56 : 3;
+            pill.HorizontalAlignment = vertical ? (_side == "left" ? HorizontalAlignment.Left : HorizontalAlignment.Right) : HorizontalAlignment.Center;
+            pill.VerticalAlignment = vertical ? VerticalAlignment.Center : (_side == "top" ? VerticalAlignment.Top : VerticalAlignment.Bottom);
+            pill.Margin = vertical ? new Thickness(3, 0, 3, 0) : new Thickness(0, 3, 0, 3);
+
+            var d = _display ?? Displays.Primary();
+            var wa = d.Work;
+            int w = (int)Math.Round(Width * d.Scale), h = (int)Math.Round(Height * d.Scale);
+            int x, y;
+            switch (_side)
             {
-                Width = 10;
-                Height = 160;
-                Left = _side == "left" ? wa.Left : wa.Right - Width;
-                Top = wa.Top + (wa.Height - Height) / 2;
-                pill.Width = 3;
-                pill.Height = 56;
-                pill.HorizontalAlignment = _side == "left" ? HorizontalAlignment.Left : HorizontalAlignment.Right;
-                pill.VerticalAlignment = VerticalAlignment.Center;
-                pill.Margin = new Thickness(3, 0, 3, 0);
+                case "left":
+                    x = wa.Left;
+                    y = wa.Top + (wa.Height - h) / 2;
+                    break;
+                case "top":
+                    x = wa.Left + (wa.Width - w) / 2;
+                    y = wa.Top;
+                    break;
+                case "bottom":
+                    x = wa.Left + (wa.Width - w) / 2;
+                    y = wa.Bottom - h;
+                    break;
+                default:
+                    x = wa.Right - w;
+                    y = wa.Top + (wa.Height - h) / 2;
+                    break;
             }
-            else
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
             {
-                Width = 160;
-                Height = 10;
-                Left = wa.Left + (wa.Width - Width) / 2;
-                Top = _side == "top" ? wa.Top : wa.Bottom - Height;
-                pill.Width = 56;
-                pill.Height = 3;
-                pill.HorizontalAlignment = HorizontalAlignment.Center;
-                pill.VerticalAlignment = _side == "top" ? VerticalAlignment.Top : VerticalAlignment.Bottom;
-                pill.Margin = new Thickness(0, 3, 0, 3);
+                Left = x / d.Scale;
+                Top = y / d.Scale;
+                return;
             }
+            Native.SetWindowPos(hwnd, Native.HWND_TOPMOST, x, y, w, h, Native.SWP_NOACTIVATE);
         }
 
         void Grow(bool on)

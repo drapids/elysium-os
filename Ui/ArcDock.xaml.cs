@@ -68,6 +68,9 @@ namespace Heft.Ui
         int _focus = -1;
 
         public event Action? SettingsRequested;
+        public Action<Obj, Rect?>? Inspect;
+
+        string? _sideOverride;
 
         internal ArcDock(Settings settings, AppCatalog catalog)
         {
@@ -146,7 +149,8 @@ namespace Heft.Ui
 
         void Geometry()
         {
-            _side = _s.DockSide is "left" or "top" or "bottom" ? _s.DockSide : "right";
+            string want = _sideOverride ?? _s.DockSide;
+            _side = want is "left" or "top" or "bottom" ? want : "right";
             _size = Math.Clamp(_s.IconSize, 36, 80);
             _along = Vertical ? 760 : 960;
             _apex = _size * 0.5 + 30;
@@ -166,7 +170,7 @@ namespace Heft.Ui
             }
         }
 
-        public void ShowDock(bool byHover, bool toggle)
+        public void ShowDock(bool byHover, bool toggle, Display? display = null, string? side = null)
         {
             if (IsVisible && !_closing)
             {
@@ -181,6 +185,7 @@ namespace Heft.Ui
             _dragging = false;
             _focus = -1;
             _hover = null;
+            _sideOverride = side;
             Geometry();
 
             _trail.Clear();
@@ -192,13 +197,15 @@ namespace Heft.Ui
             _reveal = 0;
             _revealTarget = 1;
 
-            Native.GetCursorPos(out var p);
+            Native.POINT p;
+            if (display != null) p = new Native.POINT(display.Work.Left + display.Work.Width / 2, display.Work.Top + display.Work.Height / 2);
+            else Native.GetCursorPos(out p);
             Show();
             var h = new WindowInteropHelper(this).Handle;
             const uint flags = Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE;
             Native.SetWindowPos(h, IntPtr.Zero, p.X, p.Y, 0, 0, flags);
             Native.GetWindowRect(h, out var r);
-            var wa = Native.WorkAreaAt(p.X, p.Y);
+            var wa = display?.Work ?? Native.WorkAreaAt(p.X, p.Y);
             int x, y;
             switch (_side)
             {
@@ -928,9 +935,34 @@ namespace Heft.Ui
             e.Handled = true;
             var t = _hover;
             if (t == null || string.IsNullOrEmpty(t.Item.Path)) return;
-            if (IsContainer(t.Item)) Reveal(t.Item.Path, false);
-            else Reveal(t.Item.Path, true);
+            if (Inspect == null)
+            {
+                Reveal(t.Item.Path, !IsContainer(t.Item));
+                HideDock();
+                return;
+            }
+            InspectTile(t);
+        }
+
+        void InspectTile(Tile t)
+        {
+            if (string.IsNullOrEmpty(t.Item.Path) || Inspect == null) return;
+            Rect? src = null;
+            try
+            {
+                if (t.Root != null && t.Root.IsVisible)
+                {
+                    var tl = t.Root.PointToScreen(new Point(0, 0));
+                    var br = t.Root.PointToScreen(new Point(t.Root.ActualWidth, t.Root.ActualHeight));
+                    src = new Rect(tl, br);
+                }
+            }
+            catch
+            {
+            }
+            var o = Obj.From(t.Item);
             HideDock();
+            Inspect(o, src);
         }
 
         void OnWheel(object sender, MouseWheelEventArgs e)
@@ -998,6 +1030,11 @@ namespace Heft.Ui
                 else _focus = Math.Clamp(_focus + (backward ? -1 : 1), 0, n - 1);
                 _hover = _cur.Tiles[_focus];
                 Follow(_focus);
+            }
+            else if (e.Key == Key.Space && _query.Length == 0)
+            {
+                if (_focus < 0) _focus = Nearest();
+                if (_focus >= 0 && _focus < n) InspectTile(_cur.Tiles[_focus]);
             }
             else if (e.Key == Key.Enter || e.Key == Key.Space)
             {
