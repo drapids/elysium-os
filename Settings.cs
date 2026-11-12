@@ -23,6 +23,20 @@ namespace Heft
         public string Title { get; set; } = "";
     }
 
+    public sealed class HistoryEntry
+    {
+        public string Key { get; set; } = "";
+        public string Query { get; set; } = "";
+        public double Score { get; set; }
+        public DateTime Last { get; set; }
+    }
+
+    public sealed class CustomCommand
+    {
+        public string Alias { get; set; } = "";
+        public string Run { get; set; } = "";
+    }
+
     public sealed class Settings
     {
         public bool Enabled { get; set; } = true;
@@ -87,6 +101,43 @@ namespace Heft
         public Dictionary<string, int> Bookmarks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public List<PocketEntry> Pocketed { get; set; } = new();
 
+        public string DockScreens { get; set; } = "outer";
+        public string BarScreens { get; set; } = "all";
+        public bool AutoLockFullscreen { get; set; } = false;
+        public Dictionary<string, string> Keys { get; set; } = new();
+
+        public bool TakeOverToasts { get; set; } = true;
+        public double ToastSeconds { get; set; } = 6;
+        public Dictionary<string, string> NoteRules { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, int> BannerBackup { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<Reminder> Reminders { get; set; } = new();
+
+        public bool FocusActive { get; set; } = false;
+        public string FocusMute { get; set; } = "discord, spotify";
+        public string FocusAllow { get; set; } = "";
+        public string FocusProfile { get; set; } = "";
+
+        public List<AudioProfile> AudioProfiles { get; set; } = new();
+        public string ActiveProfile { get; set; } = "";
+        public bool AudioAutoSwitch { get; set; } = true;
+        public List<string> DevicePriority { get; set; } = new();
+        public Dictionary<string, string> AppRoutes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool ClipHistory { get; set; } = true;
+        public int ClipMax { get; set; } = 40;
+        public List<string> PinnedClips { get; set; } = new();
+
+        public Dictionary<string, List<string>> Collections { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> CategoryColors { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, double> FileOpens { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public string ShelfSort { get; set; } = "modified";
+        public List<string> ShelfFolders { get; set; } = new();
+
+        public List<HistoryEntry> CommandHistory { get; set; } = new();
+        public List<string> PinnedCommands { get; set; } = new();
+        public List<CustomCommand> CustomCommands { get; set; } = new();
+        public string SearchEngine { get; set; } = "https://www.google.com/search?q=";
+
         public List<WheelItem> Pinned { get; set; } = new();
         public List<string> Hidden { get; set; } = new();
         public string ProjectNames { get; set; } = "hangar29, underlay, veneer, driftwood, substrate, gnatty, hyperboi, handoff, wintd, tox-shelf";
@@ -112,6 +163,12 @@ namespace Heft
                     {
                         s.Usage = new Dictionary<string, double>(s.Usage, StringComparer.OrdinalIgnoreCase);
                         s.Bookmarks = new Dictionary<string, int>(s.Bookmarks, StringComparer.OrdinalIgnoreCase);
+                        s.NoteRules = new Dictionary<string, string>(s.NoteRules, StringComparer.OrdinalIgnoreCase);
+                        s.BannerBackup = new Dictionary<string, int>(s.BannerBackup, StringComparer.OrdinalIgnoreCase);
+                        s.AppRoutes = new Dictionary<string, string>(s.AppRoutes, StringComparer.OrdinalIgnoreCase);
+                        s.Collections = new Dictionary<string, List<string>>(s.Collections, StringComparer.OrdinalIgnoreCase);
+                        s.CategoryColors = new Dictionary<string, string>(s.CategoryColors, StringComparer.OrdinalIgnoreCase);
+                        s.FileOpens = new Dictionary<string, double>(s.FileOpens, StringComparer.OrdinalIgnoreCase);
                         return s;
                     }
                 }

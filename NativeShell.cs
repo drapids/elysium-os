@@ -259,6 +259,88 @@ namespace Heft
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
         static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
 
+        [DllImport("user32.dll")]
+        public static extern bool ClipCursor(ref RECT rect);
+
+        [DllImport("user32.dll")]
+        public static extern bool ClipCursor(IntPtr rect);
+
+        [DllImport("user32.dll")]
+        public static extern bool GetClipCursor(out RECT rect);
+
+        [DllImport("gdi32.dll")]
+        public static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
+
+        [DllImport("user32.dll")]
+        public static extern int SetWindowRgn(IntPtr hwnd, IntPtr rgn, bool redraw);
+
+        [DllImport("user32.dll")]
+        public static extern bool RegisterShellHookWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool DeregisterShellHookWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool BringWindowToTop(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool LockWorkStation();
+
+        [DllImport("powrprof.dll")]
+        public static extern bool SetSuspendState(bool hibernate, bool force, bool disableWake);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? root, uint flags);
+
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+        public static extern int AssocQueryString(int flags, int str, string assoc, string? extra, StringBuilder? output, ref uint size);
+
+        public static string? AssocApp(string ext)
+        {
+            try
+            {
+                uint size = 0;
+                AssocQueryString(0x20, 4, ext, null, null, ref size);
+                if (size == 0) return null;
+                var sb = new StringBuilder((int)size);
+                if (AssocQueryString(0x20, 4, ext, null, sb, ref size) != 0) return null;
+                return sb.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static bool ModifiersDown()
+        {
+            foreach (int vk in new[] { 0x10, 0x11, 0x12, 0x5B, 0x5C })
+                if ((GetAsyncKeyState(vk) & 0x8000) != 0) return true;
+            return false;
+        }
+
+        public static async System.Threading.Tasks.Task WaitForModifiersUp()
+        {
+            for (int i = 0; i < 60 && ModifiersDown(); i++) await System.Threading.Tasks.Task.Delay(20);
+            await System.Threading.Tasks.Task.Delay(30);
+        }
+
+        public static void Combo(params byte[] keys)
+        {
+            foreach (var k in keys) keybd_event(k, 0, 0, UIntPtr.Zero);
+            for (int i = keys.Length - 1; i >= 0; i--) keybd_event(keys[i], 0, 2, UIntPtr.Zero);
+        }
+
+        public static void Focus(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);
+            SetForegroundWindow(hwnd);
+            BringWindowToTop(hwnd);
+        }
+
         public static void Tap(byte vk)
         {
             keybd_event(vk, 0, 0, UIntPtr.Zero);

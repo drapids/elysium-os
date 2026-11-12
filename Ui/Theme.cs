@@ -47,6 +47,8 @@ namespace Heft.Ui
             Set(res, "PillStroke", dark ? "#29FFFFFF" : "#26000000");
             Set(res, "TileBg", dark ? "#14FFFFFF" : "#66FFFFFF");
 
+            Set(res, "GlassTint", dark ? "#C81C1C1F" : "#D8F3F3F5");
+            Set(res, "Scrim", dark ? "#73000000" : "#40000000");
             Set(res, "OnAccent", "#FFFFFFFF");
             res["AccentFill"] = Freeze(new SolidColorBrush(accent));
             res["AccentHover"] = Freeze(new SolidColorBrush(Lighten(accent, dark ? 0.12 : -0.08)));
