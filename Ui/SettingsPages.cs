@@ -11,7 +11,10 @@ namespace Heft.Ui
     {
         public static readonly (string id, string label)[] Tabs =
         {
+            ("general", "General"),
             ("dock", "Dock & physics"),
+            ("windows", "Windows"),
+            ("files", "Files"),
             ("shell", "Bar & desktop"),
             ("audio", "Audio"),
             ("alerts", "Alerts & focus"),
@@ -25,6 +28,9 @@ namespace Heft.Ui
         readonly Func<IEnumerable<string>> _keyErrors;
         readonly Func<string> _toastStatus;
         readonly Action<Action> _dialog;
+
+        public Action? SortDownloads;
+        public Action? FindDupes;
 
         public SettingsPages(Settings s, AudioFlow audio, Func<IEnumerable<string>> keyErrors, Func<string> toastStatus, Action<Action> dialog)
         {
@@ -50,6 +56,15 @@ namespace Heft.Ui
             host.Children.Clear();
             switch (page)
             {
+                case "general":
+                    General(host);
+                    break;
+                case "windows":
+                    WindowsPage(host);
+                    break;
+                case "files":
+                    FilesPage(host);
+                    break;
                 case "shell":
                     Shell(host);
                     break;
@@ -69,6 +84,148 @@ namespace Heft.Ui
                     Share(host);
                     break;
             }
+        }
+
+        void General(Panel h)
+        {
+            h.Children.Add(Kit.Header("Startup"));
+            var early = Sw(_s.StartEarly, v =>
+            {
+                _s.StartEarly = v;
+                if (_s.StartWithWindows)
+                {
+                    Startup.Set(true, v);
+                    _s.StartupPath = Environment.ProcessPath ?? "";
+                }
+            });
+            early.IsEnabled = _s.StartWithWindows;
+            var start = Sw(_s.StartWithWindows, v =>
+            {
+                _s.StartWithWindows = v;
+                bool ok = Startup.Set(v, _s.StartEarly);
+                _s.StartupPath = v && ok ? Environment.ProcessPath ?? "" : "";
+                early.IsEnabled = v;
+            });
+            string startCaption = Startup.CanSet
+                ? "heft opens on its own when you sign in, in the background"
+                : "works once you run the built heft.exe (not dotnet run)";
+            h.Children.Add(Kit.Group(
+                Kit.Row("Start with Windows", startCaption, start),
+                Kit.Row("Start before other apps", "opens the second you sign in, ahead of the normal startup list. off puts heft in the regular startup list instead", early)));
+
+            h.Children.Add(Kit.Header("Sounds"));
+            var events = new StackPanel();
+            foreach (var (id, label) in Sfx.Events)
+            {
+                string ev = id;
+                bool on = !_s.SoundEvents.TryGetValue(ev, out bool cur) || cur;
+                var right = new StackPanel { Orientation = Orientation.Horizontal };
+                var play = Kit.Plain("\uE768", () => Sfx.Test(ev), "play it", 10);
+                play.Margin = new Thickness(0, 0, 10, 0);
+                right.Children.Add(play);
+                right.Children.Add(Sw(on, v => _s.SoundEvents[ev] = v));
+                if (events.Children.Count > 0) events.Children.Add(new Border { Style = (Style)Application.Current.FindResource("Sep") });
+                events.Children.Add(Kit.Row(label, null, right));
+            }
+            h.Children.Add(Kit.Group(
+                Kit.Row("Sounds", "off by default. soft little clicks and chimes for heft stuff", Sw(_s.SoundsOn, v =>
+                {
+                    _s.SoundsOn = v;
+                    if (v) Sfx.Test("chime");
+                })),
+                Kit.SliderRow("Volume", 0, 1, _s.SoundVolume, Pct, v =>
+                {
+                    _s.SoundVolume = v;
+                    Touch();
+                    Sfx.Test("tick");
+                }),
+                Kit.Block("Pack", null, Kit.Segments(Sfx.Packs.Select(p => p.label).ToArray(), Sfx.Packs.Select(p => p.id).ToArray(), _s.SoundPack, v =>
+                {
+                    _s.SoundPack = v;
+                    Touch();
+                    Sfx.Test("notify");
+                })),
+                Kit.Row("Quieter while music plays", null, Sw(_s.SoundDuck, v => _s.SoundDuck = v))));
+            h.Children.Add(Kit.Group(events));
+
+            h.Children.Add(Kit.Header("Shortcuts"));
+            var cap = Kit.Caption("ctrl + alt + y shows every shortcut heft has. click one to do it");
+            cap.Margin = new Thickness(14, 4, 14, 0);
+            h.Children.Add(cap);
+        }
+
+        void WindowsPage(Panel h)
+        {
+            h.Children.Add(Kit.Header("Window lerp"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("Lerp", "drag a window by its title bar and it trails your mouse smoothly, cutting corners. hold ctrl to drag the normal way. needs window physics on", Sw(_s.Lerp, v => _s.Lerp = v)),
+                Kit.SliderRow("Lag", 0, 1, _s.LerpLag, v => v < 0.2 ? "tight" : v < 0.5 ? "smooth" : v < 0.8 ? "floaty" : "lazy", v =>
+                {
+                    _s.LerpLag = v;
+                    Touch();
+                }),
+                Kit.SliderRow("Wobble", 0, 1, _s.LerpWobble, v => v < 0.1 ? "none" : Pct(v), v =>
+                {
+                    _s.LerpWobble = v;
+                    Touch();
+                }),
+                Kit.Row("Snap to edges", "let go at the left or right edge for half the screen, top edge maximizes", Sw(_s.LerpSnap, v => _s.LerpSnap = v))));
+
+            h.Children.Add(Kit.Header("Window stacks"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("Stack windows into tabs", "drag a title bar onto another window's title bar and hold for a sec. click tabs to switch, scroll to flip, middle-click a tab to pull it out", Sw(_s.WindowStacks, v => _s.WindowStacks = v))));
+
+            h.Children.Add(Kit.Header("Picture in picture"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("How", "ctrl + alt + o pops the window you're on into a small always-on-top window in the corner. same keys (or the little bar on it) put it back", null),
+                Kit.SliderRow("Size", 0.12, 0.45, _s.PipSize, Pct, v =>
+                {
+                    _s.PipSize = v;
+                    Touch();
+                })));
+        }
+
+        void FilesPage(Panel h)
+        {
+            h.Children.Add(Kit.Header("Preview"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("Space previews in File Explorer", "select a file and hit space, like quick look on a mac", Sw(_s.PreviewSpace, v => _s.PreviewSpace = v))));
+
+            h.Children.Add(Kit.Header("Downloads"));
+            var sortNow = Kit.Push("Sort now", () => SortDownloads?.Invoke());
+            h.Children.Add(Kit.Group(
+                Kit.Row("Sort Downloads into folders", "images, videos, docs, installers and so on, once a file has sat there a few minutes", Sw(_s.AutoSortDownloads, v => _s.AutoSortDownloads = v)),
+                Kit.Row("Tidy it right now", null, sortNow)));
+
+            h.Children.Add(Kit.Header("Version shelf"));
+            string folders = _s.VersionFolders.Count > 0 ? string.Join(", ", _s.VersionFolders) : VersionShelf.DefaultFolders();
+            h.Children.Add(Kit.Group(
+                Kit.Row("Keep older versions", "every time a file changes heft keeps a copy, so you can go back from inspect. off by default", Sw(_s.VersionsOn, v => _s.VersionsOn = v)),
+                Kit.Block("Folders it watches", "comma separated", Kit.Field(folders, "Documents, Desktop", v =>
+                {
+                    var list = v.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(System.IO.Directory.Exists).ToList();
+                    _s.VersionFolders = list;
+                    Touch();
+                })),
+                Kit.SliderRow("Copies per file", 3, 60, _s.VersionKeep, v => $"{v:0}", v =>
+                {
+                    _s.VersionKeep = (int)Math.Round(v);
+                    Touch();
+                })));
+
+            h.Children.Add(Kit.Header("Send to phone"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("How", "inspect a file > send to phone, or type > share after a search in the launcher. scan the code with your phone, same wi-fi", null),
+                Kit.SliderRow("Link lasts", 1, 60, _s.ShareMinutes, v => $"{v:0} min", v =>
+                {
+                    _s.ShareMinutes = (int)Math.Round(v);
+                    Touch();
+                })));
+
+            h.Children.Add(Kit.Header("Projects & duplicates"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("On the shelf", "the shelf has Projects (anything with git, package.json, .sln...) and Duplicates tabs", null),
+                Kit.Row("Look for duplicates now", null, Kit.Push("Scan", () => FindDupes?.Invoke()))));
         }
 
         void Shell(Panel h)
@@ -150,22 +307,22 @@ namespace Heft.Ui
 
             h.Children.Add(Kit.Header("Hot corners"));
             h.Children.Add(Kit.Group(
-                Kit.Block("Top left", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("tl", out var vtl) ? vtl : "none", v =>
+                Kit.Block("Top left", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Spaces", "Center", "Desktop" }, new[] { "none", "start", "overview", "spaces", "center", "desktop" }, _s.HotCorners.TryGetValue("tl", out var vtl) ? vtl : "none", v =>
                 {
                     _s.HotCorners["tl"] = v;
                     Touch();
                 })),
-                Kit.Block("Top right", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("tr", out var vtr) ? vtr : "none", v =>
+                Kit.Block("Top right", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Spaces", "Center", "Desktop" }, new[] { "none", "start", "overview", "spaces", "center", "desktop" }, _s.HotCorners.TryGetValue("tr", out var vtr) ? vtr : "none", v =>
                 {
                     _s.HotCorners["tr"] = v;
                     Touch();
                 })),
-                Kit.Block("Bottom left", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("bl", out var vbl) ? vbl : "none", v =>
+                Kit.Block("Bottom left", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Spaces", "Center", "Desktop" }, new[] { "none", "start", "overview", "spaces", "center", "desktop" }, _s.HotCorners.TryGetValue("bl", out var vbl) ? vbl : "none", v =>
                 {
                     _s.HotCorners["bl"] = v;
                     Touch();
                 })),
-                Kit.Block("Bottom right", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("br", out var vbr) ? vbr : "none", v =>
+                Kit.Block("Bottom right", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Spaces", "Center", "Desktop" }, new[] { "none", "start", "overview", "spaces", "center", "desktop" }, _s.HotCorners.TryGetValue("br", out var vbr) ? vbr : "none", v =>
                 {
                     _s.HotCorners["br"] = v;
                     Touch();

@@ -140,6 +140,33 @@ namespace Heft
         public List<CustomCommand> CustomCommands { get; set; } = new();
         public string SearchEngine { get; set; } = "https://www.google.com/search?q=";
 
+        public bool SoundsOn { get; set; } = false;
+        public double SoundVolume { get; set; } = 0.5;
+        public string SoundPack { get; set; } = "glass";
+        public bool SoundDuck { get; set; } = true;
+        public Dictionary<string, bool> SoundEvents { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public bool StartEarly { get; set; } = true;
+        public string StartupPath { get; set; } = "";
+
+        public bool ShelfPinned { get; set; } = false;
+        public bool DropSlit { get; set; } = true;
+
+        public bool Lerp { get; set; } = false;
+        public double LerpLag { get; set; } = 0.45;
+        public double LerpWobble { get; set; } = 0.25;
+        public bool LerpSnap { get; set; } = true;
+        public bool WindowStacks { get; set; } = true;
+        public List<PocketEntry> StackedAway { get; set; } = new();
+        public double PipSize { get; set; } = 0.24;
+
+        public bool PreviewSpace { get; set; } = true;
+        public bool AutoSortDownloads { get; set; } = false;
+        public bool VersionsOn { get; set; } = false;
+        public List<string> VersionFolders { get; set; } = new();
+        public int VersionKeep { get; set; } = 20;
+        public int ShareMinutes { get; set; } = 10;
+
         public List<WheelItem> Pinned { get; set; } = new();
         public List<string> Hidden { get; set; } = new();
         public string ProjectNames { get; set; } = "hangar29, underlay, veneer, driftwood, substrate, gnatty, hyperboi, handoff, wintd, tox-shelf";
@@ -171,6 +198,9 @@ namespace Heft
                         s.Collections = new Dictionary<string, List<string>>(s.Collections, StringComparer.OrdinalIgnoreCase);
                         s.CategoryColors = new Dictionary<string, string>(s.CategoryColors, StringComparer.OrdinalIgnoreCase);
                         s.FileOpens = new Dictionary<string, double>(s.FileOpens, StringComparer.OrdinalIgnoreCase);
+                        s.SoundEvents = new Dictionary<string, bool>(s.SoundEvents ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
+                        s.StackedAway ??= new List<PocketEntry>();
+                        s.VersionFolders ??= new List<string>();
                         return s;
                     }
                 }

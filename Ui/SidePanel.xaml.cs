@@ -114,6 +114,7 @@ namespace Heft.Ui
             BuildTabs();
             bool classicTab = tab == "dock" || _pages == null;
             classic.Visibility = classicTab ? Visibility.Visible : Visibility.Collapsed;
+            if (classicTab && _open) Load();
             pages.Visibility = classicTab ? Visibility.Collapsed : Visibility.Visible;
             if (!classicTab) _pages!.Build(tab, pages);
             scroll.ScrollToTop();
@@ -396,7 +397,12 @@ namespace Heft.Ui
             return ok ? dlg.FolderName : null;
         }
 
-        static void SetStartup(bool on) => Startup.Set(on);
+        void SetStartup(bool on)
+        {
+            Startup.Set(on, _s.StartEarly);
+            _s.StartupPath = on ? Environment.ProcessPath ?? "" : "";
+            _s.Touch();
+        }
 
         void Load()
         {

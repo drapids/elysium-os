@@ -49,6 +49,15 @@ namespace Heft
         StartData _startData = null!;
         StartScreen _start = null!;
         Overview _overview = null!;
+        WindowStacks _stacks = null!;
+        Pip _pip = null!;
+        QuickShare _share = null!;
+        VersionShelf _versions = null!;
+        DownloadSorter _sorter = null!;
+        Slit _slit = null!;
+        ShortcutSheet _sheet = null!;
+        Spaces _spaces = null!;
+        readonly Dictionary<string, Action> _keyActions = new();
         readonly DispatcherTimer _cornerTimer = new() { Interval = TimeSpan.FromMilliseconds(140) };
         string _cornerHit = "";
         readonly List<EdgeTab> _tabs = new();
@@ -86,17 +95,29 @@ namespace Heft
             };
 
             _s = Settings.Load();
+            Sfx.Init(_s, () => _np != null && _np.Playing);
             Theme.Apply(_s.Theme);
+            HealStartup();
             SystemEvents.UserPreferenceChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() => Theme.Apply(_s.Theme)));
 
             _notes = new Notifier(_s);
-            _toasts = new Toasts(_s, TopDip);
-            _notes.Toast += n => _toasts.Show(n);
+            _toasts = new Toasts(_s, d => BarBottom(d));
+            _notes.Toast += n =>
+            {
+                _toasts.Show(n);
+                Sfx.Play(n.App == "heft" && (n.Title == "Reminder" || n.Title == "Timer done") ? "chime" : "notify");
+            };
             _toasts.Clicked += Toasts.OpenTarget;
 
             _physics = new PhysicsEngine(_s);
             _catalog = new AppCatalog(_s);
             _catalog.Foreground += OnForeground;
+            _stacks = new WindowStacks(_s, _catalog);
+            _stacks.RestoreLeftovers();
+            _physics.StackHover += (h, on) => Dispatcher.BeginInvoke(new Action(() => _stacks.Hover(h, on)));
+            _physics.StackDrop += (a, b) => Dispatcher.BeginInvoke(new Action(() => _stacks.Join(a, b)));
+            _pip = new Pip(_s);
+            _pip.Say += text => Flash(text);
             _audio = new AudioFlow(_s);
             _audio.Switched += name => _notes.Post(new Note { Title = "Switched audio", Body = name, Glyph = "\uE767" });
             _activity = new Activity(_s);
@@ -115,12 +136,17 @@ namespace Heft
             _brightness.Changed += v => Dispatcher.BeginInvoke(new Action(() => Flash(v >= 0 ? $"brightness {v}%" : "this screen doesn't do brightness over cable")));
             _mouse = new MouseHook(_s, Dispatcher, _brightness);
             _mouse.Flash += Flash;
+            _mouse.Physics = _physics;
             _mouse.DesktopDoubleClick += Peek;
             _taskbar = new TaskbarStyler(_s);
             if (!_s.TakeOverToasts && _s.BannerBackup.Count > 0) WinToasts.Restore(_s);
             _wintoasts = new WinToasts(_s, n => _notes.Post(n));
             _keys = new Hotkeys();
             _keyHook = new KeyHook(_s, Dispatcher);
+            _keyHook.ExplorerSpace += PreviewExplorer;
+            _share = new QuickShare(_s, _notes);
+            _versions = new VersionShelf(_s);
+            _sorter = new DownloadSorter(_s, _notes);
 
             _actions = new ObjectActions(_s, _notes);
             _inspector = new Inspector(_s, _catalog, _actions);
@@ -132,10 +158,28 @@ namespace Heft
             _startData = new StartData(_apps);
             _start = new StartScreen(_s, _catalog, _apps, _startData, _cmds, _notes, _np, _activity, _lib);
             _overview = new Overview(_catalog);
+            _slit = new Slit(p => _catalog.Icon(p, 64, Files.IsApp(p)));
+            _slit.Accepted += (paths, copy) => _shelf.AddToShelf(paths);
+            _slit.OpenFull += d => _shelf.OpenShelf(d, BarBottom(d), "shelf");
+            _sheet = new ShortcutSheet(_s, RunAction);
+            _spaces = new Spaces(_s, _catalog, _lib, _np, _startData);
+            _spaces.Inspect = (o, r) => InspectObj(o, r, null);
+            _spaces.Say = text => Flash(text);
             _start.Search = text => _launcher.Open(text);
             _start.OpenSettings = () => _panel.Open();
             _start.Overview = () => _overview.Open();
-            _panel.Attach(new SettingsPages(_s, _audio, () => _keys.Failed, () => _wintoasts.Status, a => _panel.Dialog(a)));
+            var pages = new SettingsPages(_s, _audio, () => _keys.Failed, () => _wintoasts.Status, a => _panel.Dialog(a));
+            pages.SortDownloads = () =>
+            {
+                _sorter.Sweep(true);
+                Flash("tidying Downloads");
+            };
+            pages.FindDupes = () =>
+            {
+                _lib.FindDupes(true);
+                _shelf.OpenShelf(BarDisplay(), BarBottom(), "dupes");
+            };
+            _panel.Attach(pages);
 
             _actions.Inspect = o => InspectObj(o, null, null);
             _actions.ToShelf = p => _shelf.AddToShelf(p);
@@ -143,6 +187,8 @@ namespace Heft
             _actions.Rename = path => _inspector.Show(Obj.From(path), null, null, true);
             _actions.PinToDock = path => _catalog.AddFile(path);
             _actions.Browse = path => _shelf.Browse(path);
+            _actions.Share = paths => _share.Share(paths);
+            _launcher.Share = paths => _share.Share(paths);
             _shelf.Inspect = InspectObj;
             _launcher.Inspect = InspectObj;
             _launcher.ToShelf = p =>
@@ -331,7 +377,20 @@ namespace Heft
             b.Dropped += data =>
             {
                 var paths = Shelf.DroppedPaths(data);
-                if (paths.Count > 0) _shelf.AddToShelf(paths);
+                if (paths.Count == 0) return;
+                _shelf.AddToShelf(paths);
+                if (_slit.Shown) _slit.Swallow(paths);
+                else Sfx.Play("drop");
+            };
+            b.DragNear += bar =>
+            {
+                if (_shelf.IsOpen) return;
+                if (_s.DropSlit) _slit.ShowAt(bar.Display, bar.BottomPx);
+                else _shelf.OpenShelf(bar.Display, bar.BottomPx);
+            };
+            b.EmptyClicked += bar =>
+            {
+                if (_shelf.IsOpen && !_shelf.Pinned) _shelf.HideShelf();
             };
             b.MediaToggle += () => _ = MediaAfter(_np.Toggle());
             b.MediaNext += () => _ = MediaAfter(_np.Next());
@@ -431,6 +490,7 @@ namespace Heft
             if (_physicsItem != null) _physicsItem.Checked = _s.Enabled;
             if (!_peeking) DesktopIcons.Set(!_s.HideDesktop);
             _wintoasts.Sync();
+            _versions.Sync();
 
             if (_s.FocusActive != _focusApplied)
             {
@@ -486,8 +546,15 @@ namespace Heft
                 },
                 ["peek"] = Peek,
                 ["overview"] = () => _overview.Toggle(),
+                ["spaces"] = () => _spaces.Toggle(),
+                ["pip"] = () => _pip.Toggle(),
+                ["share"] = ShareExplorer,
+                ["stacknext"] = () => _stacks.CycleForeground(),
+                ["sheet"] = () => _sheet.Toggle(),
                 ["start"] = () => _start.Toggle()
             };
+            _keyActions.Clear();
+            foreach (var kv in map) _keyActions[kv.Key] = kv.Value;
             foreach (var d in Hotkeys.Defaults)
                 if (map.TryGetValue(d.id, out var act)) _keys.Add(Hotkeys.Spec(_s, d.id), act, d.label);
             foreach (var prof in _s.AudioProfiles.Where(p => p.Hotkey.Length > 0))
@@ -520,6 +587,32 @@ namespace Heft
             var fg = Native.GetForegroundWindow();
             if (fg != IntPtr.Zero && CursorLock.IsFullscreen(fg, out _)) return;
             string action = _s.HotCorners.TryGetValue(corner, out var a) ? a : "none";
+            if (action != "none") Sfx.Play("tick");
+            FireAction(action);
+        }
+
+        bool RunAction(string id)
+        {
+            if (id.StartsWith("profile:", StringComparison.Ordinal))
+            {
+                string name = id[8..];
+                var prof = _s.AudioProfiles.FirstOrDefault(p => p.Name == name);
+                if (prof == null) return false;
+                _audio.Apply(prof);
+                Flash("audio: " + prof.Name);
+                return true;
+            }
+            if (id.StartsWith("corner:", StringComparison.Ordinal)) return FireAction(id[7..]);
+            if (_keyActions.TryGetValue(id, out var act))
+            {
+                act();
+                return true;
+            }
+            return FireAction(id);
+        }
+
+        bool FireAction(string action)
+        {
             switch (action)
             {
                 case "start":
@@ -543,7 +636,53 @@ namespace Heft
                 case "lock":
                     Native.LockWorkStation();
                     break;
+                case "spaces":
+                    _spaces.Toggle();
+                    break;
+                default:
+                    return false;
             }
+            return true;
+        }
+
+        void HealStartup()
+        {
+            if (!_s.StartWithWindows || !Startup.CanSet) return;
+            string exe = Environment.ProcessPath ?? "";
+            if (string.Equals(_s.StartupPath, exe, StringComparison.OrdinalIgnoreCase)) return;
+            bool early = _s.StartEarly;
+            Task.Run(() => Startup.Set(true, early)).ContinueWith(t =>
+            {
+                if (t.IsFaulted || !t.Result) return;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _s.StartupPath = exe;
+                    _s.Touch();
+                }));
+            });
+        }
+
+        void PreviewExplorer()
+        {
+            var paths = ExplorerSelection(true);
+            if (paths.Count == 0)
+            {
+                Native.Tap(0x20);
+                return;
+            }
+            if (_inspector.IsShowing) _inspector.Close();
+            InspectObj(Obj.From(paths[0]), null, null);
+        }
+
+        void ShareExplorer()
+        {
+            var paths = ExplorerSelection(true);
+            if (paths.Count == 0)
+            {
+                Flash("select something in File Explorer first");
+                return;
+            }
+            _share.Share(paths);
         }
 
         void OpenDrop(string page)
@@ -576,22 +715,23 @@ namespace Heft
 
         void InspectExplorer()
         {
-            string? path = ExplorerSelection();
-            if (path == null)
+            var paths = ExplorerSelection(false);
+            if (paths.Count == 0)
             {
                 Flash("select something in File Explorer first");
                 return;
             }
-            InspectObj(Obj.From(path), null, null);
+            InspectObj(Obj.From(paths[0]), null, null);
         }
 
-        static string? ExplorerSelection()
+        static List<string> ExplorerSelection(bool selectionOnly)
         {
+            var list = new List<string>();
             try
             {
                 IntPtr fg = Native.GetForegroundWindow();
                 var type = Type.GetTypeFromProgID("Shell.Application");
-                if (type == null) return null;
+                if (type == null) return list;
                 dynamic shell = Activator.CreateInstance(type)!;
                 foreach (dynamic w in shell.Windows())
                 {
@@ -599,8 +739,13 @@ namespace Heft
                     {
                         if (Convert.ToInt64(w.HWND) != fg.ToInt64()) continue;
                         foreach (dynamic item in w.Document.SelectedItems())
-                            return (string)item.Path;
-                        return (string)w.Document.Folder.Self.Path;
+                        {
+                            string p = (string)item.Path;
+                            if (!string.IsNullOrEmpty(p)) list.Add(p);
+                            if (list.Count >= 200) break;
+                        }
+                        if (list.Count == 0 && !selectionOnly) list.Add((string)w.Document.Folder.Self.Path);
+                        return list;
                     }
                     catch
                     {
@@ -610,7 +755,7 @@ namespace Heft
             catch
             {
             }
-            return null;
+            return list;
         }
 
         void RegisterCommands()
@@ -675,6 +820,33 @@ namespace Heft
                 _apps.Load();
                 _lib.Refresh(true);
             }, "refresh");
+            c.Add("heft", "spaces", "Spaces", "\uE80A", () => _spaces.Open(), "spatial desktop canvas board zoom widgets");
+            c.Add("heft", "pip", "Picture in picture", "\uE8A7", () => _pip.Toggle(), "pip mini floating corner window");
+            c.Add("heft", "sheet", "Every shortcut", "\uE765", () => _sheet.Open(), "keys keyboard cheat sheet help hotkeys");
+            c.Add("heft", "sort-downloads", "Sort Downloads now", "\uE8CB", () => _sorter.Sweep(true), "tidy organize downloads folders");
+            c.Add("heft", "find-dupes", "Find duplicate files", "\uE8C8", () =>
+            {
+                _lib.FindDupes(true);
+                _shelf.OpenShelf(BarDisplay(), BarBottom(), "dupes");
+            }, "duplicates copies clean space");
+            c.Add("heft", "undo-rename", "Undo rename", "\uE7A7", () =>
+            {
+                int n = BulkRename.Undo();
+                Flash(n > 0 ? $"put back {n} name{(n == 1 ? "" : "s")}" : "nothing to undo");
+            }, "undo rename back");
+            c.Add("heft", "sounds", "Sounds", "\uE767", () =>
+            {
+                _s.SoundsOn = !_s.SoundsOn;
+                _s.Touch();
+                if (_s.SoundsOn) Sfx.Test("chime");
+            }, "audio clicks chimes sfx", false, () => _s.SoundsOn ? "on" : "off");
+            c.Add("heft", "lerp", "Window lerp", "\uE945", () =>
+            {
+                _s.Lerp = !_s.Lerp;
+                _s.Touch();
+            }, "smooth drag lag trail", false, () => _s.Lerp ? "on" : "off");
+            c.Add("heft", "unstack", "Pull this window out of its stack", "\uE8A9", () => _stacks.Take(Native.GetForegroundWindow()), "tabs window stack");
+            c.Add("heft", "share-stop", "Stop sharing", "\uE8EA", () => _share.Stop(), "quick share phone");
             c.Add("heft", "quit", "Quit heft", "\uE7E8", Quit, "exit close");
 
             c.Add("system", "pclock", "Lock PC", "\uE72E", () => Native.LockWorkStation(), "lock screen away");
@@ -762,6 +934,13 @@ namespace Heft
             Try(() => _state.Stop());
             Try(() => _autosave?.Stop());
             Try(() => _catalog?.Dispose());
+            Try(() => _stacks?.ReleaseAll());
+            Try(() => _pip?.ReleaseAll());
+            Try(() => _share?.Dispose());
+            Try(() => _versions?.Dispose());
+            Try(() => _sorter?.Dispose());
+            Try(() => _spaces?.Close2());
+            Try(() => Sfx.Stop());
             Try(() => _notes?.Save());
             Try(() => _s?.SaveNow());
             Try(() => _physics?.Dispose());

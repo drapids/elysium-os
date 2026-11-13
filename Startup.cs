@@ -14,16 +14,29 @@ namespace Heft
     {
         const string TaskName = "heft";
 
-        public static bool Set(bool on)
+        public static bool CanSet
+        {
+            get
+            {
+                string? exe = Environment.ProcessPath;
+                return exe != null && !exe.EndsWith("dotnet.exe", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        public static bool Set(bool on) => Set(on, true);
+
+        public static bool Set(bool on, bool early)
         {
             string? exe = Environment.ProcessPath;
             if (exe == null) return false;
             if (exe.EndsWith("dotnet.exe", StringComparison.OrdinalIgnoreCase)) return false;
 
             RunKey(false, exe);
-            if (!on)
+            if (!on || !early) Schtasks($"/Delete /TN \"{TaskName}\" /F");
+            if (!on) return true;
+            if (!early)
             {
-                Schtasks($"/Delete /TN \"{TaskName}\" /F");
+                RunKey(true, exe);
                 return true;
             }
 
@@ -120,7 +133,8 @@ namespace Heft
             nameof(Settings.Places), nameof(Settings.ShelfFolders), nameof(Settings.Pinned), nameof(Settings.Hidden),
             nameof(Settings.Collections), nameof(Settings.Bookmarks), nameof(Settings.DevicePriority), nameof(Settings.AppRoutes),
             nameof(Settings.HangarPinned), nameof(Settings.StartWithWindows), nameof(Settings.ActiveProfile), nameof(Settings.FocusActive),
-            nameof(Settings.PinnedCommands)
+            nameof(Settings.PinnedCommands), nameof(Settings.StartupPath), nameof(Settings.StackedAway), nameof(Settings.VersionFolders),
+            nameof(Settings.StartEarly), nameof(Settings.ShelfPinned)
         };
 
         static IEnumerable<PropertyInfo> Shared() => typeof(Settings).GetProperties(BindingFlags.Public | BindingFlags.Instance)
