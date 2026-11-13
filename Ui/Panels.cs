@@ -12,7 +12,7 @@ using System.Windows.Threading;
 
 namespace Heft.Ui
 {
-    internal sealed class Panels : Window
+    internal sealed partial class Panels : Window
     {
         readonly Settings _s;
         readonly AppCatalog _cat;
@@ -103,7 +103,7 @@ namespace Heft.Ui
         public void Open(string page, Display d, double topPx, double anchorX)
         {
             _page = page;
-            Width = page switch { "audio" => 440, "notes" => 420, _ => 420 };
+            Width = page switch { "audio" => 440, "notes" => 420, "scratch" => 400, _ => 420 };
             MaxHeight = d.Work.Height / d.Scale - 60;
             _scroll.MaxHeight = MaxHeight - 4;
             Build();
@@ -151,6 +151,9 @@ namespace Heft.Ui
                     break;
                 case "notes":
                     BuildNotes();
+                    break;
+                case "scratch":
+                    BuildScratch();
                     break;
                 default:
                     BuildCenter();

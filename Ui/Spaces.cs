@@ -41,6 +41,7 @@ namespace Heft
     public sealed class SpaceDoc
     {
         public string Name { get; set; } = "home";
+        public string Desktop { get; set; } = "";
         public List<SpaceItem> Items { get; set; } = new();
         public double PanX { get; set; } = 40;
         public double PanY { get; set; } = 90;
@@ -102,6 +103,33 @@ namespace Heft.Ui
 
         public Action<Obj, Rect?>? Inspect;
         public Action<string>? Say;
+
+        void PickDesktop()
+        {
+            if (!_s.SpacePerDesktop) return;
+            var (ids, cur) = VirtualDesktops.Read();
+            if (ids.Count < 2) return;
+            string id = ids[cur].ToString("N");
+            var doc = _file.Spaces.FirstOrDefault(x => x.Desktop == id);
+            if (doc == null)
+            {
+                bool anyBound = _file.Spaces.Any(x => x.Desktop.Length > 0);
+                if (!anyBound && cur == 0)
+                {
+                    doc = _cur;
+                }
+                else
+                {
+                    doc = new SpaceDoc { Name = "desktop " + (cur + 1) };
+                    _file.Spaces.Add(doc);
+                }
+                doc.Desktop = id;
+                Touch();
+            }
+            if (doc == _cur) return;
+            _cur = doc;
+            _file.Current = _file.Spaces.IndexOf(doc);
+        }
 
         public Spaces(Settings s, AppCatalog cat, Library lib, NowPlaying np, StartData data)
         {
@@ -250,6 +278,7 @@ namespace Heft.Ui
             {
                 sp.Items ??= new List<SpaceItem>();
                 sp.Windows ??= new List<SpaceWin>();
+                sp.Desktop ??= "";
                 if (sp.Zoom <= 0.05 || double.IsNaN(sp.Zoom)) sp.Zoom = 1;
             }
             _file.Current = Math.Clamp(_file.Current, 0, _file.Spaces.Count - 1);
@@ -305,6 +334,7 @@ namespace Heft.Ui
             _shown = true;
             var d = Displays.AtCursor();
             _display = d;
+            PickDesktop();
             BuildTabs();
             Build();
             _clock.Start();

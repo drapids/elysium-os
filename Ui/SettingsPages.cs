@@ -336,6 +336,8 @@ namespace Heft.Ui
                 Kit.Row("Volume", null, Sw(_s.BarVolume, v => _s.BarVolume = v)),
                 Kit.Row("Battery", null, Sw(_s.BarBattery, v => _s.BarBattery = v))));
 
+            BarEditor(h);
+
             h.Children.Add(Kit.Header("Taskbar"));
             h.Children.Add(Kit.Group(
                 Kit.Block("Look", null, Kit.Segments(new[] { "Normal", "Clear", "Blur", "Acrylic" }, new[] { "normal", "clear", "blur", "acrylic" }, _s.TaskbarStyle, v =>

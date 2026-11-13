@@ -41,7 +41,7 @@ namespace Heft.Ui
         public string Profile = "";
     }
 
-    internal sealed class Bar : Window
+    internal sealed partial class Bar : Window
     {
         readonly Settings _s;
         readonly Grid _root = new() { Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)) };
@@ -125,7 +125,8 @@ namespace Heft.Ui
             _app = Kit.Text("", 12.5, true);
             _app.HorizontalAlignment = HorizontalAlignment.Left;
             _app.MaxWidth = 260;
-            grid.Children.Add(_app);
+            _left.Children.Add(_app);
+            grid.Children.Add(_left);
 
             _pill = new Border
             {
@@ -232,6 +233,7 @@ namespace Heft.Ui
             var shelf = Kit.Plain("\uE70D", () => ShelfToggle?.Invoke(this), "shelf (or drag down from the bar)", 10);
             shelf.Height = 22;
             _right.Children.Add(shelf);
+            BuildSlots(_ext, _stats, (FrameworkElement)_clipIcon!.Parent, (FrameworkElement)_focusIcon!.Parent, (FrameworkElement)_lockIcon!.Parent, vol, bat, bellHost, _clock, shelf);
 
             grid.Children.Add(_right);
             _root.Children.Add(grid);
@@ -297,6 +299,12 @@ namespace Heft.Ui
 
             DragEnter += (_, e) =>
             {
+                if (_selfDrag)
+                {
+                    e.Effects = DragDropEffects.None;
+                    e.Handled = true;
+                    return;
+                }
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
                 _dragInside = true;
@@ -312,6 +320,12 @@ namespace Heft.Ui
             };
             DragOver += (_, e) =>
             {
+                if (_selfDrag)
+                {
+                    e.Effects = DragDropEffects.None;
+                    e.Handled = true;
+                    return;
+                }
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
                 _dragInside = true;

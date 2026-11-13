@@ -133,7 +133,10 @@ namespace Heft
             _audio.Switched += name => _notes.Post(new Note { Title = "Switched audio", Body = name, Glyph = "\uE767" });
             _activity = new Activity(_s);
             _activity.Downloaded += path => Dispatcher.BeginInvoke(new Action(() =>
-                _notes.Post(new Note { App = "Downloads", Title = "Downloaded", Body = Path.GetFileName(path), Glyph = "\uE896", Open = path })));
+            {
+                Downloaded(path);
+                _notes.Post(new Note { App = "Downloads", Title = "Downloaded", Body = Path.GetFileName(path), Glyph = "\uE896", Open = path });
+            }));
             _np = new NowPlaying();
             _clips = new Clips(_s);
             _lib = new Library(_s);
@@ -424,6 +427,7 @@ namespace Heft
             var b = new Bar(_s, d);
             b.KeepOpen = () => _shelf.IsOpen || _drop.Shown;
             if (_ext != null) b.SetExt(_ext.BarItems);
+            WireBarExtras(b);
             b.PillClicked += bar => _drop.Toggle("center", bar.Display, bar.BottomPx, bar.Display.Bounds.Left + bar.Display.Bounds.Width / 2.0);
             b.AudioClicked += (bar, x) => _drop.Toggle("audio", bar.Display, bar.BottomPx, x);
             b.NotesClicked += (bar, x) => _drop.Toggle("notes", bar.Display, bar.BottomPx, x);
@@ -486,6 +490,7 @@ namespace Heft
             _tick++;
             CheckGame();
             if (_game) return;
+            if (_tick % 2 == 0) DeskTick();
             if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown || (_ext != null && _ext.WantsMedia))) _ = _np.Refresh();
             if (_ext != null)
             {
@@ -568,6 +573,7 @@ namespace Heft
         void Sync()
         {
             Layout(false);
+            SyncBarLayout();
             if (!_s.Enabled) _physics.StopAll();
             if (_physicsItem != null) _physicsItem.Checked = _s.Enabled;
             if (!_peeking) DesktopIcons.Set(!_s.HideDesktop);
@@ -639,6 +645,8 @@ namespace Heft
                 ["pickcolor"] = () => _lens.Open("color"),
                 ["start"] = () => _start.Toggle(),
                 ["reopen"] = ReopenLast,
+                ["scratch"] = () => OpenDrop("scratch"),
+                ["lastdl"] = () => GrabDownload(),
                 ["remember"] = RememberWindow
             };
             _keyActions.Clear();
@@ -977,6 +985,8 @@ namespace Heft
             c.Add("heft", "notes", "Notifications", "\uEA8F", () => OpenDrop("notes"), "notification center history");
             c.Add("heft", "center", "Control center", "\uE9E9", () => OpenDrop("center"), "system monitor cpu gpu ram toggles");
             c.Add("heft", "settings", "heft settings", "\uE713", () => _panel.Open(), "preferences options");
+            c.Add("heft", "scratch", "Scratchpad", "\uE70B", () => OpenDrop("scratch"), "notes scratch jot pad text");
+            c.Add("heft", "last-download", "Grab your last download", "\uE896", () => GrabDownload(), "download recent file drag");
             c.Add("heft", "reopen", "Reopen last closed app", "\uE7A7", ReopenLast, "undo close restore app again");
             c.Add("heft", "remember-window", "Remember where this window goes", "\uE8A7", RememberWindow, "window rule position monitor place open");
             c.Add("heft", "dock", "Dock", "\uE8A9", () =>
@@ -1149,6 +1159,7 @@ namespace Heft
             Try(() => _stacks?.ReleaseAll());
             Try(() => _snap?.Dispose());
             Try(() => _watch?.Dispose());
+            Try(() => _grab?.Close());
             Try(() => _pip?.ReleaseAll());
             Try(() => _share?.Dispose());
             Try(() => _versions?.Dispose());

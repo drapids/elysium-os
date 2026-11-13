@@ -34,6 +34,8 @@ namespace Heft
             ("pickcolor", "Pick a color", ""),
             ("reopen", "Reopen last closed app", "Ctrl+Alt+Z"),
             ("remember", "Remember where this window goes", ""),
+            ("scratch", "Scratchpad", "Ctrl+Alt+Q"),
+            ("lastdl", "Grab your last download", "Ctrl+Alt+J"),
             ("start", "Start", "")
         };
 
