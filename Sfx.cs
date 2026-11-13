@@ -36,6 +36,7 @@ namespace Heft
         const uint SND_MEMORY = 0x0004;
 
         static Settings? _s;
+        public static volatile bool Quiet;
         static Func<bool>? _music;
         static readonly Dictionary<string, byte[]?> Raw = new(StringComparer.OrdinalIgnoreCase);
         static readonly object Gate = new();
@@ -63,7 +64,7 @@ namespace Heft
         {
             var s = _s;
             if (s == null) return;
-            if (!force && !Enabled(id)) return;
+            if (!force && (Quiet || !Enabled(id))) return;
             try
             {
                 lock (Gate)

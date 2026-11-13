@@ -179,6 +179,12 @@ namespace Heft.Ui
 
         public void MarkDirty() => _dirty = true;
 
+        public void Hold(bool on)
+        {
+            if (on) _refresh.Stop();
+            else if (_warm) _refresh.Start();
+        }
+
         public void Prewarm()
         {
             if (_warm || _shown) return;

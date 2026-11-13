@@ -112,6 +112,7 @@ namespace Heft
             _toasts = new Toasts(_s, d => BarBottom(d));
             _notes.Toast += n =>
             {
+                if (HoldToast()) return;
                 _toasts.Show(n);
                 Sfx.Play(n.App == "heft" && (n.Title == "Reminder" || n.Title == "Timer done") ? "chime" : "notify");
             };
@@ -257,7 +258,11 @@ namespace Heft
             _activity.Downloaded += path => Dispatcher.BeginInvoke(new Action(() => _ext.Emit("download", path)));
             _clips.Changed += () => Dispatcher.BeginInvoke(new Action(() => _ext.Emit("clipboard", _clips.Latest?.Text ?? "")));
             _ext.Start();
-            _keyHook.WinTapped += () => _start.Toggle();
+            _keyHook.WinTapped += () =>
+            {
+                if (_game && _s.GameBlockWin) return;
+                _start.Toggle();
+            };
             _mouse.Corner += corner =>
             {
                 _cornerHit = corner;
@@ -475,6 +480,8 @@ namespace Heft
         void Tick()
         {
             _tick++;
+            CheckGame();
+            if (_game) return;
             if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown || (_ext != null && _ext.WantsMedia))) _ = _np.Refresh();
             if (_ext != null)
             {

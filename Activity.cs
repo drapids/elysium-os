@@ -47,6 +47,8 @@ namespace Heft
         public double NetDown { get; private set; }
         public double NetUp { get; private set; }
 
+        public volatile bool Slow;
+
         public event Action? Changed;
         public event Action<string>? Downloaded;
 
@@ -160,7 +162,7 @@ namespace Heft
                 {
                 }
                 tick++;
-                Thread.Sleep(500);
+                Thread.Sleep(Slow ? 2500 : 500);
             }
         }
 

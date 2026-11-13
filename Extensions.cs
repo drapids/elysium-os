@@ -635,7 +635,7 @@ namespace Heft
         public void on(string evt, JsValue fn)
         {
             string e = evt.ToLowerInvariant();
-            if (e is "window" or "download" or "clipboard") _host.Need(_ext, "watch");
+            if (e is "window" or "download" or "clipboard" or "game") _host.Need(_ext, "watch");
             if (e == "song") _host.Need(_ext, "media");
             if (!_ext.Handlers.TryGetValue(e, out var list)) _ext.Handlers[e] = list = new List<JsValue>();
             list.Add(fn);

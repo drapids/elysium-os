@@ -129,6 +129,19 @@ namespace Heft.Ui
                 Kit.Row("Start with Windows", startCaption, start),
                 Kit.Row("Start before other apps", "opens the second you sign in, ahead of the normal startup list. off puts heft in the regular startup list instead", early)));
 
+            h.Children.Add(Kit.Header("Game mode"));
+            var skip = Kit.Field(string.Join(", ", _s.GameSkip), "vlc, obs64", v =>
+            {
+                _s.GameSkip = v.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim().Replace(".exe", "", StringComparison.OrdinalIgnoreCase)).Where(x => x.Length > 0).ToList();
+                Touch();
+            });
+            skip.Width = 170;
+            h.Children.Add(Kit.Group(
+                Kit.Row("Game mode", "when something goes fullscreen heft gets quiet: no sounds, slower polling, nothing refreshing in the background", Sw(_s.GameMode, v => _s.GameMode = v)),
+                Kit.Row("Hold notifications", "they wait in the bell and you get one summary when you're out", Sw(_s.GameHoldToasts, v => _s.GameHoldToasts = v)),
+                Kit.Row("Ignore the Windows key", "so tapping it mid game doesn't pop Start", Sw(_s.GameBlockWin, v => _s.GameBlockWin = v)),
+                Kit.Row("Not games", "apps that go fullscreen but shouldn't count", skip)));
+
             h.Children.Add(Kit.Header("Sounds"));
             var events = new StackPanel();
             foreach (var (id, label) in Sfx.Events)

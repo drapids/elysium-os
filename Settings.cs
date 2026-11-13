@@ -156,6 +156,10 @@ namespace Heft
         public Dictionary<string, bool> SoundEvents { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         public bool StartEarly { get; set; } = true;
+        public bool GameMode { get; set; } = true;
+        public bool GameHoldToasts { get; set; } = true;
+        public bool GameBlockWin { get; set; } = false;
+        public List<string> GameSkip { get; set; } = new();
         public string StartupPath { get; set; } = "";
 
         public bool ShelfPinned { get; set; } = false;
