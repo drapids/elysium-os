@@ -168,6 +168,7 @@ namespace Heft
             _launcher = new Launcher(_s, _catalog, _apps, _cmds, _clips, _notes, _lib);
             _drop = new Panels(_s, _catalog, _activity, _audio, _notes, _clips, _cmds, _np);
             _dock = new ArcDock(_s, _catalog);
+            _dock.Badge = DockBadge;
             _panel = new SidePanel(_s, _catalog);
             _startData = new StartData(_apps);
             _start = new StartScreen(_s, _catalog, _apps, _startData, _cmds, _notes, _np, _activity, _lib);

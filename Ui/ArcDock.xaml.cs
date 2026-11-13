@@ -262,6 +262,8 @@ namespace Heft.Ui
             return layer;
         }
 
+        public Func<WheelItem, int>? Badge;
+
         void Build(Tile t)
         {
             t.Built = true;
@@ -298,6 +300,26 @@ namespace Heft.Ui
                 rootGrid.Children.Add(tile);
             }
             rootGrid.Children.Add(img);
+            int badge = item.Kind == "settings" ? 0 : Badge?.Invoke(item) ?? 0;
+            if (badge > 0)
+            {
+                var count = new TextBlock { Text = badge > 9 ? "9+" : badge.ToString(), FontSize = Math.Max(9, _size * 0.17), FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                var pip = new Border
+                {
+                    MinWidth = _size * 0.3,
+                    Height = _size * 0.3,
+                    CornerRadius = new CornerRadius(_size * 0.15),
+                    Padding = new Thickness(_size * 0.05, 0, _size * 0.05, 0),
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(0, -_size * 0.04, -_size * 0.04, 0),
+                    Background = new SolidColorBrush(Color.FromRgb(0xFF, 0x45, 0x3A)),
+                    BorderThickness = new Thickness(1.5),
+                    BorderBrush = new SolidColorBrush(Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF)),
+                    Child = count
+                };
+                rootGrid.Children.Add(pip);
+            }
 
             t.Root = rootGrid;
             t.Img = img;

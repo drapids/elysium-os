@@ -82,6 +82,28 @@ namespace Heft
                 foreach (var b in _bars) b.SetLastDownload("");
         }
 
+        readonly System.Collections.Generic.Dictionary<string, string> _lnkExe = new(StringComparer.OrdinalIgnoreCase);
+
+        int DockBadge(WheelItem item)
+        {
+            if (_notes.Unseen == 0 || item.Path.Length == 0) return 0;
+            string name = item.Name;
+            if (!_lnkExe.TryGetValue(item.Path, out var exe))
+            {
+                exe = Path.GetFileNameWithoutExtension(item.Path);
+                if (item.Path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+                {
+                    var target = ShellLink.Target(item.Path);
+                    if (target != null) exe = Path.GetFileNameWithoutExtension(target);
+                }
+                _lnkExe[item.Path] = exe;
+            }
+            return _notes.History.Count(n => !n.Seen && n.App.Length > 0 &&
+                (n.App.Equals(name, StringComparison.OrdinalIgnoreCase) || n.App.Equals(exe, StringComparison.OrdinalIgnoreCase) ||
+                 (name.Length > 3 && n.App.StartsWith(name, StringComparison.OrdinalIgnoreCase)) ||
+                 (exe.Length > 3 && n.AppId.IndexOf(exe, StringComparison.OrdinalIgnoreCase) >= 0)));
+        }
+
         void SyncBarLayout()
         {
             string sig = string.Join(",", _s.BarLayout);
