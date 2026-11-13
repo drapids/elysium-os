@@ -71,7 +71,7 @@ namespace Heft.Ui
             _surface = Glass.Surface(16);
             var root = new DockPanel();
 
-            var header = new Grid { Margin = new Thickness(14, 12, 10, 10) };
+            var header = new Grid { Margin = new Thickness(14, 12, 10, 6) };
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var tabScroll = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = _tabs, Focusable = false };
@@ -81,26 +81,30 @@ namespace Heft.Ui
                 e.Handled = true;
             };
             header.Children.Add(tabScroll);
+            var close = Kit.Plain("\uE8BB", HideShelf, "close", 10);
+            close.Margin = new Thickness(6, 0, 0, 0);
+            Grid.SetColumn(close, 1);
+            header.Children.Add(close);
+            DockPanel.SetDock(header, Dock.Top);
+            root.Children.Add(header);
 
+            var tools = new Grid { Margin = new Thickness(18, 0, 16, 8) };
+            tools.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            tools.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            tools.Children.Add(_crumbs);
             var right = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 0, 0, 0) };
-            _filter = Kit.Field("", "filter", _ => { });
-            _filter.Width = 170;
+            _filter = Kit.Field("", "filter (or just start typing)", _ => { });
+            _filter.Width = 200;
             _filter.TextChanged += (_, _) => Render();
             right.Children.Add(_filter);
             _sort = Kit.Push("", CycleSort);
             _sort.Margin = new Thickness(8, 0, 0, 0);
             right.Children.Add(_sort);
-            var close = Kit.Plain("\uE8BB", HideShelf, "close", 10);
-            close.Margin = new Thickness(6, 0, 0, 0);
-            right.Children.Add(close);
             Grid.SetColumn(right, 1);
-            header.Children.Add(right);
-            DockPanel.SetDock(header, Dock.Top);
-            root.Children.Add(header);
+            tools.Children.Add(right);
+            DockPanel.SetDock(tools, Dock.Top);
+            root.Children.Add(tools);
 
-            _crumbs.Margin = new Thickness(18, 0, 16, 8);
-            DockPanel.SetDock(_crumbs, Dock.Top);
-            root.Children.Add(_crumbs);
             DockPanel.SetDock(_banner, Dock.Top);
             root.Children.Add(_banner);
             DockPanel.SetDock(_drops, Dock.Top);
@@ -306,7 +310,7 @@ namespace Heft.Ui
             g.Margin = new Thickness(0, 0, 6, 0);
             sp.Children.Add(g);
             sp.Children.Add(Kit.Text(label, 12.5, on, on ? "OnAccent" : "Text"));
-            var b = new Border { Child = sp, CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 5, 11, 6), Margin = new Thickness(0, 0, 4, 0), Cursor = Cursors.Hand, AllowDrop = true };
+            var b = new Border { Child = sp, CornerRadius = new CornerRadius(8), Padding = new Thickness(9, 5, 10, 6), Margin = new Thickness(0, 0, 3, 0), Cursor = Cursors.Hand, AllowDrop = true };
             if (on) b.SetResourceReference(Border.BackgroundProperty, "AccentFill");
             else
             {
@@ -726,7 +730,7 @@ namespace Heft.Ui
             if (q.Length > 0) folders = folders.Where(f => Fuzzy.Score(q, f.Name) > 0).OrderByDescending(f => Fuzzy.Score(q, f.Name)).ToList();
             foreach (var f in folders) _content.Children.Add(Spine(f.Path, f.Name));
 
-            var add = new Border { Width = 44, Height = 176, CornerRadius = new CornerRadius(6), Margin = new Thickness(4, 8, 4, 0), BorderThickness = new Thickness(1.5), Cursor = Cursors.Hand, ToolTip = "add a folder to the catalog (or drop one here)" };
+            var add = new Border { Width = 44, Height = 176, CornerRadius = new CornerRadius(6), Margin = new Thickness(4, 50, 4, 0), BorderThickness = new Thickness(1.5), Cursor = Cursors.Hand, ToolTip = "add a folder to the catalog (or drop one here)" };
             add.SetResourceReference(Border.BorderBrushProperty, "GroupStroke");
             add.Child = Kit.Icon("\uE710", 14, "SubText");
             add.MouseLeftButtonUp += (_, _) =>
@@ -774,7 +778,7 @@ namespace Heft.Ui
             {
                 Text = name,
                 Foreground = Brushes.White,
-                FontSize = 12.5,
+                FontSize = 13,
                 FontWeight = FontWeights.SemiBold,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 MaxWidth = 130,
@@ -784,13 +788,56 @@ namespace Heft.Ui
             };
             inner.Children.Add(label);
 
+            int count = -1;
+            try
+            {
+                count = Directory.EnumerateFileSystemEntries(path).Take(999).Count();
+            }
+            catch
+            {
+            }
+            var tagText = new StackPanel();
+            var tagName = new TextBlock { Text = name, FontSize = 13, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center };
+            tagName.SetResourceReference(TextBlock.ForegroundProperty, "Text");
+            tagText.Children.Add(tagName);
+            if (count >= 0)
+            {
+                var tagSub = new TextBlock { Text = count >= 999 ? "999+ items" : $"{count} item{(count == 1 ? "" : "s")}", FontSize = 11, TextAlignment = TextAlignment.Center };
+                tagSub.SetResourceReference(TextBlock.ForegroundProperty, "SubText");
+                tagText.Children.Add(tagSub);
+            }
+            var tag = new Border
+            {
+                Child = tagText,
+                CornerRadius = new CornerRadius(9),
+                Padding = new Thickness(10, 5, 10, 6),
+                BorderThickness = new Thickness(1),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(-90, -46, -90, 0),
+                Opacity = 0,
+                IsHitTestVisible = false,
+                RenderTransformOrigin = new Point(0.5, 1)
+            };
+            tag.SetResourceReference(Border.BackgroundProperty, "PillBg");
+            tag.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
+            var tagSpin = new RotateTransform(-90);
+            var tagScale = new ScaleTransform(0.6, 0.6);
+            var tagMove = new TranslateTransform(0, 70);
+            var tagGroup = new TransformGroup();
+            tagGroup.Children.Add(tagScale);
+            tagGroup.Children.Add(tagSpin);
+            tagGroup.Children.Add(tagMove);
+            tag.RenderTransform = tagGroup;
+            inner.Children.Add(tag);
+
             var book = new Border
             {
                 Width = width,
                 Height = 176,
                 CornerRadius = new CornerRadius(5, 5, 4, 4),
                 Background = grad,
-                Margin = new Thickness(3, 8, 3, 0),
+                Margin = new Thickness(3, 50, 3, 0),
                 Child = inner,
                 Cursor = Cursors.Hand,
                 AllowDrop = true,
@@ -810,6 +857,15 @@ namespace Heft.Ui
             {
                 _hovered = book;
                 _hoveredEntry = entry;
+                Panel.SetZIndex(book, 50);
+                var spring = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 };
+                var t = TimeSpan.FromMilliseconds(320);
+                tagSpin.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, t) { EasingFunction = spring });
+                tagScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, t) { EasingFunction = spring });
+                tagScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, t) { EasingFunction = spring });
+                tagMove.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, t) { EasingFunction = ease });
+                tag.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(160)));
+                label.BeginAnimation(OpacityProperty, new DoubleAnimation(0.25, TimeSpan.FromMilliseconds(160)));
                 lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-10, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease });
                 tilt.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-3, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease });
             };
@@ -822,6 +878,14 @@ namespace Heft.Ui
                 }
                 lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
                 tilt.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
+                Panel.SetZIndex(book, 0);
+                var t = TimeSpan.FromMilliseconds(180);
+                tagSpin.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-90, t) { EasingFunction = ease });
+                tagScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.6, t));
+                tagScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.6, t));
+                tagMove.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(70, t) { EasingFunction = ease });
+                tag.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
+                label.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
             };
             Interactive(book, entry, () => Portal(path));
             book.DragEnter += (_, e) =>

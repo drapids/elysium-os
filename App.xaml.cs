@@ -313,6 +313,8 @@ namespace Heft
             b.MediaPrev += () => _ = MediaAfter(_np.Previous());
             b.AttentionClicked += () => _activity.FocusAttention();
             b.TimerClicked += () => _launcher.Open("");
+            b.CopyClicked += () => _activity.FocusCopy();
+            b.DownloadClicked += () => Files.Open(Library.DownloadsDir);
             return b;
         }
 

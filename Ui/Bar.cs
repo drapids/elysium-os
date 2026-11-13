@@ -84,6 +84,8 @@ namespace Heft.Ui
         public event Action? MediaPrev;
         public event Action? AttentionClicked;
         public event Action? TimerClicked;
+        public event Action? CopyClicked;
+        public event Action? DownloadClicked;
 
         public Bar(Settings s, Display d)
         {
@@ -132,6 +134,8 @@ namespace Heft.Ui
                 _pressed = false;
                 root_ReleaseCapture();
                 if (_mode == "attention") AttentionClicked?.Invoke();
+                else if (_mode == "copy") CopyClicked?.Invoke();
+                else if (_mode == "download") DownloadClicked?.Invoke();
                 else if (_mode == "timer") TimerClicked?.Invoke();
                 else PillClicked?.Invoke(this);
             };
@@ -575,7 +579,7 @@ namespace Heft.Ui
                     dg.Margin = new Thickness(0, 0, 8, 0);
                     row.Children.Add(dg);
                     _pTitle = Kit.Text("", 12, true);
-                    _pTitle.MaxWidth = 260;
+                    _pTitle.MaxWidth = 340;
                     row.Children.Add(_pTitle);
                     _pSub = Kit.Text("", 11.5, false, "SubText");
                     _pSub.Margin = new Thickness(10, 0, 0, 0);
@@ -674,7 +678,7 @@ namespace Heft.Ui
                 case "copy":
                     if (st.Copy == null) break;
                     if (_pTitle != null) _pTitle.Text = st.Copy.Name;
-                    if (_pSub != null) _pSub.Text = st.Copy.Percent >= 0 ? $"{st.Copy.Percent:0}%" : "";
+                    if (_pSub != null) _pSub.Text = (st.Copy.Percent >= 0 ? $"{st.Copy.Percent:0}%" : "") + (st.Copy.Detail.Length > 0 ? "  \u00b7  " + st.Copy.Detail : "") + "  \u00b7  click for pause / cancel";
                     SetFill(st.Copy.Percent >= 0 ? st.Copy.Percent / 100 : -1);
                     break;
                 case "attention":

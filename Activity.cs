@@ -230,29 +230,53 @@ namespace Heft
             return best;
         }
 
+        IntPtr _copyWindow;
+
+        public void FocusCopy()
+        {
+            var h = _copyWindow != IntPtr.Zero && Native.IsWindow(_copyWindow) ? _copyWindow : Native.FindWindow("OperationStatusWindow", null);
+            if (h != IntPtr.Zero) Native.Focus(h);
+        }
+
         Transfer? PollCopy()
         {
             IntPtr h = Native.FindWindow("OperationStatusWindow", null);
+            _copyWindow = h;
             if (h == IntPtr.Zero) return null;
+            var t = new Transfer { Name = "copying files" };
             try
             {
                 var el = AutomationElement.FromHandle(h);
                 var bar = el.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ProgressBar));
-                double pct = -1;
                 if (bar != null && bar.TryGetCurrentPattern(RangeValuePattern.Pattern, out var pat))
                 {
                     var rv = (RangeValuePattern)pat;
                     double max = rv.Current.Maximum;
-                    pct = max > 0 ? rv.Current.Value / max * 100 : -1;
+                    if (max > 0) t.Percent = rv.Current.Value / max * 100;
                 }
-                string title = Native.Title(h);
-                if (string.IsNullOrWhiteSpace(title)) title = "copying";
-                return new Transfer { Name = title, Percent = pct };
+                var texts = el.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text));
+                foreach (AutomationElement x in texts)
+                {
+                    string name = x.Current.Name ?? "";
+                    if (name.Length == 0) continue;
+                    string low = name.ToLowerInvariant();
+                    if (low.StartsWith("copying") || low.StartsWith("moving") || low.StartsWith("deleting") || low.StartsWith("extracting") || low.StartsWith("compressing"))
+                    {
+                        t.Name = name;
+                        break;
+                    }
+                }
+                if (t.Percent < 0)
+                {
+                    var m = System.Text.RegularExpressions.Regex.Match(Native.Title(h), @"(\d+)%");
+                    if (m.Success) t.Percent = double.Parse(m.Groups[1].Value);
+                }
+                if (Native.Title(h).Contains("paused", StringComparison.OrdinalIgnoreCase)) t.Detail = "paused";
             }
             catch
             {
-                return new Transfer { Name = "copying files" };
             }
+            return t;
         }
 
         void PollNet()
