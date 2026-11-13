@@ -94,43 +94,64 @@ namespace Heft
             }
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        struct BITMAPINFO
+        {
+            public BITMAPINFOHEADER bmiHeader;
+            public uint bmiColors;
+        }
+
+        [DllImport("gdi32.dll")]
+        static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint lines, [Out] byte[]? bits, ref BITMAPINFO info, uint usage);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetDC(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
         static BitmapSource? FromHBitmap(IntPtr hbm)
         {
             var ds = new DIBSECTION();
             if (GetObject(hbm, Marshal.SizeOf<DIBSECTION>(), ref ds) == 0) return null;
-
             int w = ds.dsBm.bmWidth;
-            int h = ds.dsBm.bmHeight;
-            int stride = ds.dsBm.bmWidthBytes;
+            int h = Math.Abs(ds.dsBm.bmHeight);
+            if (w <= 0 || h <= 0) return null;
 
-            if (ds.dsBm.bmBits == IntPtr.Zero || ds.dsBm.bmBitsPixel != 32 || w <= 0 || h <= 0)
+            var info = new BITMAPINFO
             {
-                var fallback = Imaging.CreateBitmapSourceFromHBitmap(hbm, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                fallback.Freeze();
-                return fallback;
-            }
-
-            var bytes = new byte[stride * h];
-            Marshal.Copy(ds.dsBm.bmBits, bytes, 0, bytes.Length);
-
-            if (ds.dsBmih.biHeight > 0)
-            {
-                var row = new byte[stride];
-                for (int top = 0, bottom = h - 1; top < bottom; top++, bottom--)
+                bmiHeader = new BITMAPINFOHEADER
                 {
-                    Buffer.BlockCopy(bytes, top * stride, row, 0, stride);
-                    Buffer.BlockCopy(bytes, bottom * stride, bytes, top * stride, stride);
-                    Buffer.BlockCopy(row, 0, bytes, bottom * stride, stride);
+                    biSize = (uint)Marshal.SizeOf<BITMAPINFOHEADER>(),
+                    biWidth = w,
+                    biHeight = -h,
+                    biPlanes = 1,
+                    biBitCount = 32,
+                    biCompression = 0
                 }
+            };
+            int stride = w * 4;
+            var bytes = new byte[stride * h];
+            IntPtr dc = GetDC(IntPtr.Zero);
+            try
+            {
+                if (GetDIBits(dc, hbm, 0, (uint)h, bytes, ref info, 0) == 0) return null;
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, dc);
             }
 
             bool alpha = false;
-            for (int i = 3; i < bytes.Length; i += 4)
+            if (ds.dsBm.bmBitsPixel == 32)
             {
-                if (bytes[i] != 0)
+                for (int i = 3; i < bytes.Length; i += 4)
                 {
-                    alpha = true;
-                    break;
+                    if (bytes[i] != 0)
+                    {
+                        alpha = true;
+                        break;
+                    }
                 }
             }
 

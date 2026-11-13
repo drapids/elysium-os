@@ -29,6 +29,10 @@ namespace Heft.Ui
                 Apply(w, radius);
             };
             w.SizeChanged += (_, _) => Region(w, radius);
+            w.Loaded += (_, _) =>
+            {
+                if (w.Content is FrameworkElement fe) fe.SizeChanged += (_, _) => Region(w, radius);
+            };
             w.LocationChanged += (_, _) => Region(w, radius);
             Theme.Applied += () => Apply(w, radius);
         }
@@ -47,8 +51,14 @@ namespace Heft.Ui
             if (h == IntPtr.Zero) return;
             if (!Native.GetWindowRect(h, out var r) || r.Width <= 0) return;
             double scale = Native.DpiScaleAt(r.Left + r.Width / 2, r.Top + r.Height / 2);
+            int width = r.Width, height = r.Height;
+            if (w.Content is FrameworkElement fe && fe.ActualWidth > 0 && fe.ActualHeight > 0)
+            {
+                width = Math.Min(width, (int)Math.Ceiling(fe.ActualWidth * scale));
+                height = Math.Min(height, (int)Math.Ceiling(fe.ActualHeight * scale));
+            }
             int d = (int)Math.Round(radius * 2 * scale);
-            IntPtr rgn = d > 0 ? Native.CreateRoundRectRgn(0, 0, r.Width + 1, r.Height + 1, d, d) : IntPtr.Zero;
+            IntPtr rgn = d > 0 ? Native.CreateRoundRectRgn(0, 0, width + 1, height + 1, d, d) : Native.CreateRectRgn(0, 0, width, height);
             Native.SetWindowRgn(h, rgn, true);
         }
 
