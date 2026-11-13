@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +19,9 @@ namespace Heft.Ui
             public readonly Note Note;
             public readonly DispatcherTimer Life = new();
             public bool Dying;
-            public double TargetY;
+            public bool Placed;
+            public double TargetX, TargetY, CurX, CurY;
+            public int LastX = int.MinValue, LastY = int.MinValue;
 
             public ToastWindow(Note n, double seconds)
             {
@@ -32,20 +35,32 @@ namespace Heft.Ui
         }
 
         readonly Settings _s;
-        readonly Func<double> _top;
+        readonly Func<Display, double> _top;
         readonly List<ToastWindow> _open = new();
+        readonly DispatcherTimer _move = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(8) };
+        Display? _display;
 
         public event Action<Note>? Clicked;
 
-        public Toasts(Settings settings, Func<double> top)
+        public Toasts(Settings settings, Func<Display, double> topPx)
         {
             _s = settings;
-            _top = top;
+            _top = topPx;
+            _move.Tick += (_, _) => Step();
         }
 
         public void Show(Note n)
         {
-            if (_open.Count >= 4) Close(_open[0]);
+            var here = Displays.AtCursor();
+            if (_display == null || _display.Index != here.Index || _display.Key != here.Key)
+            {
+                _display = here;
+                foreach (var old in _open)
+                {
+                    old.Placed = false;
+                }
+            }
+            if (_open.Count(t => !t.Dying) >= 4) Close(_open.First(t => !t.Dying));
 
             var w = new ToastWindow(n, Math.Clamp(_s.ToastSeconds, 2, 30));
             var surface = Glass.Surface(14);
@@ -93,17 +108,23 @@ namespace Heft.Ui
                 Close(w);
             };
             w.MouseEnter += (_, _) => w.Life.Stop();
-            w.MouseLeave += (_, _) => w.Life.Start();
+            w.MouseLeave += (_, _) =>
+            {
+                if (!w.Dying) w.Life.Start();
+            };
             w.Life.Tick += (_, _) => Close(w);
 
-            var d = Displays.Primary();
-            double scale = d.Scale;
-            w.Left = d.Work.Right / scale - w.Width - 14;
-            w.Top = _top() + 10;
-            w.Opacity = 0;
+            var d = _display;
+            w.Left = -20000;
+            w.Top = -20000;
+            surface.Opacity = 0;
             w.Show();
+            var h = new WindowInteropHelper(w).Handle;
+            Native.SetWindowPos(h, Native.HWND_TOPMOST, d.Work.Right - (int)(380 * d.Scale), (int)_top(d) + (int)(10 * d.Scale), 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            w.UpdateLayout();
             _open.Add(w);
-            Layout(true);
+            Layout();
+            Step();
             w.Life.Start();
 
             var slide = new TranslateTransform(40, 0);
@@ -115,29 +136,63 @@ namespace Heft.Ui
             {
                 if (!w.Dying) Glass.SetBlur(w, true);
             };
-            w.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            surface.BeginAnimation(UIElement.OpacityProperty, fadeIn);
         }
 
-        void Layout(bool instantForNewest)
+        void Layout()
         {
-            double y = _top() + 10;
-            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var d = _display;
+            if (d == null) return;
+            double y = _top(d) + 10 * d.Scale;
             for (int i = _open.Count - 1; i >= 0; i--)
             {
                 var w = _open[i];
                 if (w.Dying) continue;
+                var h = new WindowInteropHelper(w).Handle;
+                if (h == IntPtr.Zero) continue;
+                Native.GetWindowRect(h, out var r);
+                int width = r.Width > 0 ? r.Width : (int)(360 * d.Scale);
+                int height = r.Height > 0 ? r.Height : (int)(64 * d.Scale);
+                w.TargetX = d.Work.Right - width - (int)(14 * d.Scale);
                 w.TargetY = y;
-                if (instantForNewest && i == _open.Count - 1)
+                if (!w.Placed)
                 {
-                    w.BeginAnimation(Window.TopProperty, null);
-                    w.Top = y;
+                    w.Placed = true;
+                    w.CurX = w.TargetX;
+                    w.CurY = y;
+                }
+                y += height + 8 * d.Scale;
+            }
+            _move.Start();
+        }
+
+        void Step()
+        {
+            bool moving = false;
+            foreach (var w in _open)
+            {
+                if (!w.Placed) continue;
+                var h = new WindowInteropHelper(w).Handle;
+                if (h == IntPtr.Zero) continue;
+                double dx = w.TargetX - w.CurX, dy = w.TargetY - w.CurY;
+                if (Math.Abs(dx) > 0.5 || Math.Abs(dy) > 0.5)
+                {
+                    w.CurX += dx * 0.28;
+                    w.CurY += dy * 0.28;
+                    moving = true;
                 }
                 else
                 {
-                    w.BeginAnimation(Window.TopProperty, new DoubleAnimation(y, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+                    w.CurX = w.TargetX;
+                    w.CurY = w.TargetY;
                 }
-                y += Math.Max(w.ActualHeight, 64) + 8;
+                int x = (int)Math.Round(w.CurX), y = (int)Math.Round(w.CurY);
+                if (x == w.LastX && y == w.LastY) continue;
+                w.LastX = x;
+                w.LastY = y;
+                Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
             }
+            if (!moving) _move.Stop();
         }
 
         void Close(ToastWindow w)
@@ -151,9 +206,10 @@ namespace Heft.Ui
             {
                 _open.Remove(w);
                 w.Close();
-                Layout(false);
+                Layout();
             };
-            w.BeginAnimation(UIElement.OpacityProperty, fade);
+            if (w.Content is UIElement surface) surface.BeginAnimation(UIElement.OpacityProperty, fade);
+            else w.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
         public static void OpenTarget(Note n)
