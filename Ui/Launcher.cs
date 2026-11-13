@@ -215,7 +215,26 @@ namespace Heft.Ui
             Open(text);
         }
 
+        bool _start;
+
+        public void OpenStart()
+        {
+            if (IsVisible && _start)
+            {
+                Dismiss();
+                return;
+            }
+            _start = true;
+            OpenInner(null);
+        }
+
         public void Open(string? text = null)
+        {
+            _start = false;
+            OpenInner(text);
+        }
+
+        void OpenInner(string? text)
         {
             _previous = Native.GetForegroundWindow();
             if (!_apps.Loaded) _apps.Load();
@@ -229,6 +248,7 @@ namespace Heft.Ui
             int wpx = (int)(Width * scale);
             Glass.MovePx(this, d.Bounds.Left + (d.Bounds.Width - wpx) / 2, d.Work.Top + (int)(d.Work.Height * 0.2));
             Activate();
+            if (!IsActive) Native.Focus(new System.Windows.Interop.WindowInteropHelper(this).Handle);
             _box.Focus();
             _box.Text = text ?? "";
             _box.CaretIndex = _box.Text.Length;
@@ -621,6 +641,18 @@ namespace Heft.Ui
                 list.Add(new Result { Header = true, Title = "RECENT" });
                 list.AddRange(recent);
             }
+            if (_start)
+            {
+                list.Add(new Result { Header = true, Title = "ALL APPS" });
+                foreach (var a in _apps.Apps.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)) list.Add(AppResult(a, 1));
+                list.Add(new Result { Header = true, Title = "POWER" });
+                foreach (var id in new[] { "pclock", "sleep", "restart", "shutdown", "signout" })
+                {
+                    var c = _cmds.Get(id);
+                    if (c != null) list.Add(CommandResult(c, 1));
+                }
+                list.Add(new Result { Title = "Windows Start menu", Sub = "the original one (ctrl + esc works too)", Glyph = "\uE782", Run = () => Go(() => Native.Combo(0x11, 0x1B)) });
+            }
             var timer = _notes.ActiveTimer;
             if (timer != null)
             {
@@ -636,7 +668,7 @@ namespace Heft.Ui
                     }
                 });
             }
-            if (list.Count == 0) return Discover("");
+            if (list.Count == 0 || (!_start && list.All(r => r.Header))) return Discover("");
             return list;
         }
 

@@ -38,6 +38,7 @@ namespace Heft
         TaskbarStyler _taskbar = null!;
         WinToasts _wintoasts = null!;
         Hotkeys _keys = null!;
+        KeyHook _keyHook = null!;
 
         ArcDock _dock = null!;
         SidePanel _panel = null!;
@@ -114,6 +115,7 @@ namespace Heft
             if (!_s.TakeOverToasts && _s.BannerBackup.Count > 0) WinToasts.Restore(_s);
             _wintoasts = new WinToasts(_s, n => _notes.Post(n));
             _keys = new Hotkeys();
+            _keyHook = new KeyHook(_s, Dispatcher);
 
             _actions = new ObjectActions(_s, _notes);
             _inspector = new Inspector(_s, _catalog, _actions);
@@ -148,6 +150,7 @@ namespace Heft
             _drop.OpenSettingsPage = tab => _panel.OpenTab(tab);
 
             RegisterCommands();
+            _keyHook.WinTapped += () => _launcher.OpenStart();
 
             _s.Changed += Sync;
             _layoutDelay.Tick += (_, _) =>
@@ -693,6 +696,7 @@ namespace Heft
             Try(() => _s?.SaveNow());
             Try(() => _physics?.Dispose());
             Try(() => _mouse?.Dispose());
+            Try(() => _keyHook?.Dispose());
             Try(() => _taskbar?.Dispose());
             Try(() => _wintoasts?.Dispose());
             Try(() => _lock?.Dispose());

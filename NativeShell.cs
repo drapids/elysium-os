@@ -339,8 +339,8 @@ namespace Heft
             if (hwnd == IntPtr.Zero) return;
             if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
             keybd_event(0x12, 0, 0, UIntPtr.Zero);
-            keybd_event(0x12, 0, 2, UIntPtr.Zero);
             SetForegroundWindow(hwnd);
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);
             BringWindowToTop(hwnd);
         }
 

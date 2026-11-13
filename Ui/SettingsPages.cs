@@ -122,6 +122,7 @@ namespace Heft.Ui
                     _s.TaskbarHide = v;
                     Touch();
                 })),
+                Kit.Row("Windows key opens heft", "a glass start menu with your pins, recents and every app. ctrl + esc still opens the old one", Sw(_s.WinKeyLauncher, v => _s.WinKeyLauncher = v)),
                 Kit.Row("Center the icons", null, Sw(_s.TaskbarCenter, v => _s.TaskbarCenter = v)),
                 Kit.Row("Hide the Start button", "the windows key still works", Sw(_s.HideStart, v => _s.HideStart = v)),
                 Kit.Row("Hide the tray", "clock and tray icons. the top bar covers it", Sw(_s.HideTray, v => _s.HideTray = v))));

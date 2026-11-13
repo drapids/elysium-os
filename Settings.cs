@@ -96,6 +96,7 @@ namespace Heft
         public bool GestureMedia { get; set; } = true;
         public bool TitleOpacity { get; set; } = true;
         public bool TitlePin { get; set; } = true;
+        public bool WinKeyLauncher { get; set; } = true;
 
         public List<string> ShelfItems { get; set; } = new();
         public Dictionary<string, int> Bookmarks { get; set; } = new(StringComparer.OrdinalIgnoreCase);
