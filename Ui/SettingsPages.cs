@@ -7,7 +7,7 @@ using Microsoft.Win32;
 
 namespace Heft.Ui
 {
-    internal sealed class SettingsPages
+    internal sealed partial class SettingsPages
     {
         public static readonly (string id, string label)[] Tabs =
         {
@@ -51,8 +51,18 @@ namespace Heft.Ui
 
         static string Pct(double v) => $"{Math.Round(v * 100)}%";
 
+        string _page = "";
+        Panel? _host;
+
+        void Rebuild()
+        {
+            if (_host != null) Build(_page, _host);
+        }
+
         public void Build(string page, Panel host)
         {
+            _page = page;
+            _host = host;
             host.Children.Clear();
             switch (page)
             {
@@ -542,35 +552,6 @@ namespace Heft.Ui
                 return (UIElement)Kit.Row(c.label, null, right);
             }).ToArray();
             h.Children.Add(Kit.Group(rows));
-        }
-
-        void Keys(Panel h)
-        {
-            h.Children.Add(Kit.Header("Shortcuts"));
-            var rows = Hotkeys.Defaults.Select(d =>
-            {
-                string id = d.id;
-                var field = Kit.Field(Hotkeys.Spec(_s, id), d.fallback, v =>
-                {
-                    v = v.Trim();
-                    if (v.Equals(d.fallback, StringComparison.OrdinalIgnoreCase)) _s.Keys.Remove(id);
-                    else _s.Keys[id] = v;
-                    Touch();
-                });
-                field.Width = 150;
-                return (UIElement)Kit.Row(d.label, null, field);
-            }).ToArray();
-            h.Children.Add(Kit.Group(rows));
-            var cap = Kit.Caption("type it like Ctrl+Alt+Space or Win+Shift+S. leave it empty to turn a shortcut off");
-            cap.Margin = new Thickness(14, 6, 14, 0);
-            h.Children.Add(cap);
-
-            var errors = _keyErrors().ToList();
-            if (errors.Count > 0)
-            {
-                h.Children.Add(Kit.Header("Didn't work"));
-                h.Children.Add(Kit.Group(errors.Select(e => (UIElement)Kit.Row(e, null, null)).ToArray()));
-            }
         }
 
         void Share(Panel h)

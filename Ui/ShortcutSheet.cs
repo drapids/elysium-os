@@ -126,6 +126,15 @@ namespace Heft.Ui
                 list.Add(new Item { Group = "keys", Label = "Audio profile: " + name, Keys = p.Hotkey, Run = () => _run("profile:" + name) });
             }
 
+            foreach (var ck in _s.CustomKeys.Where(c => c.Keys.Length > 0))
+            {
+                string cid = ck.Id;
+                string label = ck.Label.Length > 0 ? ck.Label : System.IO.Path.GetFileNameWithoutExtension(ck.Target.TrimEnd('\\'));
+                if (label.Length == 0) label = ck.Target;
+                list.Add(new Item { Group = "keys", Label = label, Keys = ck.Keys, Run = () => _run("custom:" + cid) });
+            }
+            foreach (var kv in _s.Remaps) list.Add(new Item { Group = "keys", Label = "Acts like " + kv.Value, Keys = kv.Key });
+
             list.Add(new Item { Group = "mouse", Label = "Make a window see-through", Keys = "scroll its title bar", Run = null });
             list.Add(new Item { Group = "mouse", Label = "Pin a window on top", Keys = "middle-click its title bar" });
             list.Add(new Item { Group = "mouse", Label = "Stack two windows into tabs", Keys = "drag a title bar onto another, hold" });

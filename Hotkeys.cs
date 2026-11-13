@@ -35,6 +35,7 @@ namespace Heft
 
         readonly HwndSource _source;
         readonly Dictionary<int, Action> _actions = new();
+        readonly HashSet<(uint, uint)> _mine = new();
         int _next = 100;
 
         public List<string> Failed { get; } = new();
@@ -58,6 +59,7 @@ namespace Heft
         {
             foreach (var id in _actions.Keys) Native.UnregisterHotKey(_source.Handle, id);
             _actions.Clear();
+            _mine.Clear();
             Failed.Clear();
         }
 
@@ -76,6 +78,17 @@ namespace Heft
                 return false;
             }
             _actions[id] = action;
+            _mine.Add((mods, vk));
+            return true;
+        }
+
+        public bool Free(string spec)
+        {
+            if (!TryParse(spec, out uint mods, out uint vk)) return false;
+            if (_mine.Contains((mods, vk))) return true;
+            const int probe = 0xBFF0;
+            if (!Native.RegisterHotKey(_source.Handle, probe, mods | Native.MOD_NOREPEAT, vk)) return false;
+            Native.UnregisterHotKey(_source.Handle, probe);
             return true;
         }
 

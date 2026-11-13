@@ -31,6 +31,15 @@ namespace Heft
         public DateTime Last { get; set; }
     }
 
+    public sealed class CustomKey
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString("N")[..10];
+        public string Keys { get; set; } = "";
+        public string Kind { get; set; } = "app";
+        public string Target { get; set; } = "";
+        public string Label { get; set; } = "";
+    }
+
     public sealed class CustomCommand
     {
         public string Alias { get; set; } = "";
@@ -151,6 +160,7 @@ namespace Heft
 
         public bool ShelfPinned { get; set; } = false;
         public bool DropSlit { get; set; } = true;
+        public bool ShelfTakeOut { get; set; } = true;
 
         public bool Lerp { get; set; } = false;
         public double LerpLag { get; set; } = 0.45;
@@ -166,6 +176,9 @@ namespace Heft
         public List<string> VersionFolders { get; set; } = new();
         public int VersionKeep { get; set; } = 20;
         public int ShareMinutes { get; set; } = 10;
+
+        public List<CustomKey> CustomKeys { get; set; } = new();
+        public Dictionary<string, string> Remaps { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         public List<WheelItem> Pinned { get; set; } = new();
         public List<string> Hidden { get; set; } = new();
@@ -201,6 +214,8 @@ namespace Heft
                         s.SoundEvents = new Dictionary<string, bool>(s.SoundEvents ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.StackedAway ??= new List<PocketEntry>();
                         s.VersionFolders ??= new List<string>();
+                        s.CustomKeys ??= new List<CustomKey>();
+                        s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         return s;
                     }
                 }
