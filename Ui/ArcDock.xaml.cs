@@ -68,7 +68,7 @@ namespace Heft.Ui
         int _focus = -1;
 
         public event Action? SettingsRequested;
-        public Action<Obj, Rect?>? Inspect;
+        internal Action<Obj, Rect?>? Inspect;
 
         string? _sideOverride;
 
@@ -170,7 +170,7 @@ namespace Heft.Ui
             }
         }
 
-        public void ShowDock(bool byHover, bool toggle, Display? display = null, string? side = null)
+        internal void ShowDock(bool byHover, bool toggle, Display? display = null, string? side = null)
         {
             if (IsVisible && !_closing)
             {

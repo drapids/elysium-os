@@ -12,7 +12,7 @@ namespace Heft.Ui
         string _side = "right";
         Display? _display;
 
-        public Display? Display => _display;
+        internal Display? Display => _display;
         public string Side => _side;
 
         public event Action? DockRequested;
@@ -65,7 +65,7 @@ namespace Heft.Ui
             Place();
         }
 
-        public void SetEdge(Display d, string side)
+        internal void SetEdge(Display d, string side)
         {
             _display = d;
             _side = side;

@@ -152,9 +152,9 @@ namespace Heft.Ui
             _stats.Margin = new Thickness(0, 0, 12, 0);
             _right.Children.Add(_stats);
 
-            _clipIcon = Icon("\uE77F", "clipboard. click for history", () => ClipClicked?.Invoke());
-            _focusIcon = Icon("\uE708", "focus mode", () => FocusClicked?.Invoke());
-            _lockIcon = Icon("\uE72E", "cursor lock (ctrl + alt + l)", () => LockClicked?.Invoke());
+            _clipIcon = AddIcon("\uE77F", "clipboard. click for history", () => ClipClicked?.Invoke());
+            _focusIcon = AddIcon("\uE708", "focus mode", () => FocusClicked?.Invoke());
+            _lockIcon = AddIcon("\uE72E", "cursor lock (ctrl + alt + l)", () => LockClicked?.Invoke());
 
             var vol = new StackPanel { Orientation = Orientation.Horizontal, Background = Brushes.Transparent, Cursor = Cursors.Hand, Margin = new Thickness(4, 0, 6, 0), ToolTip = "AudioFlow. scroll the bar for volume" };
             _volIcon = Kit.Icon("\uE767", 12.5);
@@ -281,7 +281,7 @@ namespace Heft.Ui
             if (_root.IsMouseCaptured) _root.ReleaseMouseCapture();
         }
 
-        TextBlock Icon(string glyph, string tip, Action click)
+        TextBlock AddIcon(string glyph, string tip, Action click)
         {
             var t = Kit.Icon(glyph, 12.5);
             var host = new Border { Child = t, Background = Brushes.Transparent, Padding = new Thickness(5, 2, 5, 2), Cursor = Cursors.Hand, ToolTip = tip, Visibility = Visibility.Collapsed };
