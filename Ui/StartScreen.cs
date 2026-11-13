@@ -177,6 +177,8 @@ namespace Heft.Ui
             }
         }
 
+        public void MarkDirty() => _dirty = true;
+
         public void Prewarm()
         {
             if (_warm || _shown) return;

@@ -169,6 +169,15 @@ namespace Heft
         public Dictionary<string, bool> ExtEnabled { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public bool ExtSeeded { get; set; }
 
+        public string AccentMode { get; set; } = "default";
+        public string AccentHex { get; set; } = "#0A84FF";
+        public double GlassAlpha { get; set; } = 1.0;
+        public double CornerScale { get; set; } = 1.0;
+        public string UiFontName { get; set; } = "";
+        public double AnimScale { get; set; } = 1.0;
+        public Dictionary<string, string> MonitorTints { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public string IconPack { get; set; } = "";
+
         public bool Lerp { get; set; } = false;
         public double LerpLag { get; set; } = 0.45;
         public double LerpWobble { get; set; } = 0.25;
@@ -223,6 +232,7 @@ namespace Heft
                         s.VersionFolders ??= new List<string>();
                         s.CustomKeys ??= new List<CustomKey>();
                         s.Palette ??= new List<string>();
+                        s.MonitorTints = new Dictionary<string, string>(s.MonitorTints ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         s.ExtEnabled = new Dictionary<string, bool>(s.ExtEnabled ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         return s;

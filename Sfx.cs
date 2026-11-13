@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -115,6 +116,31 @@ namespace Heft
             }
         }
 
+        public static readonly string CustomRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "sounds");
+
+        public static List<(string id, string label)> AllPacks()
+        {
+            var list = Packs.ToList();
+            try
+            {
+                if (Directory.Exists(CustomRoot))
+                    foreach (var d in Directory.EnumerateDirectories(CustomRoot))
+                    {
+                        string name = Path.GetFileName(d);
+                        if (!list.Any(p => p.id.Equals(name, StringComparison.OrdinalIgnoreCase))) list.Add((name, name));
+                    }
+            }
+            catch
+            {
+            }
+            return list;
+        }
+
+        public static void Forget()
+        {
+            lock (Gate) Raw.Clear();
+        }
+
         static byte[]? Load(string pack, string id)
         {
             string key = pack + "-" + id;
@@ -122,6 +148,18 @@ namespace Heft
             byte[]? data = null;
             try
             {
+                string custom = Path.Combine(CustomRoot, pack, id + ".wav");
+                if (File.Exists(custom))
+                {
+                    data = File.ReadAllBytes(custom);
+                    Raw[key] = data;
+                    return data;
+                }
+                if (Directory.Exists(Path.Combine(CustomRoot, pack)) && !Packs.Any(p => p.id == pack))
+                {
+                    Raw[key] = null;
+                    return Load("glass", id);
+                }
                 using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("heft.sound." + key);
                 if (stream == null && pack != "glass")
                 {

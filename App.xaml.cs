@@ -101,7 +101,10 @@ namespace Heft
 
             _s = Settings.Load();
             Sfx.Init(_s, () => _np != null && _np.Playing);
+            Theme.Configure(_s);
+            IconCache.Pack = _s.IconPack;
             Theme.Apply(_s.Theme);
+            Task.Run(IconCache.TrimDisk);
             HealStartup();
             SystemEvents.UserPreferenceChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() => Theme.Apply(_s.Theme)));
 
@@ -200,6 +203,11 @@ namespace Heft
             pages.Cmds = _cmds;
             _ext = new ExtHost(_s, _cmds, _notes, _np);
             pages.Ext = _ext;
+            pages.IconsChanged = () =>
+            {
+                _catalog.Icons.Clear();
+                _start.MarkDirty();
+            };
             pages.KeyFree = spec => _keys.Free(spec);
             pages.PauseKeys = on =>
             {

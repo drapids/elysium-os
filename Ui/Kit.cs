@@ -9,6 +9,29 @@ using System.Windows.Media.Animation;
 
 namespace Heft.Ui
 {
+    internal sealed class SpringEase : EasingFunctionBase
+    {
+        public double Damping { get; set; } = 0.78;
+        public double Stiffness { get; set; } = 9.5;
+
+        protected override double EaseInCore(double t)
+        {
+            double u = 1 - t;
+            double zeta = Math.Clamp(Damping, 0.2, 1);
+            double w = Stiffness;
+            double x;
+            if (zeta >= 0.999) x = 1 - (1 + w * u) * Math.Exp(-w * u);
+            else
+            {
+                double wd = w * Math.Sqrt(1 - zeta * zeta);
+                x = 1 - Math.Exp(-zeta * w * u) * (Math.Cos(wd * u) + zeta * w / wd * Math.Sin(wd * u));
+            }
+            return 1 - x;
+        }
+
+        protected override Freezable CreateInstanceCore() => new SpringEase { Damping = Damping, Stiffness = Stiffness };
+    }
+
     internal static class Glass
     {
         sealed class State
@@ -33,18 +56,18 @@ namespace Heft.Ui
             w.ResizeMode = ResizeMode.NoResize;
             w.UseLayoutRounding = true;
             w.SetResourceReference(Control.FontFamilyProperty, "UiFont");
-            Of(w).Radius = radius;
+            Of(w).Radius = radius * Theme.Corner;
 
             w.SourceInitialized += (_, _) =>
             {
                 var h = new WindowInteropHelper(w).Handle;
                 Native.MakeToolWindow(h, noActivate);
-                Region(w, radius);
+                Region(w, Of(w).Radius);
             };
-            w.SizeChanged += (_, _) => Region(w, radius);
+            w.SizeChanged += (_, _) => Region(w, Of(w).Radius);
             w.Loaded += (_, _) =>
             {
-                if (w.Content is FrameworkElement fe) fe.SizeChanged += (_, _) => Region(w, radius);
+                if (w.Content is FrameworkElement fe) fe.SizeChanged += (_, _) => Region(w, Of(w).Radius);
             };
             Theme.Applied += () =>
             {
@@ -79,7 +102,8 @@ namespace Heft.Ui
             w.UpdateLayout();
             Region(w, st.Radius);
 
-            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            ms = (int)(ms * Theme.Speed);
+            var ease = new SpringEase();
             var tt = new TranslateTransform(0, fromY);
             var sc = new ScaleTransform(fromScale, fromScale);
             var g = new TransformGroup();
@@ -110,7 +134,7 @@ namespace Heft.Ui
             }
             Sfx.Play("close");
             SetBlur(w, false);
-            var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(ms));
+            var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(ms * Theme.Speed));
             fade.Completed += (_, _) =>
             {
                 if (st.Token != token) return;
@@ -139,6 +163,7 @@ namespace Heft.Ui
 
         public static Border Surface(double radius)
         {
+            radius *= Theme.Corner;
             var b = new Border { CornerRadius = new CornerRadius(radius), BorderThickness = new Thickness(1), ClipToBounds = true };
             b.SetResourceReference(Border.BackgroundProperty, "GlassTint");
             b.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
@@ -154,9 +179,10 @@ namespace Heft.Ui
 
         public static void FadeIn(UIElement e, double fromY = -8, int ms = 180)
         {
+            ms = (int)(ms * Theme.Speed);
             var tt = new TranslateTransform(0, fromY);
             e.RenderTransform = tt;
-            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var ease = new SpringEase();
             tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(fromY, 0, TimeSpan.FromMilliseconds(ms + 60)) { EasingFunction = ease });
             e.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(ms)));
         }

@@ -603,6 +603,17 @@ namespace Heft.Ui
         {
             byte alpha = (byte)Math.Round(Math.Clamp(_s.BarTint, 0, 1) * 255);
             var color = Theme.IsDark ? Color.FromArgb(alpha, 22, 22, 24) : Color.FromArgb(alpha, 246, 246, 248);
+            if (_s.MonitorTints.TryGetValue(Display.Key, out var hex) && hex.Length > 0)
+            {
+                try
+                {
+                    var c = (Color)ColorConverter.ConvertFromString(hex);
+                    color = Color.FromArgb(alpha, c.R, c.G, c.B);
+                }
+                catch
+                {
+                }
+            }
             var brush = new SolidColorBrush(color);
             brush.Freeze();
             _tint.Background = brush;
