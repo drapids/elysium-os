@@ -26,8 +26,6 @@ namespace Heft.Ui
         readonly TextBox _filter;
         bool _shown;
 
-        public Action? OpenKeys;
-
         public ShortcutSheet(Settings s, Func<string, bool> run)
         {
             _s = s;

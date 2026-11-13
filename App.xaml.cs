@@ -647,11 +647,11 @@ namespace Heft
 
         void HealStartup()
         {
-            if (!_s.StartWithWindows || !Startup.CanSet) return;
+            if (!_s.StartWithWindows || !Heft.Startup.CanSet) return;
             string exe = Environment.ProcessPath ?? "";
             if (string.Equals(_s.StartupPath, exe, StringComparison.OrdinalIgnoreCase)) return;
             bool early = _s.StartEarly;
-            Task.Run(() => Startup.Set(true, early)).ContinueWith(t =>
+            Task.Run(() => Heft.Startup.Set(true, early)).ContinueWith(t =>
             {
                 if (t.IsFaulted || !t.Result) return;
                 Dispatcher.BeginInvoke(new Action(() =>
