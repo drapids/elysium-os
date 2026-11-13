@@ -391,6 +391,7 @@ namespace Heft
         public Action<string>? Rename;
         public Action<string>? PinToDock;
         public Action<string>? Browse;
+        public Action<IList<string>>? Share;
 
         public ObjectActions(Settings s, Notifier notes)
         {
@@ -426,6 +427,7 @@ namespace Heft
             if (o.Kind == "file") Add("Open with...", "\uE7AC", "open", () => Launch.Run("rundll32.exe", $"shell32.dll,OpenAs_RunDLL \"{p}\""));
             if (o.Kind == "app" && p.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
                 Add("Run as admin", "\uE7EF", "open", () => Launch.Admin(p));
+            if (o.Kind == "folder" && Projects.IsProject(p)) Add("Open in code editor", "\uE943", "open", () => Projects.OpenInEditor(p));
 
             if (ToShelf != null) Add("Put on the shelf", "\uE7B8", "organize", () => ToShelf(new[] { p }));
             if (ToCollection != null) Add("Add to collection...", "\uE710", "organize", () => ToCollection(new[] { p }, ""));
@@ -441,6 +443,7 @@ namespace Heft
 
             Add("Copy", "\uE8C8", "share", () => Files.CopyFiles(new[] { p }));
             Add("Copy path", "\uE71B", "share", () => Files.CopyText(p));
+            if (Share != null && o.Kind is "file" or "folder") Add("Send to phone", "\uE8EA", "share", () => Share(new[] { p }));
             if (o.Kind is "file" or "folder") Add("Compress to zip", "\uF012", "convert", () =>
             {
                 var z = Files.Zip(new[] { p });

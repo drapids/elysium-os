@@ -124,6 +124,7 @@ namespace Heft.Ui
         public Action<IEnumerable<string>>? ToShelf;
         public Action<string, IEnumerable<string>>? ToCollection;
         public Action<string>? Browse;
+        public Action<IList<string>>? Share;
 
         public Launcher(Settings s, AppCatalog cat, AppIndex apps, Commands cmds, Clips clips, Notifier notes, Library lib)
         {
@@ -762,7 +763,7 @@ namespace Heft.Ui
                     return list.Concat(_apps.Apps.Take(0).Select(a => AppResult(a, 1))).ToList();
             }
             list.Add(new Result { Header = true, Title = "PIPE ACTIONS (left > action)" });
-            foreach (var v in new[] { "open", "reveal", "shelf", "collection <name>", "zip", "copy", "path", "move <folder>", "copyto <folder>", "convert png|jpg", "tag red|blue|...", "delete" })
+            foreach (var v in new[] { "open", "reveal", "shelf", "collection <name>", "zip", "copy", "path", "move <folder>", "copyto <folder>", "convert png|jpg", "tag red|blue|...", "rename trip-{n}", "share", "delete" })
                 list.Add(new Result { Title = v, Glyph = "\uE76C", Run = () => false });
             return list;
         }
@@ -1288,6 +1289,34 @@ namespace Heft.Ui
                         return true;
                     };
                     break;
+                case "rename":
+                    var plan = BulkRename.Plan(Paths(), arg);
+                    if (arg.Length == 0)
+                    {
+                        r.Title = $"{what}  \u2192  rename (type a pattern)";
+                        r.Sub = "{n} counts up, {name} keeps the old name, {date} is when it changed. like trip-{n} or {date} {name}";
+                        r.Run = () => false;
+                        break;
+                    }
+                    var firstOne = plan.FirstOrDefault();
+                    r.Title = plan.Count == 0
+                        ? $"{what}  \u2192  rename: nothing would change"
+                        : $"{plan.Count} item{(plan.Count == 1 ? "" : "s")}  \u2192  {Path.GetFileName(firstOne.from)}  \u2192  {Path.GetFileName(firstOne.to)}{(plan.Count > 1 ? "  ..." : "")}";
+                    r.Danger = plan.Count > 0;
+                    r.Run = () =>
+                    {
+                        if (plan.Count == 0) return false;
+                        int n = BulkRename.Apply(plan);
+                        _notes.Post(new Note { Title = "Renamed", Body = $"{n} of {plan.Count} items. \"undo rename\" in the launcher puts them back", Glyph = "\uE8AC" });
+                        return true;
+                    };
+                    break;
+                case "share":
+                case "send":
+                case "phone":
+                    r.Title = $"{what}  \u2192  send to phone";
+                    r.Run = () => Go(() => Share?.Invoke(Paths()));
+                    break;
                 case "delete":
                 case "trash":
                     r.Title = $"{what}  \u2192  move to recycle bin";
@@ -1300,7 +1329,7 @@ namespace Heft.Ui
                     break;
                 default:
                     r.Title = $"don't know \"{v}\" yet";
-                    r.Sub = "try open, reveal, shelf, collection <name>, zip, copy, path, move <folder>, copyto <folder>, convert png, tag blue, delete";
+                    r.Sub = "try open, reveal, shelf, collection <name>, zip, copy, path, move <folder>, copyto <folder>, convert png, tag blue, rename <pattern>, share, delete";
                     r.Run = () => false;
                     break;
             }

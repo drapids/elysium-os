@@ -70,7 +70,9 @@ namespace Heft
             ("doc", "Docs", "\uE8A5"),
             ("archive", "Archives", "\uF012"),
             ("large", "Large", "\uEDA2"),
-            ("unsorted", "Unsorted", "\uE7C3")
+            ("unsorted", "Unsorted", "\uE7C3"),
+            ("projects", "Projects", "\uE8F1"),
+            ("dupes", "Duplicates", "\uE8C8")
         };
 
         static readonly HashSet<string> Skip = new(StringComparer.OrdinalIgnoreCase)
@@ -80,6 +82,12 @@ namespace Heft
 
         readonly Settings _s;
         List<Entry> _scan = new();
+        List<Entry> _projects = new();
+        List<Entry> _dupes = new();
+        Task? _dupeTask;
+        DateTime _dupesAt = DateTime.MinValue;
+
+        public bool DupesBusy => _dupeTask != null && !_dupeTask.IsCompleted;
         DateTime _scannedAt = DateTime.MinValue;
         Task? _running;
 
@@ -99,16 +107,27 @@ namespace Heft
             if (_running != null && !_running.IsCompleted) return;
             if (!force && (DateTime.Now - _scannedAt).TotalMinutes < 4) return;
             var roots = Roots();
+            var extra = _s.Places.ToList();
             _running = Task.Run(() =>
             {
                 var list = new List<Entry>();
                 int budget = 25000;
                 foreach (var r in roots) budget = Walk(r, 3, list, budget);
-                return list;
+                List<Entry> projects;
+                try
+                {
+                    projects = Projects.Find(extra);
+                }
+                catch
+                {
+                    projects = new List<Entry>();
+                }
+                return (list, projects);
             }).ContinueWith(t =>
             {
                 if (t.IsFaulted) return;
-                _scan = t.Result;
+                _scan = t.Result.list;
+                _projects = t.Result.projects;
                 _scannedAt = DateTime.Now;
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => Updated?.Invoke()));
             });
@@ -208,6 +227,11 @@ namespace Heft
                         .Where(e => !e.Dir && !Files.IsApp(e.Path) && (DateTime.Now - e.Modified).TotalDays > 2)
                         .OrderBy(e => e.Modified);
                     return loose.Take(300).ToList();
+                case "projects":
+                    return _projects.ToList();
+                case "dupes":
+                    FindDupes(false);
+                    return _dupes.ToList();
                 case "image":
                 case "code":
                 case "doc":
@@ -218,6 +242,20 @@ namespace Heft
             if (_s.Collections.TryGetValue(id, out var refs))
                 return refs.Select(Make).Where(e => e != null).Select(e => e!).ToList();
             return new List<Entry>();
+        }
+
+        public void FindDupes(bool force)
+        {
+            if (!Ready || DupesBusy) return;
+            if (!force && (DateTime.Now - _dupesAt).TotalMinutes < 10) return;
+            _dupesAt = DateTime.Now;
+            var files = _scan.ToList();
+            _dupeTask = Task.Run(() => Dupes.Find(files, () => false)).ContinueWith(t =>
+            {
+                if (t.IsFaulted) return;
+                _dupes = t.Result;
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() => Updated?.Invoke()));
+            });
         }
 
         public static List<Entry> List(string dir, bool hidden)
