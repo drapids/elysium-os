@@ -22,6 +22,8 @@ namespace Heft.Ui
         bool _loading, _open, _suppress;
 
         string _tab = "dock";
+        readonly DispatcherTimer _findWait = new() { Interval = TimeSpan.FromMilliseconds(160) };
+        bool _quietFind;
         SettingsPages? _pages;
 
         public event Action? DockRequested;
@@ -47,7 +49,26 @@ namespace Heft.Ui
             };
             PreviewKeyDown += (_, e) =>
             {
-                if (e.Key == Key.Escape) SlideOut();
+                if (e.Key != Key.Escape) return;
+                if (find.Text.Length > 0)
+                {
+                    find.Clear();
+                    e.Handled = true;
+                    return;
+                }
+                SlideOut();
+            };
+            _findWait.Tick += (_, _) =>
+            {
+                _findWait.Stop();
+                RunFind();
+            };
+            find.TextChanged += (_, _) =>
+            {
+                if (_quietFind) return;
+                _findWait.Stop();
+                if (find.Text.Trim().Length == 0) ShowTab(_tab);
+                else _findWait.Start();
             };
             _outside.Tick += (_, _) => CheckOutsideClick();
 
@@ -108,8 +129,28 @@ namespace Heft.Ui
             }
         }
 
+        void RunFind()
+        {
+            string q = find.Text.Trim();
+            if (q.Length == 0 || _pages == null) return;
+            var words = q.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            string classicText = SettingsPages.Words(classic);
+            bool classicHit = words.All(w => classicText.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+            classic.Visibility = Visibility.Collapsed;
+            pages.Visibility = Visibility.Visible;
+            _pages.Find(q, pages, ShowTab, classicHit);
+            scroll.ScrollToTop();
+        }
+
         void ShowTab(string tab)
         {
+            if (find.Text.Length > 0)
+            {
+                _quietFind = true;
+                find.Clear();
+                _quietFind = false;
+                _findWait.Stop();
+            }
             _tab = tab;
             BuildTabs();
             bool classicTab = tab == "dock" || _pages == null;

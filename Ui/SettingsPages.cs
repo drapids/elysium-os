@@ -12,6 +12,7 @@ namespace Heft.Ui
         public static readonly (string id, string label)[] Tabs =
         {
             ("general", "General"),
+            ("look", "Look"),
             ("dock", "Dock & physics"),
             ("windows", "Windows"),
             ("files", "Files"),
@@ -57,18 +58,24 @@ namespace Heft.Ui
 
         void Rebuild()
         {
-            if (_host != null) Build(_page, _host);
+            if (_host == null) return;
+            if (_query.Length > 0 && _go != null) Find(_query, _host, _go, false);
+            else Build(_page, _host);
         }
 
         public void Build(string page, Panel host)
         {
             _page = page;
             _host = host;
+            _query = "";
             host.Children.Clear();
             switch (page)
             {
                 case "general":
                     General(host);
+                    break;
+                case "look":
+                    LookPage(host);
                     break;
                 case "windows":
                     WindowsPage(host);
@@ -148,7 +155,7 @@ namespace Heft.Ui
                     Touch();
                     Sfx.Test("tick");
                 }),
-                Kit.Block("Pack", null, Kit.Segments(Sfx.Packs.Select(p => p.label).ToArray(), Sfx.Packs.Select(p => p.id).ToArray(), _s.SoundPack, v =>
+                Kit.Block("Pack", null, Kit.Segments(Sfx.AllPacks().Select(p => p.label).ToArray(), Sfx.AllPacks().Select(p => p.id).ToArray(), _s.SoundPack, v =>
                 {
                     _s.SoundPack = v;
                     Touch();
