@@ -134,24 +134,58 @@ namespace Heft.Ui
             }
             _open = true;
 
-            var wa = SystemParameters.WorkArea;
-            Height = wa.Height - Gap * 2;
-            Top = wa.Top + Gap;
-            double target = wa.Right - Width - Gap;
+            var d = Displays.AtCursor();
+            _display = d;
+            double scale = d.Scale;
+            int gap = (int)(Gap * scale);
+            int wpx = (int)Math.Round(Width * scale);
+            int hpx = d.Work.Height - gap * 2;
+            int target = d.Work.Right - wpx - gap;
+            int y = d.Work.Top + gap;
 
             Load();
-            BeginAnimation(LeftProperty, null);
-            Left = wa.Right + 4;
             frame.Opacity = 0;
-            Show();
+            if (!IsVisible)
+            {
+                Left = -20000;
+                Show();
+            }
+            var h = new WindowInteropHelper(this).Handle;
+            Native.SetWindowPos(h, IntPtr.Zero, d.Work.Left + 20, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+            Native.SetWindowPos(h, IntPtr.Zero, d.Work.Left + 20, y, wpx, hpx, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
             Activate();
             _outside.Start();
 
-            BeginAnimation(LeftProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(280))
+            SlideTo(d.Bounds.Right, target, y, wpx, hpx, 280, true, null);
+            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)));
+        }
+
+        Display? _display;
+        DispatcherTimer? _slide;
+
+        void SlideTo(int from, int to, int y, int wpx, int hpx, int ms, bool easeOut, Action? done)
+        {
+            _slide?.Stop();
+            var h = new WindowInteropHelper(this).Handle;
+            int edge = _display?.Bounds.Right ?? to + wpx;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(7) };
+            _slide = timer;
+            void Step()
             {
-                EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut }
-            });
-            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
+                double t = Math.Min(1, sw.Elapsed.TotalMilliseconds / ms);
+                double e = easeOut ? 1 - Math.Pow(1 - t, 5) : t * t * t;
+                int x = (int)Math.Round(from + (to - from) * e);
+                int visible = Math.Clamp(edge - x, 0, wpx);
+                Native.SetWindowRgn(h, visible >= wpx ? IntPtr.Zero : Native.CreateRectRgn(0, 0, visible, hpx), true);
+                Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+                if (t < 1) return;
+                timer.Stop();
+                done?.Invoke();
+            }
+            timer.Tick += (_, _) => Step();
+            Step();
+            timer.Start();
         }
 
         public void SlideOut()
@@ -161,16 +195,15 @@ namespace Heft.Ui
             _outside.Stop();
             Keyboard.ClearFocus();
 
-            var wa = SystemParameters.WorkArea;
-            var anim = new DoubleAnimation(wa.Right + 4, TimeSpan.FromMilliseconds(200))
+            var h = new WindowInteropHelper(this).Handle;
+            Native.GetWindowRect(h, out var r);
+            int edge = _display?.Bounds.Right ?? r.Right;
+            SlideTo(r.Left, edge, r.Top, r.Width, r.Height, 200, false, () =>
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
-            anim.Completed += (_, _) =>
-            {
-                if (!_open) Hide();
-            };
-            BeginAnimation(LeftProperty, anim);
+                if (_open) return;
+                Hide();
+                Native.SetWindowRgn(h, IntPtr.Zero, false);
+            });
             frame.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(200)));
         }
 

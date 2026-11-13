@@ -274,6 +274,9 @@ namespace Heft
         [DllImport("user32.dll")]
         public static extern int SetWindowRgn(IntPtr hwnd, IntPtr rgn, bool redraw);
 
+        [DllImport("gdi32.dll")]
+        public static extern IntPtr CreateRectRgn(int x1, int y1, int x2, int y2);
+
         [DllImport("user32.dll")]
         public static extern bool RegisterShellHookWindow(IntPtr hwnd);
 
