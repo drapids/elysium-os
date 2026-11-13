@@ -47,6 +47,7 @@ namespace Heft
         public double PanY { get; set; } = 90;
         public double Zoom { get; set; } = 1;
         public List<SpaceWin> Windows { get; set; } = new();
+        public List<SpaceLink> Links { get; set; } = new();
     }
 
     public sealed class SpacesFile
@@ -58,7 +59,7 @@ namespace Heft
 
 namespace Heft.Ui
 {
-    internal sealed class Spaces : Window
+    internal sealed partial class Spaces : Window
     {
         static readonly string FilePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "spaces.json");
         static readonly HashSet<string> Resizable = new() { "note", "group", "portal", "smart" };
@@ -166,6 +167,7 @@ namespace Heft.Ui
             var tools = new StackPanel { Orientation = Orientation.Horizontal };
             tools.Children.Add(Tool("\uE8CB", "tidy up (t)", Tidy));
             tools.Children.Add(Tool("\uE9A6", "fit everything (f)", Fit));
+            tools.Children.Add(Tool("\uE80A", "snap to grid (g)", ToggleGrid));
             tools.Children.Add(Tool("\uE74E", "remember the windows on screen for this space", SaveWindows));
             tools.Children.Add(Tool("\uE8A7", "put this space's windows back", RestoreWindows));
             tools.Children.Add(Tool("\uE8BB", "close (esc)", Close2));
@@ -179,7 +181,7 @@ namespace Heft.Ui
 
             var hint = new TextBlock
             {
-                Text = "drag files in  ·  double-click for a note  ·  right-click for widgets  ·  scroll to zoom  ·  ctrl + drag a file to take it out",
+                Text = "drag files in  ·  double-click for a note  ·  right-click for widgets and arrows  ·  scroll to zoom  ·  g snaps to the grid  ·  ctrl + drag a file to take it out",
                 FontSize = 12,
                 Foreground = new SolidColorBrush(Color.FromArgb(0x90, 255, 255, 255)),
                 VerticalAlignment = VerticalAlignment.Bottom,
@@ -191,6 +193,7 @@ namespace Heft.Ui
             _zoomText = new TextBlock { FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(0xB0, 255, 255, 255)), VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 22, 16), Cursor = Cursors.Hand, ToolTip = "back to 100%" };
             _zoomText.MouseLeftButtonUp += (_, _) => ZoomTo(1, new Point(ActualWidth / 2, ActualHeight / 2));
             overGrid.Children.Add(_zoomText);
+            BuildMini(overGrid);
             _root.Children.Add(overGrid);
             _root.Children.Add(_over);
             Content = _root;
@@ -235,6 +238,12 @@ namespace Heft.Ui
                 cy = (ActualHeight / 2 - _pan.Y) / _scale.ScaleX;
             }
             var it = new SpaceItem { Kind = Directory.Exists(path) ? "folder" : "file", Path = path, W = 104, H = 112, X = cx - 52, Y = cy - 56 };
+            SizeFor(it);
+            if (_s.SpaceGrid)
+            {
+                it.X = SnapTo(it.X);
+                it.Y = SnapTo(it.Y);
+            }
             _cur.Items.Add(it);
             if (_shown)
             {
@@ -279,6 +288,7 @@ namespace Heft.Ui
                 sp.Items ??= new List<SpaceItem>();
                 sp.Windows ??= new List<SpaceWin>();
                 sp.Desktop ??= "";
+                sp.Links ??= new List<SpaceLink>();
                 if (sp.Zoom <= 0.05 || double.IsNaN(sp.Zoom)) sp.Zoom = 1;
             }
             _file.Current = Math.Clamp(_file.Current, 0, _file.Spaces.Count - 1);
@@ -479,6 +489,7 @@ namespace Heft.Ui
             _pan.Y = _cur.PanY;
             foreach (var it in _cur.Items.Where(i => i.Kind == "group").ToList()) Add(it);
             foreach (var it in _cur.Items.Where(i => i.Kind != "group").ToList()) Add(it);
+            AttachLinks();
             Apply();
             Dispatcher.BeginInvoke(new Action(PlaceThumbs), DispatcherPriority.Loaded);
         }
@@ -498,6 +509,7 @@ namespace Heft.Ui
             _zoomText.Text = $"{Math.Round(z * 100)}%";
             foreach (var (el, minZoom) in _details) el.Visibility = z >= minZoom ? Visibility.Visible : Visibility.Collapsed;
             PlaceThumbs();
+            UpdateMini();
         }
 
         static double Mod(double a, double m) => ((a % m) + m) % m;
@@ -533,6 +545,12 @@ namespace Heft.Ui
         void OnDown(object sender, MouseButtonEventArgs e)
         {
             if (_menu != null && !_menu.IsMouseOver) HideMenu();
+            if (_linkFrom != null)
+            {
+                EndLink();
+                e.Handled = true;
+                return;
+            }
             if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
             {
                 var w = ToWorld(e.GetPosition(_viewport));
@@ -558,6 +576,7 @@ namespace Heft.Ui
 
         void OnMove(object sender, MouseEventArgs e)
         {
+            if (_linkFrom != null) GhostTo(ToWorld(e.GetPosition(_viewport)));
             if (!_panning) return;
             var p = e.GetPosition(_viewport);
             _pan.X = _panX0 + (p.X - _dragStart.X);
@@ -727,6 +746,17 @@ namespace Heft.Ui
                 var it = new SpaceItem { Kind = Directory.Exists(p) ? "folder" : Files.IsApp(p) ? "app" : "file", Path = p, W = 104, H = 112 };
                 it.X = w.X - 52 + (i % cols) * 118;
                 it.Y = w.Y - 40 + (i / cols) * 126;
+                if (IsPicture(p) && it.Kind == "file")
+                {
+                    SizeFor(it);
+                    it.X = w.X - 120 + (i % cols) * 254;
+                    it.Y = w.Y - 85 + (i / cols) * 184;
+                }
+                if (_s.SpaceGrid)
+                {
+                    it.X = SnapTo(it.X);
+                    it.Y = SnapTo(it.Y);
+                }
                 _cur.Items.Add(it);
                 var el = Add(it);
                 Glass.FadeIn(el, 8, 200);
@@ -742,8 +772,12 @@ namespace Heft.Ui
             switch (e.Key)
             {
                 case Key.Escape:
-                    if (_menu != null) HideMenu();
+                    if (_linkFrom != null) EndLink();
+                    else if (_menu != null) HideMenu();
                     else Close2();
+                    break;
+                case Key.G:
+                    ToggleGrid();
                     break;
                 case Key.Space:
                     if (_hover != null && _hover.Path.Length > 0 && (File.Exists(_hover.Path) || Directory.Exists(_hover.Path))) Inspect?.Invoke(Obj.From(_hover.Path), null);
@@ -782,6 +816,8 @@ namespace Heft.Ui
         void Remove(SpaceItem it)
         {
             _cur.Items.Remove(it);
+            if (_cur.Links.RemoveAll(l => l.From == it.Id || l.To == it.Id) > 0) DrawLinks();
+            UpdateMini();
             if (_thumbs.TryGetValue(it, out var t))
             {
                 t.thumb.Dispose();
@@ -1050,6 +1086,7 @@ namespace Heft.Ui
                     }
                 default:
                     {
+                        if (it.Kind == "file" && IsPicture(it.Path)) return Picture(it);
                         var b = new Border { CornerRadius = new CornerRadius(12), Background = Brushes.Transparent, ToolTip = it.Path };
                         var sp = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(6, 8, 6, 6) };
                         var img = new Image { Width = 52, Height = 52, HorizontalAlignment = HorizontalAlignment.Center };
@@ -1127,6 +1164,7 @@ namespace Heft.Ui
                 if (_menu != null) HideMenu();
                 if (InTextBox(e.OriginalSource)) return;
                 e.Handled = true;
+                if (Linking(it)) return;
                 if (e.ClickCount == 2)
                 {
                     Open(it);
@@ -1165,13 +1203,18 @@ namespace Heft.Ui
                 _moved = true;
                 if (_resizing)
                 {
-                    it.W = Math.Max(it.Kind == "group" ? 200 : 150, _w0 + dx);
-                    it.H = Math.Max(it.Kind == "group" ? 140 : 90, _h0 + dy);
+                    it.W = Math.Max(it.Kind == "group" ? 200 : 150, GridOn ? SnapTo(_w0 + dx) : _w0 + dx);
+                    it.H = Math.Max(it.Kind == "group" ? 140 : 90, GridOn ? SnapTo(_h0 + dy) : _h0 + dy);
                     el.Width = it.W;
                     el.Height = it.H;
                 }
                 else
                 {
+                    if (GridOn)
+                    {
+                        dx = SnapTo(_x0 + dx) - _x0;
+                        dy = SnapTo(_y0 + dy) - _y0;
+                    }
                     it.X = _x0 + dx;
                     it.Y = _y0 + dy;
                     Canvas.SetLeft(el, it.X);
@@ -1188,6 +1231,7 @@ namespace Heft.Ui
                     }
                 }
                 PlaceThumbs();
+                if (_cur.Links.Count > 0) DrawLinks();
             };
             el.MouseLeftButtonUp += (_, e) =>
             {
@@ -1198,7 +1242,11 @@ namespace Heft.Ui
                 bool resized = _resizing;
                 _resizing = false;
                 _carry.Clear();
-                if (_moved) Touch();
+                if (_moved)
+                {
+                    UpdateMini();
+                    Touch();
+                }
                 if (resized && it.Kind == "smart") Build();
             };
             el.MouseRightButtonUp += (_, e) =>
@@ -1219,6 +1267,8 @@ namespace Heft.Ui
                     items.Add(("\uE8CB", "Tidy inside", () => TidyGroup(it, true)));
                 }
                 if (it.Kind == "portal") items.Add(("\uE72C", "Look for the window again", () => Build()));
+                items.Add(("\uE72A", "Draw an arrow to...", () => StartLink(it)));
+                if (_cur.Links.Any(l => l.From == it.Id || l.To == it.Id)) items.Add(("\uE894", "Remove its arrows", () => Unlink(it)));
                 items.Add(("\uE711", "Remove from this space", () => Remove(it)));
                 ShowMenu(p, items);
             };
