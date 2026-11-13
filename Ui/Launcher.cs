@@ -31,6 +31,8 @@ namespace Heft.Ui
         public double Score;
         public bool Danger;
         public bool Header;
+        public Color? Swatch;
+        public ImageSource? Thumb;
     }
 
     internal sealed class Launcher : Window
@@ -430,6 +432,17 @@ namespace Heft.Ui
                         if (src != null) glyph.Visibility = Visibility.Collapsed;
                     });
                 }
+            }
+            if (r.Swatch is Color sw)
+            {
+                glyph.Visibility = Visibility.Collapsed;
+                iconHost.Children.Add(new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(7), Background = new SolidColorBrush(sw), BorderThickness = new Thickness(1), BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 255, 255, 255)) });
+            }
+            else if (r.Thumb != null)
+            {
+                glyph.Visibility = Visibility.Collapsed;
+                var thumb = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(6), ClipToBounds = true, Child = new Image { Source = r.Thumb, Stretch = Stretch.UniformToFill } };
+                iconHost.Children.Add(thumb);
             }
             g.Children.Add(iconHost);
 
@@ -949,11 +962,16 @@ namespace Heft.Ui
                 double sc = q.Length == 0 ? 1 : Fuzzy.Score(q, c.Summary);
                 if (sc <= 0) continue;
                 var clip = c;
+                var smart = Smart(c);
                 list.Add(new Result
                 {
                     Title = c.Summary.Length > 90 ? c.Summary[..90] + "..." : c.Summary,
-                    Sub = (c.Pinned ? "pinned \u00b7 " : "") + c.Kind + " \u00b7 " + Kit.Ago(c.Time),
-                    Glyph = c.Kind switch { "image" => "\uEB9F", "files" => "\uE8A5", _ => "\uE8C8" },
+                    Sub = (c.Pinned ? "pinned \u00b7 " : "") + smart.kind + " \u00b7 " + Kit.Ago(c.Time),
+                    Glyph = smart.glyph,
+                    Swatch = smart.swatch,
+                    Thumb = c.Kind == "image" ? c.Image : null,
+                    IconPath = smart.icon,
+                    IconOnly = false,
                     Hint = "enter pastes",
                     Score = sc,
                     Run = () =>
@@ -968,6 +986,48 @@ namespace Heft.Ui
                 });
             }
             return list.OrderByDescending(r => r.Score).Take(40).ToList();
+        }
+
+        static (string kind, string glyph, Color? swatch, string? icon) Smart(Clip c)
+        {
+            if (c.Kind == "image") return ("image", "\uEB9F", null, null);
+            if (c.Kind == "files") return (c.Files.Count == 1 ? "file" : "files", "\uE8A5", null, c.Files.Count > 0 ? c.Files[0] : null);
+            string t = c.Text.Trim();
+            if (t.Length > 0 && t.Length <= 40 && t.IndexOf('\n') < 0)
+            {
+                string hex = t.StartsWith('#') ? t : "#" + t;
+                bool hexish = t.StartsWith('#') || (t.Length == 6 && t.Any(ch => ch is >= 'a' and <= 'f' or >= 'A' and <= 'F'));
+                if (hexish && System.Text.RegularExpressions.Regex.IsMatch(hex, "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$"))
+                {
+                    try
+                    {
+                        return ("color " + hex.ToUpperInvariant(), "\uE790", (Color)ColorConverter.ConvertFromString(hex), null);
+                    }
+                    catch
+                    {
+                    }
+                }
+                var rgb = System.Text.RegularExpressions.Regex.Match(t, @"^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})");
+                if (rgb.Success && byte.TryParse(rgb.Groups[1].Value, out byte r) && byte.TryParse(rgb.Groups[2].Value, out byte g) && byte.TryParse(rgb.Groups[3].Value, out byte b))
+                    return ("color", "\uE790", Color.FromRgb(r, g, b), null);
+            }
+            if (Uri.TryCreate(t, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) && t.IndexOf(' ') < 0)
+                return ("link \u00b7 " + uri.Host.Replace("www.", ""), "\uE71B", null, null);
+            if (t.Length > 2 && t.Length < 260 && t.IndexOf('\n') < 0 && (t[1] == ':' || t.StartsWith("\\\\")))
+            {
+                string p = t.Trim('"');
+                try
+                {
+                    if (System.IO.File.Exists(p) || System.IO.Directory.Exists(p)) return ("path", "\uE8B7", null, p);
+                }
+                catch
+                {
+                }
+            }
+            if (t.Contains('@') && t.IndexOf(' ') < 0 && System.Text.RegularExpressions.Regex.IsMatch(t, @"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")) return ("email", "\uE715", null, null);
+            if (System.Text.RegularExpressions.Regex.IsMatch(t, @"^[\d\s,.\-+*/()%^=]+$") && t.Any(char.IsDigit)) return ("number", "\uE8EF", null, null);
+            if (t.Contains('\n') && (t.Contains('{') || t.Contains(';') || t.Contains("=>") || t.Contains("def ") || t.Contains("function"))) return ("code", "\uE943", null, null);
+            return ("text", "\uE8C8", null, null);
         }
 
         static async Task PasteInto(IntPtr target)
