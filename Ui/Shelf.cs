@@ -806,7 +806,7 @@ namespace Heft.Ui
                 tagSub.SetResourceReference(TextBlock.ForegroundProperty, "SubText");
                 tagText.Children.Add(tagSub);
             }
-            var tag = new Border
+            var nameTag = new Border
             {
                 Child = tagText,
                 CornerRadius = new CornerRadius(9),
@@ -819,8 +819,8 @@ namespace Heft.Ui
                 IsHitTestVisible = false,
                 RenderTransformOrigin = new Point(0.5, 1)
             };
-            tag.SetResourceReference(Border.BackgroundProperty, "PillBg");
-            tag.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
+            nameTag.SetResourceReference(Border.BackgroundProperty, "PillBg");
+            nameTag.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
             var tagSpin = new RotateTransform(-90);
             var tagScale = new ScaleTransform(0.6, 0.6);
             var tagMove = new TranslateTransform(0, 70);
@@ -828,8 +828,8 @@ namespace Heft.Ui
             tagGroup.Children.Add(tagScale);
             tagGroup.Children.Add(tagSpin);
             tagGroup.Children.Add(tagMove);
-            tag.RenderTransform = tagGroup;
-            inner.Children.Add(tag);
+            nameTag.RenderTransform = tagGroup;
+            inner.Children.Add(nameTag);
 
             var book = new Border
             {
@@ -864,7 +864,7 @@ namespace Heft.Ui
                 tagScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, t) { EasingFunction = spring });
                 tagScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, t) { EasingFunction = spring });
                 tagMove.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, t) { EasingFunction = ease });
-                tag.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(160)));
+                nameTag.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(160)));
                 label.BeginAnimation(OpacityProperty, new DoubleAnimation(0.25, TimeSpan.FromMilliseconds(160)));
                 lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-10, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease });
                 tilt.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-3, TimeSpan.FromMilliseconds(160)) { EasingFunction = ease });
@@ -884,7 +884,7 @@ namespace Heft.Ui
                 tagScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.6, t));
                 tagScale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.6, t));
                 tagMove.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(70, t) { EasingFunction = ease });
-                tag.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
+                nameTag.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
                 label.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
             };
             Interactive(book, entry, () => Portal(path));
