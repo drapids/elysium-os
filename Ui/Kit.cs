@@ -66,6 +66,7 @@ namespace Heft.Ui
             var st = Of(w);
             int token = ++st.Token;
             var h = new WindowInteropHelper(w).EnsureHandle();
+            if (!w.IsVisible) Sfx.Play("open");
             if (!w.IsVisible) SetBlur(w, false);
             surface.BeginAnimation(UIElement.OpacityProperty, null);
             if (!w.IsVisible) surface.Opacity = 0;
@@ -103,6 +104,7 @@ namespace Heft.Ui
                 after?.Invoke();
                 return;
             }
+            Sfx.Play("close");
             SetBlur(w, false);
             var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(ms));
             fade.Completed += (_, _) =>

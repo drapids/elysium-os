@@ -77,6 +77,8 @@ namespace Heft.Ui
         public event Action? LockClicked;
         public event Action<Bar>? ShelfToggle;
         public event Action<Bar>? ShelfPull;
+        public event Action<Bar>? DragNear;
+        public event Action<Bar>? EmptyClicked;
         public event Action? SettingsRequested;
         public event Action<IDataObject>? Dropped;
         public event Action? MediaToggle;
@@ -253,8 +255,10 @@ namespace Heft.Ui
             };
             _root.MouseLeftButtonUp += (_, _) =>
             {
+                bool click = _pressed && !_dragged;
                 _pressed = false;
                 root_ReleaseCapture();
+                if (click) EmptyClicked?.Invoke(this);
             };
             _root.MouseRightButtonUp += (_, e) =>
             {
@@ -266,7 +270,8 @@ namespace Heft.Ui
             {
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
-                ShelfPull?.Invoke(this);
+                if (DragNear != null) DragNear.Invoke(this);
+                else ShelfPull?.Invoke(this);
             };
             DragOver += (_, e) =>
             {

@@ -30,13 +30,13 @@ namespace Heft.Ui
         readonly StackPanel _crumbs = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         readonly TextBox _filter;
         readonly Button _sort;
+        readonly Button _pin;
         readonly StackPanel _drops = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 16, 8), Visibility = Visibility.Collapsed };
         readonly StackPanel _banner = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 16, 8), Visibility = Visibility.Collapsed };
         readonly StackPanel _pocketRow = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 16, 8) };
         readonly WrapPanel _content = new() { Margin = new Thickness(12, 0, 12, 12) };
         readonly ScrollViewer _scroll;
         readonly TextBlock _empty;
-        readonly DispatcherTimer _outside = new() { Interval = TimeSpan.FromMilliseconds(60) };
         readonly DispatcherTimer _spring = new() { Interval = TimeSpan.FromMilliseconds(750) };
         readonly DispatcherTimer _dragEnd = new() { Interval = TimeSpan.FromMilliseconds(250) };
         readonly List<(FrameworkElement host, Thumb thumb)> _thumbs = new();
@@ -81,10 +81,14 @@ namespace Heft.Ui
                 e.Handled = true;
             };
             header.Children.Add(tabScroll);
-            var close = Kit.Plain("\uE8BB", HideShelf, "close", 10);
-            close.Margin = new Thickness(6, 0, 0, 0);
-            Grid.SetColumn(close, 1);
-            header.Children.Add(close);
+            var corner = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 0, 0, 0) };
+            _pin = Kit.Plain(_s.ShelfPinned ? "\uE77A" : "\uE718", TogglePin, "keep it open (esc and the bar won't close it)", 10);
+            corner.Children.Add(_pin);
+            var close = Kit.Plain("\uE8BB", () => HideShelf(true), "close", 10);
+            close.Margin = new Thickness(4, 0, 0, 0);
+            corner.Children.Add(close);
+            Grid.SetColumn(corner, 1);
+            header.Children.Add(corner);
             DockPanel.SetDock(header, Dock.Top);
             root.Children.Add(header);
 
@@ -128,12 +132,7 @@ namespace Heft.Ui
 
             BuildDrops();
 
-            Deactivated += (_, _) =>
-            {
-                if (!_suppress && !_dragging) HideShelf();
-            };
             PreviewKeyDown += OnKey;
-            _outside.Tick += (_, _) => CheckOutside();
             _spring.Tick += (_, _) =>
             {
                 _spring.Stop();
@@ -189,6 +188,16 @@ namespace Heft.Ui
             else OpenShelf(d, topPx);
         }
 
+        public bool Pinned => _s.ShelfPinned;
+
+        void TogglePin()
+        {
+            _s.ShelfPinned = !_s.ShelfPinned;
+            _s.Touch();
+            if (_pin.Content is TextBlock t) t.Text = _s.ShelfPinned ? "\uE77A" : "\uE718";
+            _pin.ToolTip = _s.ShelfPinned ? "pinned. only the x closes it" : "keep it open (esc and the bar won't close it)";
+        }
+
         public void OpenShelf(Display? d = null, double? topPx = null, string? tab = null)
         {
             d ??= Displays.AtCursor();
@@ -215,28 +224,21 @@ namespace Heft.Ui
                 Native.SetWindowPos(h, Native.HWND_TOPMOST, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
             }, was ? 0 : -16, was ? 1 : 0.985, 240);
             Activate();
-            _outside.Start();
             BuildPocket();
         }
 
-        public void HideShelf()
+        public void HideShelf() => HideShelf(false);
+
+        public void HideShelf(bool force)
         {
             if (!_open) return;
+            if (_s.ShelfPinned && !force) return;
+            if (force && _s.ShelfPinned) TogglePin();
             _open = false;
-            _outside.Stop();
             _pendingCollect = null;
             _banner.Visibility = Visibility.Collapsed;
             ClearThumbs();
             Glass.Dismiss(this, _surface);
-        }
-
-        void CheckOutside()
-        {
-            if (!_open || _suppress || _dragging || IsActive) return;
-            if (!Native.MouseDown()) return;
-            Native.GetCursorPos(out var p);
-            Native.GetWindowRect(new WindowInteropHelper(this).Handle, out var r);
-            if (!r.Contains(p.X, p.Y)) HideShelf();
         }
 
         void OnKey(object sender, KeyEventArgs e)
@@ -530,6 +532,7 @@ namespace Heft.Ui
         {
             var paths = DroppedPaths(data);
             if (paths.Count == 0) return;
+            Sfx.Play("drop");
             if (_trail.Count > 0)
             {
                 MoveInto(_trail[^1], paths, copy);
@@ -664,6 +667,8 @@ namespace Heft.Ui
                     return _s.ShelfItems.Select(Library.Make).Where(e => e != null).Select(e => e!).ToList();
                 case "catalog":
                     return new List<Entry>();
+                case "dupes":
+                    return _lib.Get("dupes");
             }
             return _lib.Sort(_lib.Get(_tab.StartsWith("c:") ? _tab[2..] : _tab), _s.ShelfSort, _tab != "recent");
         }
@@ -689,6 +694,9 @@ namespace Heft.Ui
                 {
                     "shelf" => "drop anything here to keep it close.\nfiles, text, images. drag them back out when you need them",
                     _ when !_lib.Ready && _trail.Count == 0 => "looking through your stuff...",
+                    "dupes" when _lib.DupesBusy && q.Length == 0 => "checking your files for copies...",
+                    "dupes" when q.Length == 0 => "no duplicates. nice",
+                    "projects" when q.Length == 0 => "no projects found yet. folders with git, package.json, .sln and so on show up here",
                     _ when q.Length > 0 => "no matches",
                     _ => "nothing here yet"
                 };
