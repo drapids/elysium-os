@@ -217,6 +217,8 @@ namespace Heft
                 _start.MarkDirty();
             };
             pages.KeyFree = spec => _keys.Free(spec);
+            pages.SnapshotMode = SnapshotMode;
+            pages.UseMode = m => ApplyMode(m);
             pages.AudioApps = () => _audio.Apps().Where(a => !a.System).Select(a => a.Exe);
             pages.PauseKeys = on =>
             {
@@ -252,6 +254,7 @@ namespace Heft
             _drop.OpenSettingsPage = tab => _panel.OpenTab(tab);
 
             RegisterCommands();
+            RegisterModes();
             _ext.Changed += () => _shelf.RefreshDrops();
             _ext.BarChanged += () =>
             {
@@ -493,6 +496,7 @@ namespace Heft
             CheckGame();
             if (_game) return;
             if (_tick % 2 == 0) DeskTick();
+            if (_tick % 20 == 0) ModeTick();
             if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown || (_ext != null && _ext.WantsMedia))) _ = _np.Refresh();
             if (_ext != null)
             {
@@ -576,6 +580,7 @@ namespace Heft
         {
             Layout(false);
             SyncBarLayout();
+            RegisterModes();
             if (!_s.Enabled) _physics.StopAll();
             if (_physicsItem != null) _physicsItem.Checked = _s.Enabled;
             if (!_peeking) DesktopIcons.Set(!_s.HideDesktop);
@@ -597,7 +602,8 @@ namespace Heft
 
             string sig = string.Join("|", Hotkeys.Defaults.Select(d => Hotkeys.Spec(_s, d.id))) + "|" + string.Join("|", _s.AudioProfiles.Select(p => p.Name + "=" + p.Hotkey))
                          + "|" + string.Join("|", _s.CustomKeys.Select(k => k.Keys + "=" + k.Kind + ":" + k.Target))
-                         + "|" + string.Join("|", _s.Remaps.Select(kv => kv.Key + ">" + kv.Value));
+                         + "|" + string.Join("|", _s.Remaps.Select(kv => kv.Key + ">" + kv.Value))
+                         + "|" + string.Join("|", _s.Modes.Select(m => m.Id + "=" + m.Hotkey));
             if (sig != _keySig)
             {
                 _keySig = sig;
@@ -663,6 +669,11 @@ namespace Heft
                     _audio.Apply(pr);
                     Flash("audio: " + pr.Name);
                 }, "profile " + pr.Name);
+            }
+            foreach (var md in _s.Modes.Where(m => m.Hotkey.Length > 0))
+            {
+                var mode = md;
+                _keys.Add(mode.Hotkey, () => ApplyMode(mode), "mode " + mode.Name);
             }
             if (_ext != null)
                 foreach (var (spec, run, label) in _ext.Hotkeys) _keys.Add(spec, run, label);

@@ -171,6 +171,8 @@ namespace Heft
         public bool ShelfPiles { get; set; } = true;
         public string Scratch { get; set; } = "";
         public bool SpacePerDesktop { get; set; } = true;
+        public List<Mode> Modes { get; set; } = new();
+        public string ActiveMode { get; set; } = "";
         public List<string> BarLayout { get; set; } = new();
         public bool DropSlit { get; set; } = true;
         public bool ShelfTakeOut { get; set; } = true;

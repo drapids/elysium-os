@@ -481,6 +481,16 @@ namespace Heft.Ui
                     return false;
                 }
             }
+            foreach (var m in _s.Modes)
+            {
+                if (m.Id == customId) continue;
+                if (Same(m.Hotkey, spec))
+                {
+                    _keyNote = $"{Pretty(spec)} already switches to {m.Name} mode";
+                    Rebuild();
+                    return false;
+                }
+            }
             foreach (var (keys, what) in WindowsKeys)
             {
                 if (Same(keys, spec))

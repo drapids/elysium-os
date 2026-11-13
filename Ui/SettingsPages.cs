@@ -505,6 +505,8 @@ namespace Heft.Ui
 
         void Alerts(Panel h)
         {
+            ModesSection(h);
+
             h.Children.Add(Kit.Header("Notifications"));
             h.Children.Add(Kit.Group(
                 Kit.Row("heft-style Windows notifications", "hides Windows' own popups and shows them the heft way. " + _toastStatus(), Sw(_s.TakeOverToasts, v => _s.TakeOverToasts = v)),
