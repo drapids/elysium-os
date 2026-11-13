@@ -145,12 +145,12 @@ namespace Heft.Ui
             try
             {
                 Directory.CreateDirectory(IconCache.PackRoot);
-                packs.AddRange(Directory.EnumerateDirectories(IconCache.PackRoot).Select(Path.GetFileName).Where(n => !string.IsNullOrEmpty(n))!);
+                packs.AddRange(Directory.EnumerateDirectories(IconCache.PackRoot).Select(dir => Path.GetFileName(dir) ?? "").Where(n => n.Length > 0));
             }
             catch
             {
             }
-            var ids = packs.Select(p => p ?? "").ToArray();
+            var ids = packs.ToArray();
             var labels = ids.Select(p => p.Length == 0 ? "None" : p).ToArray();
             var openIcons = Kit.Push("Open folder", () =>
             {
