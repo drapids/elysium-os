@@ -172,6 +172,23 @@ namespace Heft
         public string Scratch { get; set; } = "";
         public bool SpacePerDesktop { get; set; } = true;
         public bool SpaceGrid { get; set; } = false;
+        public bool SnippetsOn { get; set; } = true;
+        public List<Snippet> Snippets { get; set; } = new()
+        {
+            new Snippet { Trigger = ";date", Text = "{date}" },
+            new Snippet { Trigger = ";time", Text = "{time}" },
+            new Snippet { Trigger = ";shrug", Text = "\u00AF\\_(\u30C4)_/\u00AF" }
+        };
+        public bool Gestures { get; set; } = false;
+        public Dictionary<string, string> GestureMap { get; set; } = new(StringComparer.Ordinal)
+        {
+            ["U"] = "overview",
+            ["D"] = "minimize",
+            ["L"] = "back",
+            ["R"] = "forward",
+            ["UD"] = "refresh",
+            ["DR"] = "close"
+        };
         public bool SpaceMinimap { get; set; } = true;
         public List<Mode> Modes { get; set; } = new();
         public string ActiveMode { get; set; } = "";

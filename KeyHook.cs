@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Windows.Threading;
 
@@ -36,6 +38,68 @@ namespace Heft
         public event Action? ExplorerSpace;
 
         public volatile bool Paused;
+        public event Action<int, string>? Expand;
+        volatile (string trigger, string text)[] _snippets = Array.Empty<(string, string)>();
+        volatile bool _resetTyped;
+        readonly StringBuilder _typed = new();
+        readonly uint _ownPid = (uint)Environment.ProcessId;
+
+        public void SetSnippets(IEnumerable<Snippet> list)
+        {
+            _snippets = list.Where(s => s.Trigger.Length > 1 && s.Text.Length > 0).Select(s => (s.Trigger, s.Text)).OrderByDescending(s => s.Trigger.Length).ToArray();
+            _resetTyped = true;
+        }
+
+        public void ResetTyped() => _resetTyped = true;
+
+        void Track(KBDLLHOOKSTRUCT k)
+        {
+            if (_resetTyped)
+            {
+                _typed.Clear();
+                _resetTyped = false;
+            }
+            var snips = _snippets;
+            if (snips.Length == 0 || Paused) return;
+            Native.GetWindowThreadProcessId(Native.GetForegroundWindow(), out uint fgPid);
+            if (fgPid == _ownPid)
+            {
+                _typed.Clear();
+                return;
+            }
+            uint vk = k.vkCode;
+            if (vk is 0x10 or 0xA0 or 0xA1 or 0x14) return;
+            bool ctrl = (Native.GetAsyncKeyState(0x11) & 0x8000) != 0;
+            bool alt = (Native.GetAsyncKeyState(0x12) & 0x8000) != 0;
+            if (ctrl || alt || _winDown)
+            {
+                _typed.Clear();
+                return;
+            }
+            if (vk == 0x08)
+            {
+                if (_typed.Length > 0) _typed.Length--;
+                return;
+            }
+            string ch = Expander.CharFor(vk, k.scanCode);
+            if (ch.Length == 0 || char.IsControl(ch[0]))
+            {
+                _typed.Clear();
+                return;
+            }
+            _typed.Append(ch);
+            if (_typed.Length > 64) _typed.Remove(0, _typed.Length - 64);
+            string sofar = _typed.ToString();
+            foreach (var (trigger, text) in snips)
+            {
+                if (!sofar.EndsWith(trigger, StringComparison.Ordinal)) continue;
+                _typed.Clear();
+                int back = trigger.Length;
+                string body = text;
+                _ui.BeginInvoke(new Action(() => Expand?.Invoke(back, body)));
+                return;
+            }
+        }
         volatile Dictionary<uint, (byte[] mods, byte vk)> _remaps = new();
         readonly HashSet<uint> _remapHeld = new();
 
@@ -122,6 +186,8 @@ namespace Heft
                             return new IntPtr(1);
                         }
                     }
+
+                    if (!injected && down && !win) Track(k);
 
                     if (!injected)
                     {

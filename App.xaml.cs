@@ -153,11 +153,15 @@ namespace Heft
             _mouse.Flash += Flash;
             _mouse.Physics = _physics;
             _mouse.DesktopDoubleClick += Peek;
+            _mouse.Gesture += OnGesture;
+            _mouse.ReplayRight += Expander.RightClick;
             _taskbar = new TaskbarStyler(_s);
             if (!_s.TakeOverToasts && _s.BannerBackup.Count > 0) WinToasts.Restore(_s);
             _wintoasts = new WinToasts(_s, n => _notes.Post(n));
             _keys = new Hotkeys();
             _keyHook = new KeyHook(_s, Dispatcher);
+            _keyHook.Expand += ExpandSnippet;
+            SyncSnippets();
             _keyHook.ExplorerSpace += PreviewExplorer;
             _share = new QuickShare(_s, _notes);
             _phoneDrop = new PhoneDrop(_s, _notes);
@@ -372,6 +376,7 @@ namespace Heft
         {
             if (string.IsNullOrEmpty(path)) return;
             _rules?.Saw(Native.GetForegroundWindow(), path);
+            _keyHook?.ResetTyped();
             string file = Path.GetFileNameWithoutExtension(path);
             if (file.Equals("heft", StringComparison.OrdinalIgnoreCase)) return;
             _appName = file.Equals("explorer", StringComparison.OrdinalIgnoreCase) ? "Desktop" : _catalog.DisplayName(path);
@@ -589,6 +594,7 @@ namespace Heft
             Layout(false);
             SyncBarLayout();
             RegisterModes();
+            SyncSnippets();
             if (!_s.Enabled) _physics.StopAll();
             if (_physicsItem != null) _physicsItem.Checked = _s.Enabled;
             if (!_peeking) DesktopIcons.Set(!_s.HideDesktop);

@@ -213,6 +213,9 @@ namespace Heft.Ui
             cap3.TextWrapping = TextWrapping.Wrap;
             h.Children.Add(cap3);
 
+            SnippetsSection(h);
+            GesturesSection(h);
+
             var errors = _keyErrors().ToList();
             if (errors.Count > 0)
             {

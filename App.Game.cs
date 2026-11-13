@@ -66,6 +66,7 @@ namespace Heft
             _gameHeld = 0;
             _gameApp = ExeOf(hwnd);
             Sfx.Quiet = true;
+            _mouse.Quiet = true;
             _activity.Slow = true;
             _start.Hold(true);
             _state.Interval = TimeSpan.FromMilliseconds(2000);
@@ -78,6 +79,7 @@ namespace Heft
             if (!_game) return;
             _game = false;
             Sfx.Quiet = false;
+            _mouse.Quiet = false;
             _activity.Slow = false;
             _start.Hold(false);
             _state.Interval = TimeSpan.FromMilliseconds(500);

@@ -35,6 +35,51 @@ namespace Heft
         public event Action<string>? Corner;
 
         public PhysicsEngine? Physics;
+        public volatile bool Quiet;
+        public event Action<string, Native.POINT>? Gesture;
+        public event Action? ReplayRight;
+        bool _gesturing;
+        Native.POINT _gStart;
+        readonly List<Native.POINT> _gPath = new();
+
+        static readonly HashSet<string> GestureSkipClasses = new(StringComparer.Ordinal)
+        {
+            "DirectUIHWND", "SysListView32", "SysTreeView32", "Shell_TrayWnd", "Shell_SecondaryTrayWnd", "#32768", "MSTaskSwWClass", "ToolbarWindow32"
+        };
+
+        bool GestureAllowed(Native.POINT p)
+        {
+            if (!_s.Gestures || Quiet || Native.ModifiersDown()) return false;
+            IntPtr h = Native.WindowFromPoint(p);
+            if (h == IntPtr.Zero) return false;
+            if (GestureSkipClasses.Contains(Native.ClassName(h))) return false;
+            IntPtr root = Native.GetAncestor(h, Native.GA_ROOT);
+            Native.GetWindowThreadProcessId(root, out uint pid);
+            if (pid == _pid) return false;
+            var fg = Native.GetForegroundWindow();
+            if (fg != IntPtr.Zero && CursorLock.IsFullscreen(fg, out _)) return false;
+            return true;
+        }
+
+        static string Recognize(List<Native.POINT> path)
+        {
+            if (path.Count < 2) return "";
+            var sb = new System.Text.StringBuilder();
+            var anchor = path[0];
+            double total = 0;
+            for (int i = 1; i < path.Count; i++)
+            {
+                var p = path[i];
+                total += Math.Abs(p.X - path[i - 1].X) + Math.Abs(p.Y - path[i - 1].Y);
+                int dx = p.X - anchor.X, dy = p.Y - anchor.Y;
+                if (Math.Abs(dx) < 46 && Math.Abs(dy) < 46) continue;
+                char dir = Math.Abs(dx) > Math.Abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U');
+                if (sb.Length == 0 || sb[^1] != dir) sb.Append(dir);
+                anchor = p;
+                if (sb.Length > 3) return "";
+            }
+            return total < 40 ? "" : sb.ToString();
+        }
         bool _lerping, _swallowLeftUp;
         IntPtr _lerpLast;
         uint _lerpLastTime;
@@ -89,8 +134,29 @@ namespace Heft
             switch (msg)
             {
                 case 0x0200:
+                    if (_gesturing && _gPath.Count < 4000) _gPath.Add(m.pt);
                     CheckCorner(m.pt);
                     return false;
+
+                case 0x0204:
+                    if (!GestureAllowed(m.pt)) return false;
+                    _gesturing = true;
+                    _gStart = m.pt;
+                    _gPath.Clear();
+                    _gPath.Add(m.pt);
+                    return true;
+
+                case 0x0205:
+                    {
+                        if (!_gesturing) return false;
+                        _gesturing = false;
+                        string dirs = Recognize(_gPath);
+                        var start = _gStart;
+                        _gPath.Clear();
+                        if (dirs.Length == 0) Post(() => ReplayRight?.Invoke());
+                        else Post(() => Gesture?.Invoke(dirs, start));
+                        return true;
+                    }
 
                 case Native.WM_MOUSEWHEEL:
                     int delta = (short)(m.mouseData >> 16);
