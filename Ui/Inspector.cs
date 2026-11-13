@@ -99,6 +99,7 @@ namespace Heft.Ui
             Width = d.Bounds.Width / scale;
             Height = d.Bounds.Height / scale;
             Activate();
+            if (!IsActive) Native.Focus(h);
             Focus();
 
             double w = Width, hgt = Height;
@@ -275,6 +276,8 @@ namespace Heft.Ui
             BuildActions(o);
             BuildFacts(o, isDir);
             BuildRelations(o, isDir);
+            BuildProject(o, isDir);
+            BuildVersions(o, isDir);
             BuildPreview(o, isDir, cat);
 
             foreach (UIElement child in _info.Children)
@@ -467,6 +470,81 @@ namespace Heft.Ui
                 wrap.Children.Add(Chip("\uE8A5", Path.GetFileName(r), () => Swap(Obj.From(rp))));
             }
             _info.Children.Add(wrap);
+        }
+
+        void BuildProject(Obj o, bool isDir)
+        {
+            string p = o.Path;
+            if (!isDir || !Projects.IsProject(p)) return;
+            var head = Kit.Header("Project");
+            head.Margin = new Thickness(0, 10, 0, 4);
+            _info.Children.Add(head);
+            var readme = Projects.Readme(p);
+            if (!string.IsNullOrWhiteSpace(readme))
+            {
+                var t = Kit.Text(readme, 12, false, "SubText");
+                t.TextWrapping = TextWrapping.Wrap;
+                t.TextTrimming = TextTrimming.CharacterEllipsis;
+                t.MaxHeight = 64;
+                t.Margin = new Thickness(0, 0, 0, 6);
+                _info.Children.Add(t);
+            }
+            var commits = new StackPanel();
+            _info.Children.Add(commits);
+            var target = o;
+            System.Threading.Tasks.Task.Run(() => Projects.Commits(p, 4)).ContinueWith(task =>
+            {
+                if (task.IsFaulted || task.Result.Count == 0) return;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (_obj != target || !IsVisible) return;
+                    foreach (var (subject, ago) in task.Result)
+                    {
+                        var row = new DockPanel { Margin = new Thickness(0, 1, 0, 1) };
+                        var w = Kit.Text(ago, 11, false, "Faint");
+                        w.Margin = new Thickness(10, 0, 0, 0);
+                        DockPanel.SetDock(w, Dock.Right);
+                        row.Children.Add(w);
+                        var g = Kit.Icon("\uE8A5", 10, "SubText");
+                        g.Margin = new Thickness(0, 0, 7, 0);
+                        DockPanel.SetDock(g, Dock.Left);
+                        row.Children.Add(g);
+                        row.Children.Add(Kit.Text(subject, 12));
+                        commits.Children.Add(row);
+                        Glass.FadeIn(row, 4, 180);
+                    }
+                }));
+            });
+        }
+
+        void BuildVersions(Obj o, bool isDir)
+        {
+            string p = o.Path;
+            if (isDir || !File.Exists(p)) return;
+            var list = VersionShelf.For(p);
+            if (list.Count == 0) return;
+            var head = Kit.Header($"Older versions ({list.Count})");
+            head.Margin = new Thickness(0, 10, 0, 4);
+            _info.Children.Add(head);
+            var box = new StackPanel();
+            foreach (var v in list.Take(6))
+            {
+                var ver = v;
+                var row = new DockPanel { Margin = new Thickness(0, 1, 0, 3) };
+                var buttons = new StackPanel { Orientation = Orientation.Horizontal };
+                var open = Kit.Plain("\uE8A7", () => VersionShelf.OpenCopy(ver), "open this version as a copy", 10);
+                buttons.Children.Add(open);
+                var back = Kit.Plain("\uE7A7", () =>
+                {
+                    if (VersionShelf.Restore(ver) != null) Build(Obj.From(p), false);
+                }, "put this version back (your current one gets saved next to it)", 10);
+                buttons.Children.Add(back);
+                DockPanel.SetDock(buttons, Dock.Right);
+                row.Children.Add(buttons);
+                row.Children.Add(Kit.Text($"{Kit.Ago(ver.When)}  ·  {Kit.Size(ver.Size)}", 12, false, "SubText"));
+                box.Children.Add(row);
+            }
+            _info.Children.Add(box);
         }
 
         Border Chip(string glyph, string text, Action? click)

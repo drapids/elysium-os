@@ -25,6 +25,11 @@ namespace Heft
             ("device", "Next audio output", "Ctrl+Alt+D"),
             ("peek", "Peek desktop icons", "Ctrl+Alt+E"),
             ("overview", "Overview (all windows)", "Ctrl+Alt+W"),
+            ("spaces", "Spaces (zoomable desktop)", "Ctrl+Alt+G"),
+            ("pip", "Picture in picture", "Ctrl+Alt+O"),
+            ("share", "Send Explorer selection to phone", "Ctrl+Alt+U"),
+            ("stacknext", "Next tab in a window stack", ""),
+            ("sheet", "Shortcut sheet", "Ctrl+Alt+Y"),
             ("start", "Start", "")
         };
 

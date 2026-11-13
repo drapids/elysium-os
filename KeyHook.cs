@@ -29,9 +29,10 @@ namespace Heft
         readonly Thread _thread;
         IntPtr _hook;
         uint _threadId;
-        bool _winDown, _other;
+        bool _winDown, _other, _spaceHeld;
 
         public event Action? WinTapped;
+        public event Action? ExplorerSpace;
 
         public KeyHook(Settings s, Dispatcher ui)
         {
@@ -67,6 +68,22 @@ namespace Heft
                     bool up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
                     bool win = k.vkCode == 0x5B || k.vkCode == 0x5C;
 
+                    if (!injected && k.vkCode == 0x20)
+                    {
+                        if (up && _spaceHeld)
+                        {
+                            _spaceHeld = false;
+                            return new IntPtr(1);
+                        }
+                        if (down && _spaceHeld) return new IntPtr(1);
+                        if (down && _s.PreviewSpace && ExplorerItemsFocused())
+                        {
+                            _spaceHeld = true;
+                            _ui.BeginInvoke(new Action(() => ExplorerSpace?.Invoke()));
+                            return new IntPtr(1);
+                        }
+                    }
+
                     if (!injected)
                     {
                         if (win && down)
@@ -96,6 +113,22 @@ namespace Heft
                 }
             }
             return Native.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
+        }
+
+        static bool ExplorerItemsFocused()
+        {
+            if (Native.ModifiersDown()) return false;
+            IntPtr fg = Native.GetForegroundWindow();
+            if (fg == IntPtr.Zero) return false;
+            string cls = Native.ClassName(fg);
+            if (cls != "CabinetWClass" && cls != "ExploreWClass") return false;
+            uint thread = Native.GetWindowThreadProcessId(fg, out _);
+            var info = new Native.GUITHREADINFO { cbSize = Marshal.SizeOf<Native.GUITHREADINFO>() };
+            if (!Native.GetGUIThreadInfo(thread, ref info)) return false;
+            if (info.hwndFocus == IntPtr.Zero || info.hwndCaret != IntPtr.Zero) return false;
+            if (Native.ClassName(info.hwndFocus) != "DirectUIHWND") return false;
+            IntPtr parent = Native.GetParent(info.hwndFocus);
+            return parent != IntPtr.Zero && Native.ClassName(parent) == "SHELLDLL_DefView";
         }
 
         public void Dispose()
