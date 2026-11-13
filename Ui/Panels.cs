@@ -88,11 +88,11 @@ namespace Heft.Ui
             };
         }
 
-        public string Page => IsVisible ? _page : "";
+        public string Page => _shown ? _page : "";
 
         public void Toggle(string page, Display d, double topPx, double anchorX)
         {
-            if (IsVisible && _page == page)
+            if (_shown && _page == page)
             {
                 Close2();
                 return;
@@ -108,35 +108,35 @@ namespace Heft.Ui
             _scroll.MaxHeight = MaxHeight - 4;
             Build();
 
-            if (!IsVisible)
+            _shown = true;
+            Glass.Present(this, _surface, () =>
             {
-                Left = -20000;
-                Show();
-            }
-            UpdateLayout();
-            int wpx = (int)(Width * d.Scale);
-            int x = page == "center" ? (int)(anchorX - wpx / 2.0) : (int)(anchorX - wpx + 40 * d.Scale);
-            x = Math.Clamp(x, d.Bounds.Left + 8, d.Bounds.Right - wpx - 8);
-            Glass.MovePx(this, x, (int)topPx + (int)(8 * d.Scale));
+                UpdateLayout();
+                int wpx = (int)(Width * d.Scale);
+                int x = page == "center" ? (int)(anchorX - wpx / 2.0) : (int)(anchorX - wpx + 40 * d.Scale);
+                x = Math.Clamp(x, d.Bounds.Left + 8, d.Bounds.Right - wpx - 8);
+                var h = new WindowInteropHelper(this).Handle;
+                Native.SetWindowPos(h, Native.HWND_TOPMOST, x, (int)topPx + (int)(8 * d.Scale), 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            }, -10, 0.985, 230);
             Activate();
-
-            var tt = new TranslateTransform(0, -12);
-            _surface.RenderTransform = tt;
-            tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-12, 0, TimeSpan.FromMilliseconds(240)) { EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut } });
-            _surface.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)));
             _live.Start();
             _outside.Start();
             if (page == "audio") _meters.Start();
             if (page == "notes") _notes.MarkSeen();
         }
 
+        bool _shown;
+
+        public bool Shown => _shown;
+
         public void Close2()
         {
-            if (!IsVisible) return;
+            if (!_shown) return;
+            _shown = false;
             _live.Stop();
             _meters.Stop();
             _outside.Stop();
-            Hide();
+            Glass.Dismiss(this, _surface);
         }
 
         void Build()

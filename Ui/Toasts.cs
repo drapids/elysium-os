@@ -110,7 +110,12 @@ namespace Heft.Ui
             surface.RenderTransform = slide;
             var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
             slide.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(40, 0, TimeSpan.FromMilliseconds(320)) { EasingFunction = ease });
-            w.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)));
+            var fadeIn = new DoubleAnimation(1, TimeSpan.FromMilliseconds(200));
+            fadeIn.Completed += (_, _) =>
+            {
+                if (!w.Dying) Glass.SetBlur(w, true);
+            };
+            w.BeginAnimation(UIElement.OpacityProperty, fadeIn);
         }
 
         void Layout(bool instantForNewest)
@@ -140,6 +145,7 @@ namespace Heft.Ui
             if (w.Dying) return;
             w.Dying = true;
             w.Life.Stop();
+            Glass.SetBlur(w, false);
             var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(180));
             fade.Completed += (_, _) =>
             {

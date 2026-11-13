@@ -293,7 +293,7 @@ namespace Heft
         Bar NewBar(Display d)
         {
             var b = new Bar(_s, d);
-            b.KeepOpen = () => _shelf.IsOpen || _drop.IsVisible;
+            b.KeepOpen = () => _shelf.IsOpen || _drop.Shown;
             b.PillClicked += bar => _drop.Toggle("center", bar.Display, bar.BottomPx, bar.Display.Bounds.Left + bar.Display.Bounds.Width / 2.0);
             b.AudioClicked += (bar, x) => _drop.Toggle("audio", bar.Display, bar.BottomPx, x);
             b.NotesClicked += (bar, x) => _drop.Toggle("notes", bar.Display, bar.BottomPx, x);
@@ -332,7 +332,7 @@ namespace Heft
         void Tick()
         {
             _tick++;
-            if (_tick % 2 == 0 && (_s.BarMedia || _drop.IsVisible)) _ = _np.Refresh();
+            if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown)) _ = _np.Refresh();
 
             int vol = -1;
             bool muted = false;

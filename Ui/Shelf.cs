@@ -205,27 +205,18 @@ namespace Heft.Ui
             int y = (int)(topPx ?? d.Work.Top) + (int)(8 * scale);
 
             _lib.Refresh();
-            if (!_open)
-            {
-                _open = true;
-                Left = -20000;
-                Show();
-                Glass.MovePx(this, x, y);
-                Activate();
-                var tt = new TranslateTransform(0, -18);
-                _surface.RenderTransform = tt;
-                tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-18, 0, TimeSpan.FromMilliseconds(260)) { EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut } });
-                _surface.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(170)));
-                _outside.Start();
-            }
-            else
-            {
-                Glass.MovePx(this, x, y);
-                Activate();
-            }
             BuildTabs();
-            BuildPocket();
             Render();
+            bool was = _open;
+            _open = true;
+            Glass.Present(this, _surface, () =>
+            {
+                var h = new WindowInteropHelper(this).Handle;
+                Native.SetWindowPos(h, Native.HWND_TOPMOST, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            }, was ? 0 : -16, was ? 1 : 0.985, 240);
+            Activate();
+            _outside.Start();
+            BuildPocket();
         }
 
         public void HideShelf()
@@ -236,12 +227,7 @@ namespace Heft.Ui
             _pendingCollect = null;
             _banner.Visibility = Visibility.Collapsed;
             ClearThumbs();
-            var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(140));
-            fade.Completed += (_, _) =>
-            {
-                if (!_open) Hide();
-            };
-            _surface.BeginAnimation(OpacityProperty, fade);
+            Glass.Dismiss(this, _surface);
         }
 
         void CheckOutside()

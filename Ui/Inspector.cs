@@ -113,7 +113,13 @@ namespace Heft.Ui
 
             var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
             var dur = TimeSpan.FromMilliseconds(380);
-            _scrim.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+            Glass.SetBlur(this, false);
+            var scrimIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220));
+            scrimIn.Completed += (_, _) =>
+            {
+                if (!_closing) Glass.SetBlur(this, true);
+            };
+            _scrim.BeginAnimation(OpacityProperty, scrimIn);
 
             _flyer.Source = icon ?? _cat.Icon(obj.Path, 256, obj.Kind is "app" or "uwp");
             _flyer.Visibility = _flyer.Source != null ? Visibility.Visible : Visibility.Collapsed;
@@ -147,6 +153,7 @@ namespace Heft.Ui
         {
             if (_closing || !IsVisible) return;
             _closing = true;
+            Glass.SetBlur(this, false);
             StopMedia();
             var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
             var dur = TimeSpan.FromMilliseconds(220);

@@ -11,6 +11,17 @@ namespace Heft.Ui
 {
     internal static class Glass
     {
+        sealed class State
+        {
+            public double Radius;
+            public bool Blur;
+            public int Token;
+        }
+
+        static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Window, State> States = new();
+
+        static State Of(Window w) => States.GetValue(w, _ => new State());
+
         public static void Attach(Window w, double radius, bool noActivate = false)
         {
             w.WindowStyle = WindowStyle.None;
@@ -21,28 +32,86 @@ namespace Heft.Ui
             w.ResizeMode = ResizeMode.NoResize;
             w.UseLayoutRounding = true;
             w.SetResourceReference(Control.FontFamilyProperty, "UiFont");
+            Of(w).Radius = radius;
 
             w.SourceInitialized += (_, _) =>
             {
                 var h = new WindowInteropHelper(w).Handle;
                 Native.MakeToolWindow(h, noActivate);
-                Apply(w, radius);
+                Region(w, radius);
             };
             w.SizeChanged += (_, _) => Region(w, radius);
             w.Loaded += (_, _) =>
             {
                 if (w.Content is FrameworkElement fe) fe.SizeChanged += (_, _) => Region(w, radius);
             };
-            w.LocationChanged += (_, _) => Region(w, radius);
-            Theme.Applied += () => Apply(w, radius);
+            Theme.Applied += () =>
+            {
+                if (Of(w).Blur) SetBlur(w, true);
+            };
         }
 
-        static void Apply(Window w, double radius)
+        public static void SetBlur(Window w, bool on)
         {
+            var st = Of(w);
+            st.Blur = on;
             var h = new WindowInteropHelper(w).Handle;
             if (h == IntPtr.Zero) return;
-            Native.SetAccent(h, 3, 0);
-            Region(w, radius);
+            if (on) Region(w, st.Radius);
+            Native.SetAccent(h, on ? 3 : 0, 0);
+        }
+
+        public static void Present(Window w, UIElement surface, Action placePx, double fromY = -10, double fromScale = 0.985, int ms = 220)
+        {
+            var st = Of(w);
+            int token = ++st.Token;
+            var h = new WindowInteropHelper(w).EnsureHandle();
+            if (!w.IsVisible) SetBlur(w, false);
+            surface.BeginAnimation(UIElement.OpacityProperty, null);
+            if (!w.IsVisible) surface.Opacity = 0;
+            placePx();
+            if (!w.IsVisible) w.Show();
+            w.UpdateLayout();
+            Region(w, st.Radius);
+
+            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            var tt = new TranslateTransform(0, fromY);
+            var sc = new ScaleTransform(fromScale, fromScale);
+            var g = new TransformGroup();
+            g.Children.Add(sc);
+            g.Children.Add(tt);
+            surface.RenderTransformOrigin = new Point(0.5, 0);
+            surface.RenderTransform = g;
+            var d = TimeSpan.FromMilliseconds(ms);
+            tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(fromY, 0, d) { EasingFunction = ease });
+            sc.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(fromScale, 1, d) { EasingFunction = ease });
+            sc.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(fromScale, 1, d) { EasingFunction = ease });
+            var fade = new DoubleAnimation(1, TimeSpan.FromMilliseconds(ms * 0.7));
+            fade.Completed += (_, _) =>
+            {
+                if (st.Token == token && w.IsVisible) SetBlur(w, true);
+            };
+            surface.BeginAnimation(UIElement.OpacityProperty, fade);
+        }
+
+        public static void Dismiss(Window w, UIElement surface, Action? after = null, int ms = 130)
+        {
+            var st = Of(w);
+            int token = ++st.Token;
+            if (!w.IsVisible)
+            {
+                after?.Invoke();
+                return;
+            }
+            SetBlur(w, false);
+            var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(ms));
+            fade.Completed += (_, _) =>
+            {
+                if (st.Token != token) return;
+                w.Hide();
+                after?.Invoke();
+            };
+            surface.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
         public static void Region(Window w, double radius)

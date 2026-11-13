@@ -207,7 +207,7 @@ namespace Heft.Ui
 
         public void Toggle(string? text = null)
         {
-            if (IsVisible && text == null)
+            if (_shown && text == null)
             {
                 Dismiss();
                 return;
@@ -219,7 +219,7 @@ namespace Heft.Ui
 
         public void OpenStart()
         {
-            if (IsVisible && _start)
+            if (_shown && _start)
             {
                 Dismiss();
                 return;
@@ -234,43 +234,38 @@ namespace Heft.Ui
             OpenInner(text);
         }
 
+        bool _shown;
+
+        public bool Shown => _shown;
+
         void OpenInner(string? text)
         {
             _previous = Native.GetForegroundWindow();
             if (!_apps.Loaded) _apps.Load();
             var d = Displays.AtCursor();
-            double scale = d.Scale;
-            if (!IsVisible)
+            _shown = true;
+            _box.Text = text ?? "";
+            Update();
+            Glass.Present(this, _surface, () =>
             {
-                Left = -20000;
-                Show();
-            }
-            int wpx = (int)(Width * scale);
-            Glass.MovePx(this, d.Bounds.Left + (d.Bounds.Width - wpx) / 2, d.Work.Top + (int)(d.Work.Height * 0.2));
+                var h = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                int wpx = (int)(Width * d.Scale);
+                Native.SetWindowPos(h, Native.HWND_TOPMOST, d.Bounds.Left + (d.Bounds.Width - wpx) / 2, d.Work.Top + (int)(d.Work.Height * 0.2), 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            }, -8, 0.975, 210);
             Activate();
             if (!IsActive) Native.Focus(new System.Windows.Interop.WindowInteropHelper(this).Handle);
             _box.Focus();
-            _box.Text = text ?? "";
             _box.CaretIndex = _box.Text.Length;
-            _box.SelectAll();
-            if (text != null) _box.CaretIndex = _box.Text.Length;
-            Update();
-
-            var st = new ScaleTransform(0.97, 0.97);
-            _surface.RenderTransformOrigin = new Point(0.5, 0);
-            _surface.RenderTransform = st;
-            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
-            st.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.97, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
-            st.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.97, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease });
-            _surface.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(130)));
+            if (text == null) _box.SelectAll();
         }
 
         public void Dismiss()
         {
-            if (!IsVisible) return;
+            if (!_shown) return;
+            _shown = false;
             _cts?.Cancel();
             _armed = null;
-            Hide();
+            Glass.Dismiss(this, _surface);
         }
 
         (string prefix, string body) Split(string text)
