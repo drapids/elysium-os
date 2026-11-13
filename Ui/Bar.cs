@@ -524,6 +524,8 @@ namespace Heft.Ui
             _pTitle = _pSub = _pTime = _pPlay = null;
             _pBar = _pFill = null;
             _pArt = null;
+            _sweeping = false;
+            _fillTarget = -2;
             var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             _pillContent.Children.Add(row);
             double h = Math.Clamp(_s.BarHeight, 22, 48) - 8;
@@ -625,21 +627,40 @@ namespace Heft.Ui
             return b;
         }
 
+        bool _sweeping;
+        double _fillTarget = -2;
+
         void SetFill(double frac)
         {
             if (_pBar == null || _pFill == null) return;
             double w = _pBar.ActualWidth;
+            if (w <= 0) return;
             if (frac < 0)
             {
-                double t = DateTime.Now.TimeOfDay.TotalSeconds % 1.6 / 1.6;
+                if (_sweeping) return;
+                _sweeping = true;
+                _fillTarget = -2;
+                _pFill.BeginAnimation(WidthProperty, null);
                 _pFill.Width = w * 0.3;
-                _pFill.Margin = new Thickness(w * 0.7 * t, 0, 0, 0);
+                var tt = new TranslateTransform();
+                _pFill.RenderTransform = tt;
+                tt.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-w * 0.3, w, TimeSpan.FromMilliseconds(1300))
+                {
+                    RepeatBehavior = RepeatBehavior.Forever,
+                    EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+                });
+                _pBar.ClipToBounds = true;
+                return;
             }
-            else
+            if (_sweeping)
             {
-                _pFill.Margin = new Thickness(0);
-                _pFill.Width = Math.Clamp(frac, 0, 1) * w;
+                _sweeping = false;
+                _pFill.RenderTransform = null;
             }
+            double target = Math.Clamp(frac, 0, 1) * w;
+            if (Math.Abs(target - _fillTarget) < 0.5) return;
+            _fillTarget = target;
+            _pFill.BeginAnimation(WidthProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(520)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
 
         void UpdatePill(BarState st)

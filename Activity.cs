@@ -234,13 +234,26 @@ namespace Heft
 
         public void FocusCopy()
         {
-            var h = _copyWindow != IntPtr.Zero && Native.IsWindow(_copyWindow) ? _copyWindow : Native.FindWindow("OperationStatusWindow", null);
+            var h = _copyWindow != IntPtr.Zero && Native.IsWindow(_copyWindow) ? _copyWindow : VisibleCopyWindow();
             if (h != IntPtr.Zero) Native.Focus(h);
+        }
+
+        static IntPtr VisibleCopyWindow()
+        {
+            IntPtr h = IntPtr.Zero;
+            while ((h = Native.FindWindowEx(IntPtr.Zero, h, "OperationStatusWindow", null)) != IntPtr.Zero)
+            {
+                if (!Native.IsWindowVisible(h) || Native.IsCloaked(h)) continue;
+                Native.GetWindowRect(h, out var r);
+                if (r.Width < 50 || r.Height < 50 || r.Left <= -10000) continue;
+                return h;
+            }
+            return IntPtr.Zero;
         }
 
         Transfer? PollCopy()
         {
-            IntPtr h = Native.FindWindow("OperationStatusWindow", null);
+            IntPtr h = VisibleCopyWindow();
             _copyWindow = h;
             if (h == IntPtr.Zero) return null;
             var t = new Transfer { Name = "copying files" };
