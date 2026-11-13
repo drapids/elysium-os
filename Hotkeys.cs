@@ -30,6 +30,8 @@ namespace Heft
             ("share", "Send Explorer selection to phone", "Ctrl+Alt+U"),
             ("stacknext", "Next tab in a window stack", ""),
             ("sheet", "Shortcut sheet", "Ctrl+Alt+Y"),
+            ("capture", "Screenshot, text, colors", "Ctrl+Alt+X"),
+            ("pickcolor", "Pick a color", ""),
             ("start", "Start", "")
         };
 

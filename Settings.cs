@@ -162,6 +162,10 @@ namespace Heft
         public bool DropSlit { get; set; } = true;
         public bool ShelfTakeOut { get; set; } = true;
 
+        public string CaptureMode { get; set; } = "shot";
+        public string CaptureFolder { get; set; } = "";
+        public List<string> Palette { get; set; } = new();
+
         public bool Lerp { get; set; } = false;
         public double LerpLag { get; set; } = 0.45;
         public double LerpWobble { get; set; } = 0.25;
@@ -215,6 +219,7 @@ namespace Heft
                         s.StackedAway ??= new List<PocketEntry>();
                         s.VersionFolders ??= new List<string>();
                         s.CustomKeys ??= new List<CustomKey>();
+                        s.Palette ??= new List<string>();
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         return s;
                     }
