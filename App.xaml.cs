@@ -158,9 +158,14 @@ namespace Heft
             _startData = new StartData(_apps);
             _start = new StartScreen(_s, _catalog, _apps, _startData, _cmds, _notes, _np, _activity, _lib);
             _overview = new Overview(_catalog);
+            var warm = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+            warm.Tick += (_, _) =>
+            {
+                warm.Stop();
+                _start.Prewarm();
+            };
+            warm.Start();
             _slit = new Slit(p => _catalog.Icon(p, 64, Files.IsApp(p)));
-            _slit.Accepted += (paths, copy) => _shelf.AddToShelf(paths);
-            _slit.OpenFull += d => _shelf.OpenShelf(d, BarBottom(d), "shelf");
             _sheet = new ShortcutSheet(_s, RunAction);
             _spaces = new Spaces(_s, _catalog, _lib, _np, _startData);
             _spaces.Inspect = (o, r) => InspectObj(o, r, null);
@@ -178,6 +183,14 @@ namespace Heft
             {
                 _lib.FindDupes(true);
                 _shelf.OpenShelf(BarDisplay(), BarBottom(), "dupes");
+            };
+            pages.Cmds = _cmds;
+            pages.KeyFree = spec => _keys.Free(spec);
+            pages.PauseKeys = on =>
+            {
+                _keyHook.Paused = on;
+                if (on) _keys.Clear();
+                else RegisterKeys();
             };
             _panel.Attach(pages);
 
@@ -379,14 +392,23 @@ namespace Heft
                 var paths = Shelf.DroppedPaths(data);
                 if (paths.Count == 0) return;
                 _shelf.AddToShelf(paths);
-                if (_slit.Shown) _slit.Swallow(paths);
+                if (b.SlitOpen)
+                {
+                    _slit.Swallow(b, paths);
+                    b.Gulp();
+                }
                 else Sfx.Play("drop");
             };
             b.DragNear += bar =>
             {
                 if (_shelf.IsOpen) return;
-                if (_s.DropSlit) _slit.ShowAt(bar.Display, bar.BottomPx);
+                if (_s.DropSlit) bar.OpenSlit();
                 else _shelf.OpenShelf(bar.Display, bar.BottomPx);
+            };
+            b.SlitSpring += bar =>
+            {
+                bar.CloseSlit();
+                _shelf.OpenShelf(bar.Display, bar.BottomPx, "shelf");
             };
             b.EmptyClicked += bar =>
             {
@@ -505,7 +527,9 @@ namespace Heft
                 Flash(_s.FocusActive ? "focus on" : "focus off");
             }
 
-            string sig = string.Join("|", Hotkeys.Defaults.Select(d => Hotkeys.Spec(_s, d.id))) + "|" + string.Join("|", _s.AudioProfiles.Select(p => p.Name + "=" + p.Hotkey));
+            string sig = string.Join("|", Hotkeys.Defaults.Select(d => Hotkeys.Spec(_s, d.id))) + "|" + string.Join("|", _s.AudioProfiles.Select(p => p.Name + "=" + p.Hotkey))
+                         + "|" + string.Join("|", _s.CustomKeys.Select(k => k.Keys + "=" + k.Kind + ":" + k.Target))
+                         + "|" + string.Join("|", _s.Remaps.Select(kv => kv.Key + ">" + kv.Value));
             if (sig != _keySig)
             {
                 _keySig = sig;
@@ -566,7 +590,48 @@ namespace Heft
                     Flash("audio: " + pr.Name);
                 }, "profile " + pr.Name);
             }
+            foreach (var ck in _s.CustomKeys)
+            {
+                var k = ck;
+                if (k.Keys.Length > 0) _keys.Add(k.Keys, () => RunCustom(k), k.Label.Length > 0 ? k.Label : k.Target);
+            }
+            _keyHook.SetRemaps(_s.Remaps);
             if (_keys.Failed.Count > 0) PhysicsEngine.Log("hotkeys: " + string.Join("; ", _keys.Failed));
+        }
+
+        void RunCustom(CustomKey k)
+        {
+            try
+            {
+                string t = k.Target;
+                switch (k.Kind)
+                {
+                    case "heft":
+                        if (!_cmds.Run(t)) RunAction(t);
+                        break;
+                    case "app":
+                        Launch.Run(t);
+                        break;
+                    case "file":
+                    case "folder":
+                        Files.Open(t, _s);
+                        break;
+                    case "url":
+                        Launch.Url(t.Contains("://") ? t : "https://" + t);
+                        break;
+                    case "text":
+                        Clips.PasteNow(t);
+                        break;
+                    case "script":
+                        _ = _cmds.Script(t);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("custom shortcut failed " + ex.Message);
+                Flash("that shortcut didn't work");
+            }
         }
 
         void FireCorner()
@@ -603,6 +668,13 @@ namespace Heft
                 return true;
             }
             if (id.StartsWith("corner:", StringComparison.Ordinal)) return FireAction(id[7..]);
+            if (id.StartsWith("custom:", StringComparison.Ordinal))
+            {
+                var ck = _s.CustomKeys.FirstOrDefault(c => c.Id == id[7..]);
+                if (ck == null) return false;
+                RunCustom(ck);
+                return true;
+            }
             if (_keyActions.TryGetValue(id, out var act))
             {
                 act();

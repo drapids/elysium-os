@@ -36,8 +36,10 @@ namespace Heft.Ui
         readonly StackPanel _side = new() { Width = 300 };
         readonly WrapPanel _dockRow = new() { HorizontalAlignment = HorizontalAlignment.Center };
         readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
-        bool _shown, _allApps;
-        int _stagger;
+        readonly DispatcherTimer _refresh = new() { Interval = TimeSpan.FromMinutes(10) };
+        readonly Image _backdrop = new() { Stretch = Stretch.Fill, IsHitTestVisible = false };
+        bool _shown, _allApps, _dirty = true, _warm;
+        DateTime _builtAt = DateTime.MinValue;
 
         public Action<string>? Search;
         public Action? OpenSettings;
@@ -57,9 +59,14 @@ namespace Heft.Ui
             _act = act;
             _lib = lib;
             Glass.Attach(this, 0);
+            Glass.NoBlur(this);
             Title = "heft start";
 
-            _scrim.Background = new SolidColorBrush(Color.FromArgb(0x8C, 8, 8, 12));
+            RenderOptions.SetBitmapScalingMode(_backdrop, BitmapScalingMode.HighQuality);
+            _backdrop.RenderTransformOrigin = new Point(0.5, 0.5);
+            _backdrop.RenderTransform = new ScaleTransform(1.04, 1.04);
+            _root.Children.Add(_backdrop);
+            _scrim.Background = new SolidColorBrush(Color.FromArgb(0x78, 8, 8, 12));
             _scrim.MouseLeftButtonDown += (_, _) => Close2();
             _root.Children.Add(_scrim);
 
@@ -148,10 +155,57 @@ namespace Heft.Ui
             PreviewKeyDown += OnKey;
             Deactivated += (_, _) => Close2();
             _tick.Tick += (_, _) => Clock();
-            _data.Updated += () =>
+            _data.Updated += () => _dirty = true;
+            _lib.Updated += () => _dirty = true;
+            _refresh.Tick += (_, _) =>
             {
-                if (_shown) Build();
+                if (!_shown) Prepare();
             };
+        }
+
+        public void Prepare()
+        {
+            try
+            {
+                if (_apps.Loaded) _data.Rename();
+                _data.Refresh();
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("start refresh failed " + ex.Message);
+            }
+        }
+
+        public void Prewarm()
+        {
+            if (_warm || _shown) return;
+            _warm = true;
+            try
+            {
+                if (!_apps.Loaded) _apps.Load();
+                _data.Rename();
+                BuildMain();
+                BuildSide();
+                var d = Displays.Primary();
+                var h = new WindowInteropHelper(this).EnsureHandle();
+                Width = d.Bounds.Width / d.Scale;
+                Height = d.Bounds.Height / d.Scale;
+                _root.Opacity = 0;
+                ShowActivated = false;
+                Native.SetWindowPos(h, IntPtr.Zero, -32000, -32000, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
+                Show();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ShowActivated = true;
+                    if (!_shown) Hide();
+                }), DispatcherPriority.ContextIdle);
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("start prewarm failed " + ex.Message);
+            }
+            _refresh.Start();
+            Prepare();
         }
 
         void OnKey(object sender, KeyEventArgs e)
@@ -173,15 +227,22 @@ namespace Heft.Ui
 
         public void Open()
         {
-            _shown = true;
-            _allApps = false;
-            if (!_apps.Loaded) _apps.Load();
-            _data.Rename();
-            _data.Refresh();
             var d = Displays.AtCursor();
+            _backdrop.Source = Backdrop.Capture(d.Bounds);
+            _shown = true;
+            bool wasAll = _allApps;
+            _allApps = false;
+            if (!_apps.Loaded)
+            {
+                _apps.Load();
+                _data.Rename();
+                _dirty = true;
+            }
+            if (_dirty || wasAll || (DateTime.Now - _builtAt).TotalMinutes > 5) BuildMain();
+            _side.Children.Clear();
+            BuildSide();
             _search.Text = "";
             Clock();
-            Build();
             _tick.Start();
 
             Glass.Present(this, _root, () =>
@@ -202,6 +263,22 @@ namespace Heft.Ui
             Activate();
             if (!IsActive) Native.Focus(new WindowInteropHelper(this).Handle);
             _search.Focus();
+            Entrance();
+        }
+
+        void Entrance()
+        {
+            int i = 0;
+            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            foreach (var el in _main.Children.OfType<UIElement>().Concat(_side.Children.OfType<UIElement>()))
+            {
+                var tt = new TranslateTransform(0, 14);
+                el.RenderTransform = tt;
+                var begin = TimeSpan.FromMilliseconds(30 + Math.Min(i, 12) * 26);
+                el.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { BeginTime = begin });
+                tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(340)) { BeginTime = begin, EasingFunction = ease });
+                i++;
+            }
         }
 
         public void Close2()
@@ -209,6 +286,10 @@ namespace Heft.Ui
             if (!_shown) return;
             _shown = false;
             _tick.Stop();
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!_shown) Prepare();
+            }), DispatcherPriority.ApplicationIdle);
             Glass.Dismiss(this, _root, null, 150);
             var st = new ScaleTransform(1, 1);
             _stage.RenderTransform = st;
@@ -226,14 +307,27 @@ namespace Heft.Ui
 
         void Build()
         {
-            _stagger = 0;
-            _main.Children.Clear();
+            BuildMain();
             _side.Children.Clear();
+            BuildSide();
+            if (_shown) Entrance();
+        }
+
+        void BuildMain()
+        {
+            _main.Children.Clear();
             _dockRow.Children.Clear();
             if (_allApps) BuildAllApps();
             else BuildPinned();
-            BuildSide();
             BuildDock();
+            _dirty = false;
+            _builtAt = DateTime.Now;
+        }
+
+        void RefreshSide()
+        {
+            _side.Children.Clear();
+            BuildSide();
         }
 
         UIElement Header(string text, string? linkText = null, Action? link = null)
@@ -315,17 +409,6 @@ namespace Heft.Ui
                     e.Handled = true;
                     alt();
                 };
-
-            int n = _stagger++;
-            tile.Opacity = 0;
-            var tt = new TranslateTransform(0, 14);
-            var group = new TransformGroup();
-            group.Children.Add(sc);
-            group.Children.Add(tt);
-            tile.RenderTransform = group;
-            var begin = TimeSpan.FromMilliseconds(Math.Min(n, 30) * 12 + 60);
-            tile.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { BeginTime = begin });
-            tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(320)) { BeginTime = begin, EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut } });
             return tile;
         }
 
@@ -528,7 +611,7 @@ namespace Heft.Ui
                 b.MouseLeftButtonUp += (_, _) =>
                 {
                     c.Run();
-                    Dispatcher.BeginInvoke(new Action(Build), DispatcherPriority.Background);
+                    Dispatcher.BeginInvoke(new Action(RefreshSide), DispatcherPriority.Background);
                 };
                 toggles.Children.Add(b);
             }

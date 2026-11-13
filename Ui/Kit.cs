@@ -15,6 +15,7 @@ namespace Heft.Ui
         {
             public double Radius;
             public bool Blur;
+            public bool NoBlur;
             public int Token;
         }
 
@@ -51,9 +52,12 @@ namespace Heft.Ui
             };
         }
 
+        public static void NoBlur(Window w) => Of(w).NoBlur = true;
+
         public static void SetBlur(Window w, bool on)
         {
             var st = Of(w);
+            if (st.NoBlur) on = false;
             st.Blur = on;
             var h = new WindowInteropHelper(w).Handle;
             if (h == IntPtr.Zero) return;

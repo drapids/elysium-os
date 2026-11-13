@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Threading;
@@ -34,6 +35,27 @@ namespace Heft
         public event Action? WinTapped;
         public event Action? ExplorerSpace;
 
+        public volatile bool Paused;
+        volatile Dictionary<uint, (byte[] mods, byte vk)> _remaps = new();
+        readonly HashSet<uint> _remapHeld = new();
+
+        public void SetRemaps(Dictionary<string, string> map)
+        {
+            var next = new Dictionary<uint, (byte[] mods, byte vk)>();
+            foreach (var kv in map)
+            {
+                if (!Hotkeys.TryParse(kv.Key, out uint fm, out uint fv) || fm != 0) continue;
+                if (!Hotkeys.TryParse(kv.Value, out uint tm, out uint tv)) continue;
+                var mods = new List<byte>();
+                if ((tm & Native.MOD_CONTROL) != 0) mods.Add(0x11);
+                if ((tm & Native.MOD_ALT) != 0) mods.Add(0x12);
+                if ((tm & Native.MOD_SHIFT) != 0) mods.Add(0x10);
+                if ((tm & 0x0008) != 0) mods.Add(0x5B);
+                next[fv] = (mods.ToArray(), (byte)tv);
+            }
+            _remaps = next;
+        }
+
         public KeyHook(Settings s, Dispatcher ui)
         {
             _s = s;
@@ -68,6 +90,23 @@ namespace Heft
                     bool up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
                     bool win = k.vkCode == 0x5B || k.vkCode == 0x5C;
 
+                    if (!injected && !Paused && _remaps.TryGetValue(k.vkCode, out var to))
+                    {
+                        if (down)
+                        {
+                            if (_remapHeld.Add(k.vkCode))
+                                foreach (var m in to.mods) Native.keybd_event(m, 0, 0, UIntPtr.Zero);
+                            Native.keybd_event(to.vk, 0, Extended(to.vk), UIntPtr.Zero);
+                        }
+                        else if (up)
+                        {
+                            Native.keybd_event(to.vk, 0, Extended(to.vk) | 2, UIntPtr.Zero);
+                            if (_remapHeld.Remove(k.vkCode))
+                                for (int i = to.mods.Length - 1; i >= 0; i--) Native.keybd_event(to.mods[i], 0, 2, UIntPtr.Zero);
+                        }
+                        return new IntPtr(1);
+                    }
+
                     if (!injected && k.vkCode == 0x20)
                     {
                         if (up && _spaceHeld)
@@ -101,9 +140,12 @@ namespace Heft
                             _winDown = false;
                             if (solo && _s.WinKeyLauncher)
                             {
+                                byte vk = (byte)k.vkCode;
                                 Native.keybd_event(0xE8, 0, 0, UIntPtr.Zero);
                                 Native.keybd_event(0xE8, 0, 2, UIntPtr.Zero);
+                                Native.keybd_event(vk, 0, 2 | 1, UIntPtr.Zero);
                                 _ui.BeginInvoke(new Action(() => WinTapped?.Invoke()));
+                                return new IntPtr(1);
                             }
                         }
                     }
@@ -114,6 +156,8 @@ namespace Heft
             }
             return Native.CallNextHookEx(IntPtr.Zero, code, wParam, lParam);
         }
+
+        static uint Extended(byte vk) => vk is 0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2D or 0x2E or 0x5B or 0x5C or 0xA3 or 0xA5 ? 1u : 0u;
 
         static bool ExplorerItemsFocused()
         {
