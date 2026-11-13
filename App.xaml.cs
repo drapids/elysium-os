@@ -46,6 +46,11 @@ namespace Heft
         Shelf _shelf = null!;
         Launcher _launcher = null!;
         Inspector _inspector = null!;
+        StartData _startData = null!;
+        StartScreen _start = null!;
+        Overview _overview = null!;
+        readonly DispatcherTimer _cornerTimer = new() { Interval = TimeSpan.FromMilliseconds(140) };
+        string _cornerHit = "";
         readonly List<EdgeTab> _tabs = new();
         readonly List<Bar> _bars = new();
 
@@ -124,6 +129,12 @@ namespace Heft
             _drop = new Panels(_s, _catalog, _activity, _audio, _notes, _clips, _cmds, _np);
             _dock = new ArcDock(_s, _catalog);
             _panel = new SidePanel(_s, _catalog);
+            _startData = new StartData(_apps);
+            _start = new StartScreen(_s, _catalog, _apps, _startData, _cmds, _notes, _np, _activity, _lib);
+            _overview = new Overview(_catalog);
+            _start.Search = text => _launcher.Open(text);
+            _start.OpenSettings = () => _panel.Open();
+            _start.Overview = () => _overview.Open();
             _panel.Attach(new SettingsPages(_s, _audio, () => _keys.Failed, () => _wintoasts.Status, a => _panel.Dialog(a)));
 
             _actions.Inspect = o => InspectObj(o, null, null);
@@ -150,7 +161,18 @@ namespace Heft
             _drop.OpenSettingsPage = tab => _panel.OpenTab(tab);
 
             RegisterCommands();
-            _keyHook.WinTapped += () => _launcher.OpenStart();
+            _keyHook.WinTapped += () => _start.Toggle();
+            _mouse.Corner += corner =>
+            {
+                _cornerHit = corner;
+                _cornerTimer.Stop();
+                _cornerTimer.Start();
+            };
+            _cornerTimer.Tick += (_, _) =>
+            {
+                _cornerTimer.Stop();
+                FireCorner();
+            };
 
             _s.Changed += Sync;
             _layoutDelay.Tick += (_, _) =>
@@ -462,7 +484,9 @@ namespace Heft
                     var name = _audio.CycleOutput();
                     Flash(name != null ? "output: " + name : "only one output");
                 },
-                ["peek"] = Peek
+                ["peek"] = Peek,
+                ["overview"] = () => _overview.Toggle(),
+                ["start"] = () => _start.Toggle()
             };
             foreach (var d in Hotkeys.Defaults)
                 if (map.TryGetValue(d.id, out var act)) _keys.Add(Hotkeys.Spec(_s, d.id), act, d.label);
@@ -476,6 +500,50 @@ namespace Heft
                 }, "profile " + pr.Name);
             }
             if (_keys.Failed.Count > 0) PhysicsEngine.Log("hotkeys: " + string.Join("; ", _keys.Failed));
+        }
+
+        void FireCorner()
+        {
+            string corner = _cornerHit;
+            if (corner.Length == 0 || Native.MouseDown()) return;
+            Native.GetCursorPos(out var p);
+            var d = Displays.At(p.X, p.Y);
+            var b = d.Bounds;
+            bool still = corner switch
+            {
+                "tl" => p.X <= b.Left + 1 && p.Y <= b.Top + 1,
+                "tr" => p.X >= b.Right - 2 && p.Y <= b.Top + 1,
+                "bl" => p.X <= b.Left + 1 && p.Y >= b.Bottom - 2,
+                _ => p.X >= b.Right - 2 && p.Y >= b.Bottom - 2
+            };
+            if (!still) return;
+            var fg = Native.GetForegroundWindow();
+            if (fg != IntPtr.Zero && CursorLock.IsFullscreen(fg, out _)) return;
+            string action = _s.HotCorners.TryGetValue(corner, out var a) ? a : "none";
+            switch (action)
+            {
+                case "start":
+                    _start.Toggle();
+                    break;
+                case "overview":
+                    _overview.Toggle();
+                    break;
+                case "launcher":
+                    _launcher.Toggle();
+                    break;
+                case "center":
+                    OpenDrop("center");
+                    break;
+                case "shelf":
+                    _shelf.Toggle(BarDisplay(), BarBottom());
+                    break;
+                case "desktop":
+                    Native.Combo(0x5B, 0x44);
+                    break;
+                case "lock":
+                    Native.LockWorkStation();
+                    break;
+            }
         }
 
         void OpenDrop(string page)
@@ -549,6 +617,8 @@ namespace Heft
         {
             var c = _cmds;
             c.Add("heft", "launcher", "Launcher", "\uE721", () => _launcher.Open());
+            c.Add("heft", "start", "Start", "\uE782", () => _start.Open(), "start menu home");
+            c.Add("heft", "overview", "Overview (all windows)", "\uE8A9", () => _overview.Open(), "windows switcher mission control expose");
             c.Add("heft", "shelf", "Open the shelf", "\uE7B8", () => _shelf.OpenShelf(BarDisplay(), BarBottom(), "shelf"), "stash drawer");
             c.Add("heft", "catalog", "Open the catalog", "\uE82D", () => _shelf.OpenShelf(BarDisplay(), BarBottom(), "catalog"), "bookshelf folders books");
             foreach (var (id, label, glyph) in Library.Smart)

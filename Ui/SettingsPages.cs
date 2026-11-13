@@ -122,7 +122,7 @@ namespace Heft.Ui
                     _s.TaskbarHide = v;
                     Touch();
                 })),
-                Kit.Row("Windows key opens heft", "a glass start menu with your pins, recents and every app. ctrl + esc still opens the old one", Sw(_s.WinKeyLauncher, v => _s.WinKeyLauncher = v)),
+                Kit.Row("Windows key opens heft Start", "fullscreen glass start with your real Start pins, taskbar apps, widgets and every app. ctrl + esc still opens the old one", Sw(_s.WinKeyLauncher, v => _s.WinKeyLauncher = v)),
                 Kit.Row("Center the icons", null, Sw(_s.TaskbarCenter, v => _s.TaskbarCenter = v)),
                 Kit.Row("Hide the Start button", "the windows key still works", Sw(_s.HideStart, v => _s.HideStart = v)),
                 Kit.Row("Hide the tray", "clock and tray icons. the top bar covers it", Sw(_s.HideTray, v => _s.HideTray = v))));
@@ -147,6 +147,32 @@ namespace Heft.Ui
                     Touch();
                 })),
                 Kit.Row("Lock the cursor in fullscreen games", "keeps it from sliding onto the other monitor. ctrl + alt + l anytime", Sw(_s.AutoLockFullscreen, v => _s.AutoLockFullscreen = v))));
+
+            h.Children.Add(Kit.Header("Hot corners"));
+            h.Children.Add(Kit.Group(
+                Kit.Block("Top left", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("tl", out var vtl) ? vtl : "none", v =>
+                {
+                    _s.HotCorners["tl"] = v;
+                    Touch();
+                })),
+                Kit.Block("Top right", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("tr", out var vtr) ? vtr : "none", v =>
+                {
+                    _s.HotCorners["tr"] = v;
+                    Touch();
+                })),
+                Kit.Block("Bottom left", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("bl", out var vbl) ? vbl : "none", v =>
+                {
+                    _s.HotCorners["bl"] = v;
+                    Touch();
+                })),
+                Kit.Block("Bottom right", null, Kit.Segments(new[] { "Off", "Start", "Windows", "Center", "Desktop" }, new[] { "none", "start", "overview", "center", "desktop" }, _s.HotCorners.TryGetValue("br", out var vbr) ? vbr : "none", v =>
+                {
+                    _s.HotCorners["br"] = v;
+                    Touch();
+                }))));
+            var hc = Kit.Caption("push your mouse into a corner of any screen. games in fullscreen are left alone");
+            hc.Margin = new Thickness(14, 6, 14, 0);
+            h.Children.Add(hc);
 
             h.Children.Add(Kit.Header("Gestures"));
             h.Children.Add(Kit.Group(

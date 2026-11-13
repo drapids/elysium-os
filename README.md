@@ -51,6 +51,12 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 
 **notifications.** heft shows Windows notifications its own way and turns off Windows' popups for those apps so you don't get both. there's a searchable history grouped by app, and per-app rules: pop up, silent, or blocked. focus mode mutes the apps you pick and holds notifications.
 
+**start.** tap the windows key and a fullscreen glass start fades in over everything: a big clock, search (just start typing), your real Windows Start pins with their groups and sizes, the apps you use most, recent files, your taskbar apps along the bottom, and widgets on the side for weather, what's playing, quick toggles, cpu / ram / gpu, reminders and power. "all apps" has every app A to Z. ctrl + esc still opens the old start.
+
+**overview.** ctrl + alt + w (or the top-left corner) zooms out to every window on that screen as a live preview. click one to jump to it, type to filter, middle-click to close it.
+
+**hot corners.** push the mouse into a corner of any screen: top-left is overview, bottom-left is start by default. you can set each corner to start, overview, control center or show desktop. fullscreen games are left alone.
+
 **everything else**
 - hide desktop icons (nothing gets deleted). double-click the desktop or ctrl + alt + e to peek
 - taskbar: clear / blur / acrylic, auto-hide or gone, centered icons, hide start and tray
@@ -78,6 +84,8 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | ctrl + alt + i | inspect what's selected in Explorer |
 | ctrl + alt + d | next audio output |
 | ctrl + alt + e | peek desktop icons |
+| ctrl + alt + w | overview |
+| windows key | start |
 
 all of them can be changed in settings > keys.
 

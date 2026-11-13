@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Threading;
@@ -31,6 +32,11 @@ namespace Heft
 
         public event Action<string>? Flash;
         public event Action? DesktopDoubleClick;
+        public event Action<string>? Corner;
+
+        string _corner = "";
+        List<Native.RECT> _screens = new();
+        long _screensAt;
 
         public MouseHook(Settings settings, Dispatcher ui, Brightness brightness)
         {
@@ -76,6 +82,10 @@ namespace Heft
         {
             switch (msg)
             {
+                case 0x0200:
+                    CheckCorner(m.pt);
+                    return false;
+
                 case Native.WM_MOUSEWHEEL:
                     int delta = (short)(m.mouseData >> 16);
                     if (delta == 0) return false;
@@ -118,6 +128,32 @@ namespace Heft
                     return false;
             }
             return false;
+        }
+
+        void CheckCorner(Native.POINT p)
+        {
+            long now = Environment.TickCount64;
+            if (now - _screensAt > 3000)
+            {
+                _screensAt = now;
+                _screens = Displays.All().Select(d => d.Bounds).ToList();
+            }
+            string hit = "";
+            foreach (var r in _screens)
+            {
+                bool left = p.X <= r.Left + 1 && p.X >= r.Left;
+                bool right = p.X >= r.Right - 2 && p.X < r.Right;
+                bool top = p.Y <= r.Top + 1 && p.Y >= r.Top;
+                bool bottom = p.Y >= r.Bottom - 2 && p.Y < r.Bottom;
+                if (top && left) hit = "tl";
+                else if (top && right) hit = "tr";
+                else if (bottom && left) hit = "bl";
+                else if (bottom && right) hit = "br";
+                if (hit.Length > 0) break;
+            }
+            if (hit == _corner) return;
+            _corner = hit;
+            if (hit.Length > 0) Post(() => Corner?.Invoke(hit));
         }
 
         void Post(Action action) => _ui.BeginInvoke(DispatcherPriority.Normal, action);

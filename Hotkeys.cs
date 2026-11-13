@@ -23,7 +23,9 @@ namespace Heft
             ("paste", "Paste next from stack", "Ctrl+Alt+V"),
             ("inspect", "Inspect Explorer selection", "Ctrl+Alt+I"),
             ("device", "Next audio output", "Ctrl+Alt+D"),
-            ("peek", "Peek desktop icons", "Ctrl+Alt+E")
+            ("peek", "Peek desktop icons", "Ctrl+Alt+E"),
+            ("overview", "Overview (all windows)", "Ctrl+Alt+W"),
+            ("start", "Start", "")
         };
 
         readonly HwndSource _source;
