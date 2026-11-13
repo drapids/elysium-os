@@ -92,19 +92,14 @@ namespace Heft.Ui
             var early = Sw(_s.StartEarly, v =>
             {
                 _s.StartEarly = v;
-                if (_s.StartWithWindows)
-                {
-                    Startup.Set(true, v);
-                    _s.StartupPath = Environment.ProcessPath ?? "";
-                }
+                if (_s.StartWithWindows) ApplyStartup(true, v);
             });
             early.IsEnabled = _s.StartWithWindows;
             var start = Sw(_s.StartWithWindows, v =>
             {
                 _s.StartWithWindows = v;
-                bool ok = Startup.Set(v, _s.StartEarly);
-                _s.StartupPath = v && ok ? Environment.ProcessPath ?? "" : "";
                 early.IsEnabled = v;
+                ApplyStartup(v, _s.StartEarly);
             });
             string startCaption = Startup.CanSet
                 ? "heft opens on its own when you sign in, in the background"
@@ -152,6 +147,21 @@ namespace Heft.Ui
             var cap = Kit.Caption("ctrl + alt + y shows every shortcut heft has. click one to do it");
             cap.Margin = new Thickness(14, 4, 14, 0);
             h.Children.Add(cap);
+        }
+
+        void ApplyStartup(bool on, bool early)
+        {
+            string exe = Environment.ProcessPath ?? "";
+            var ui = Application.Current?.Dispatcher;
+            System.Threading.Tasks.Task.Run(() => Startup.Set(on, early)).ContinueWith(t =>
+            {
+                bool ok = !t.IsFaulted && t.Result;
+                ui?.BeginInvoke(new Action(() =>
+                {
+                    _s.StartupPath = on && ok ? exe : "";
+                    _s.Touch();
+                }));
+            });
         }
 
         void WindowsPage(Panel h)

@@ -68,7 +68,7 @@ namespace Heft
                 lock (Gate)
                 {
                     long now = Environment.TickCount64;
-                    if (!force && id == _lastId && now - _lastAt < 70) return;
+                    if (id == _lastId && now - _lastAt < (force ? 90 : 70)) return;
                     _lastId = id;
                     _lastAt = now;
 
