@@ -58,6 +58,9 @@ namespace Heft
         ShortcutSheet _sheet = null!;
         Spaces _spaces = null!;
         readonly Dictionary<string, Action> _keyActions = new();
+        Lens _lens = null!;
+        Recording? _rec;
+        RecChip? _recChip;
         readonly DispatcherTimer _cornerTimer = new() { Interval = TimeSpan.FromMilliseconds(140) };
         string _cornerHit = "";
         readonly List<EdgeTab> _tabs = new();
@@ -170,6 +173,14 @@ namespace Heft
             _spaces = new Spaces(_s, _catalog, _lib, _np, _startData);
             _spaces.Inspect = (o, r) => InspectObj(o, r, null);
             _spaces.Say = text => Flash(text);
+            _lens = new Lens(_s);
+            _lens.Say = text => Flash(text);
+            _lens.ToShelf = path => _shelf.AddToShelf(new[] { path });
+            _lens.ToSpace = path => _spaces.AddFile(path);
+            _lens.Share = paths => _share.Share(paths);
+            _lens.Pin = (img, r) => PinImage(img, r);
+            _lens.Markup = OpenMarkup;
+            _lens.Record = StartRecording;
             _start.Search = text => _launcher.Open(text);
             _start.OpenSettings = () => _panel.Open();
             _start.Overview = () => _overview.Open();
@@ -575,6 +586,8 @@ namespace Heft
                 ["share"] = ShareExplorer,
                 ["stacknext"] = () => _stacks.CycleForeground(),
                 ["sheet"] = () => _sheet.Toggle(),
+                ["capture"] = () => _lens.Open(),
+                ["pickcolor"] = () => _lens.Open("color"),
                 ["start"] = () => _start.Toggle()
             };
             _keyActions.Clear();
@@ -715,6 +728,70 @@ namespace Heft
                     return false;
             }
             return true;
+        }
+
+        void PinImage(System.Windows.Media.Imaging.BitmapSource img, Native.RECT? at)
+        {
+            var pin = new PinShot(_s, img);
+            pin.Say = text => Flash(text);
+            pin.Markup = OpenMarkup;
+            Native.RECT r;
+            if (at != null) r = at.Value;
+            else
+            {
+                var d = Displays.AtCursor();
+                int w = Math.Min(img.PixelWidth, d.Work.Width - 80), h = Math.Min(img.PixelHeight, d.Work.Height - 80);
+                int x = d.Work.Left + (d.Work.Width - w) / 2, y = d.Work.Top + (d.Work.Height - h) / 2;
+                r = new Native.RECT { Left = x, Top = y, Right = x + w, Bottom = y + h };
+            }
+            pin.ShowAt(r);
+        }
+
+        void OpenMarkup(System.Windows.Media.Imaging.BitmapSource img)
+        {
+            var m = new MarkupWindow(_s, img);
+            m.Say = text => Flash(text);
+            m.Pin = b => PinImage(b, null);
+            m.Open();
+        }
+
+        void StartRecording(Native.RECT r, bool gif)
+        {
+            if (_rec != null)
+            {
+                Flash("already recording");
+                return;
+            }
+            var rec = Recording.Start(_s, r, gif);
+            if (rec == null)
+            {
+                Flash("couldn't start recording");
+                return;
+            }
+            _rec = rec;
+            _recChip = new RecChip();
+            _recChip.StopRequested += () => _ = StopRecording();
+            _recChip.ShowNear(r);
+            Sfx.Play("tick");
+        }
+
+        async Task StopRecording()
+        {
+            var rec = _rec;
+            if (rec == null) return;
+            _rec = null;
+            _recChip?.Done();
+            _recChip = null;
+            Flash(rec.Gif ? "making the gif..." : "saving the video...");
+            string? path = await rec.Stop();
+            if (path == null)
+            {
+                Flash("recording didn't save");
+                return;
+            }
+            _notes.Post(rec.Gif ? "GIF ready" : "Recording saved", Path.GetFileName(path), "\uE714", path);
+            _shelf.AddToShelf(new[] { path });
+            Sfx.Play("chime");
         }
 
         void HealStartup()
@@ -919,6 +996,14 @@ namespace Heft
             }, "smooth drag lag trail", false, () => _s.Lerp ? "on" : "off");
             c.Add("heft", "unstack", "Pull this window out of its stack", "\uE8A9", () => _stacks.Take(Native.GetForegroundWindow()), "tabs window stack");
             c.Add("heft", "share-stop", "Stop sharing", "\uE8EA", () => _share.Stop(), "quick share phone");
+            c.Add("heft", "screenshot", "Screenshot", "\uE722", () => _lens.Open("shot"), "capture snip screen grab print");
+            c.Add("heft", "copy-text", "Copy text from the screen", "\uE8D2", () => _lens.Open("text"), "ocr read text extract");
+            c.Add("heft", "pick-color", "Pick a color", "\uE790", () => _lens.Open("color"), "hex eyedropper picker");
+            c.Add("heft", "grab-palette", "Grab colors from the screen", "\uE771", () => _lens.Open("aesthetic"), "palette aesthetic vibe colors");
+            c.Add("heft", "read-qr", "Read a QR code on screen", "\uED14", () => _lens.Open("qr"), "qr scan barcode");
+            c.Add("heft", "measure", "Measure the screen", "\uED5E", () => _lens.Open("measure"), "ruler pixels distance");
+            c.Add("heft", "record", "Record the screen", "\uE714", () => _lens.Open("gif"), "gif video capture recording");
+            c.Add("heft", "stop-recording", "Stop recording", "\uE71A", () => _ = StopRecording(), "recording gif");
             c.Add("heft", "quit", "Quit heft", "\uE7E8", Quit, "exit close");
 
             c.Add("system", "pclock", "Lock PC", "\uE72E", () => Native.LockWorkStation(), "lock screen away");

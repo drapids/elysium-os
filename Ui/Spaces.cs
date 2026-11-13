@@ -196,6 +196,26 @@ namespace Heft.Ui
 
         public bool Shown => _shown;
 
+        public void AddFile(string path)
+        {
+            double z = _cur.Zoom <= 0 ? 1 : _cur.Zoom;
+            double cx = ((_shown ? ActualWidth : 1200) / 2 - _cur.PanX) / z;
+            double cy = ((_shown ? ActualHeight : 700) / 2 - _cur.PanY) / z;
+            if (_shown)
+            {
+                cx = (ActualWidth / 2 - _pan.X) / _scale.ScaleX;
+                cy = (ActualHeight / 2 - _pan.Y) / _scale.ScaleX;
+            }
+            var it = new SpaceItem { Kind = Directory.Exists(path) ? "folder" : "file", Path = path, W = 104, H = 112, X = cx - 52, Y = cy - 56 };
+            _cur.Items.Add(it);
+            if (_shown)
+            {
+                var el = Add(it);
+                Glass.FadeIn(el, 8, 200);
+            }
+            SaveFile();
+        }
+
         Border Tool(string glyph, string tip, Action click)
         {
             var b = new Border { Width = 34, Height = 30, CornerRadius = new CornerRadius(9), Margin = new Thickness(4, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = tip, Background = new SolidColorBrush(Color.FromArgb(0x22, 255, 255, 255)) };

@@ -35,6 +35,17 @@ a whole new layer on top of windows. glass top bar, an arc dock on the screen ed
 
 **send to phone.** inspect a file > send to phone (or `> share` in the launcher, or ctrl + alt + u in File Explorer). a qr code pops up, scan it and the file downloads straight to your phone over your wi-fi. nothing goes through the internet.
 
+**screenshots, text and colors** (ctrl + alt + x). the screen freezes and dims, a little toolbar shows up up top, and 1-7 switches what it does:
+- shot: drag a box or just click a window. then copy, save, pin it on top, mark it up, send it to the shelf, a space or your phone
+- text: box anything and the text gets copied (windows' own text reading, works offline)
+- color: a zoomed loupe follows your mouse, click copies the hex, shift+click saves it to your colors
+- palette: box something and get its main colors, copy them as hex, css variables or an image
+- qr: box a qr code to open or copy it
+- measure: drag to see the distance in pixels
+- record: box an area and record it as a gif or mp4 (needs ffmpeg)
+
+pinned shots float on top. drag them around, scroll to resize, ctrl+scroll for see-through, double-click to close. markup has arrows, boxes, a highlighter, a pen, blur and text.
+
 **sounds.** off by default. turn them on in settings > general, pick glass, soft or retro, set the volume, pick which things make noise. they get quieter while music plays.
 
 **launcher** is alt + space.
@@ -109,6 +120,7 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | ctrl + alt + o | picture in picture |
 | ctrl + alt + u | send Explorer selection to phone |
 | ctrl + alt + y | every shortcut |
+| ctrl + alt + x | screenshot / text / colors |
 | space (in File Explorer) | inspect |
 | windows key | start |
 
