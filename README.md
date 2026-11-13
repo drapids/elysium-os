@@ -13,9 +13,10 @@ a whole new layer on top of windows. glass top bar, an arc dock on the screen ed
 **dock** fans out from the screen edge. scroll, drag, ctrl+scroll to zoom out to folders. with two monitors it only lives on the outer edges, never the seam in the middle.
 
 **shelf** drags down from the top bar. it stays open while you go grab stuff from other windows, so you can actually drag things in. esc, the x or clicking the bar closes it. pin it and only the x does.
-- drag a file up to the top bar and a little slit opens instead of the whole shelf. drop it in and you watch it slide in, with a counter. hold it over the slit for a sec to open the full shelf
+- drag a file up to the top bar and the bar opens into a thin slot. drop it and it tips in like mail. hold it over the bar for a sec to open the full shelf
+- grab stuff back out easily: drag starts right away, ctrl or shift click (or drag a box) to pick a bunch, "drag all" grabs the whole shelf. dragging out moves by default, hold ctrl to copy. there's a bar for move to, copy to, zip, send to phone and take off shelf
 - shelf: drop files, text or images to keep them close. drag them back out to move (hold ctrl to copy)
-- catalog: your folders as books. click one to walk in, drop files on one to move them there, hover with a file to spring it open
+- catalog: your folders as books. click one to walk in, drop files on one to move them there, hover with a file to spring it open. inside a folder the files sit face-out on a magazine rack under the books
 - collections that fill themselves: recent, downloads, images, code, docs, archives, large, unsorted, projects (anything with git, package.json, .sln...) and duplicates
 - your own collections that point at files wherever they live
 - sort by modified, name, last opened, size, type, color, how often you open it, or relevance
@@ -111,7 +112,7 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | space (in File Explorer) | inspect |
 | windows key | start |
 
-all of them can be changed in settings > keys.
+all of them can be changed in settings > keys. click the keys and press a new combo. you can also make your own shortcuts there (open an app, a file, a folder or a site, type out text, run any heft action, or chain steps) and remap keys, like caps lock as escape. it warns you when something else already uses a combo.
 
 ## build
 

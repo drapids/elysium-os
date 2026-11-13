@@ -13,7 +13,7 @@ using Microsoft.Win32;
 
 namespace Heft.Ui
 {
-    internal sealed class Shelf : Window
+    internal sealed partial class Shelf : Window
     {
         static readonly string[] Sorts = { "modified", "name", "accessed", "size", "type", "color", "frequency", "relevance" };
         static readonly string[] SpineColors = { "#3A4A5C", "#4C3F5E", "#2F5246", "#5C4433", "#3D4F66", "#5A3A44", "#45523A", "#33475B" };
@@ -126,6 +126,7 @@ namespace Heft.Ui
             _empty.IsHitTestVisible = false;
             body.Children.Add(_empty);
             root.Children.Add(body);
+            SetupTake(body, root, tools);
 
             _surface.Child = root;
             Content = _surface;
@@ -257,7 +258,11 @@ namespace Heft.Ui
             switch (e.Key)
             {
                 case Key.Escape:
-                    HideShelf();
+                    if (_selected.Count > 0) Select(Array.Empty<string>());
+                    else HideShelf();
+                    break;
+                case Key.A when Keyboard.Modifiers == ModifierKeys.Control:
+                    Select(_items.Select(i => i.E.Path));
                     break;
                 case Key.Back:
                     if (_trail.Count > 0) Up();
@@ -677,6 +682,8 @@ namespace Heft.Ui
         {
             BuildCrumbs();
             _content.Children.Clear();
+            _items.Clear();
+            _anchor = -1;
             _hovered = null;
             _hoveredEntry = null;
             string q = _filter.Text.Trim();
@@ -684,12 +691,23 @@ namespace Heft.Ui
             if (_tab == "catalog" && _trail.Count == 0)
             {
                 RenderCatalog(q);
+                BuildShelfTools(0);
             }
             else
             {
                 var list = Source();
                 if (q.Length > 0) list = list.Where(e => Fuzzy.Score(q, e.Name) > 0).OrderByDescending(e => Fuzzy.Score(q, e.Name)).ToList();
-                foreach (var e in list.Take(300)) _content.Children.Add(e.Dir && _trail.Count > 0 ? Spine(e.Path, e.Name) : Card(e));
+                if (_trail.Count > 0)
+                {
+                    foreach (var e in list.Where(x => x.Dir).Take(150)) _content.Children.Add(Spine(e.Path, e.Name));
+                    var files = list.Where(x => !x.Dir).Take(240).ToList();
+                    if (files.Count > 0) _content.Children.Add(Rack(files));
+                }
+                else
+                {
+                    foreach (var e in list.Take(300)) _content.Children.Add(Card(e));
+                }
+                BuildShelfTools(_tab == "shelf" ? list.Count : 0);
                 _empty.Text = list.Count > 0 ? "" : _tab switch
                 {
                     "shelf" => "drop anything here to keep it close.\nfiles, text, images. drag them back out when you need them",
@@ -712,6 +730,8 @@ namespace Heft.Ui
                 st.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
                 _content.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
             }
+            _selected.IntersectWith(_items.Select(i => i.E.Path));
+            Repaint();
             _scroll.ScrollToTop();
         }
 
@@ -882,6 +902,11 @@ namespace Heft.Ui
                 label.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
             };
             Interactive(book, entry, () => Portal(path));
+            Track(book, entry, on =>
+            {
+                book.BorderThickness = new Thickness(on ? 2.5 : 0);
+                if (on) book.SetResourceReference(Border.BorderBrushProperty, "AccentFill");
+            });
             book.DragEnter += (_, e) =>
             {
                 _springPath = path;
@@ -972,8 +997,14 @@ namespace Heft.Ui
                     _hovered = null;
                     _hoveredEntry = null;
                 }
-                card.Background = Brushes.Transparent;
+                if (_selected.Contains(e.Path)) card.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+                else card.Background = Brushes.Transparent;
             };
+            Track(card, e, on =>
+            {
+                if (on) card.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+                else card.Background = Brushes.Transparent;
+            });
             Interactive(card, e, () =>
             {
                 if (e.Dir) Portal(e.Path);
@@ -1013,7 +1044,7 @@ namespace Heft.Ui
             {
                 if (_pressed != el || ev.LeftButton != MouseButtonState.Pressed) return;
                 var p = ev.GetPosition(this);
-                if (Math.Abs(p.X - _down.X) < 6 && Math.Abs(p.Y - _down.Y) < 6) return;
+                if (Math.Abs(p.X - _down.X) < 3 && Math.Abs(p.Y - _down.Y) < 3) return;
                 _pressed = null;
                 DragOut(e);
             };
@@ -1022,6 +1053,7 @@ namespace Heft.Ui
                 if (_pressed != el) return;
                 _pressed = null;
                 ev.Handled = true;
+                if (ClickSelect(e)) return;
                 click();
             };
             el.MouseRightButtonUp += (_, ev) =>
@@ -1033,26 +1065,10 @@ namespace Heft.Ui
 
         void DragOut(Entry e)
         {
-            _dragging = true;
-            try
-            {
-                var data = new DataObject(DataFormats.FileDrop, new[] { e.Path });
-                DragDrop.DoDragDrop(this, data, DragDropEffects.Copy | DragDropEffects.Move | DragDropEffects.Link);
-            }
-            catch
-            {
-            }
-            finally
-            {
-                _dragging = false;
-                _drops.Visibility = Visibility.Collapsed;
-            }
-            if (!File.Exists(e.Path) && !Directory.Exists(e.Path))
-            {
-                _s.ShelfItems.RemoveAll(x => x.Equals(e.Path, StringComparison.OrdinalIgnoreCase));
-                _s.Touch();
-                if (_open) Render();
-            }
+            var paths = _selected.Contains(e.Path)
+                ? _items.Where(i => _selected.Contains(i.E.Path)).Select(i => i.E.Path).ToList()
+                : new List<string> { e.Path };
+            DragPaths(paths);
         }
 
         void InspectEl(FrameworkElement el, Entry e)
