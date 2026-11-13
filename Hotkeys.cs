@@ -36,6 +36,7 @@ namespace Heft
             ("remember", "Remember where this window goes", ""),
             ("scratch", "Scratchpad", "Ctrl+Alt+Q"),
             ("lastdl", "Grab your last download", "Ctrl+Alt+J"),
+            ("phonedrop", "Send files from your phone", ""),
             ("start", "Start", "")
         };
 

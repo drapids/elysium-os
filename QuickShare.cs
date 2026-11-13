@@ -283,7 +283,7 @@ namespace Heft
                    + "<div class=\"h\">only works while you're on the same wi-fi</div></div></body></html>";
         }
 
-        static string? LanIp()
+        internal static string? LanIp()
         {
             var good = new List<(int rank, string ip)>();
             try
@@ -419,7 +419,7 @@ namespace Heft
             });
         }
 
-        static ImageSource? Qr(string text)
+        internal static ImageSource? Qr(string text)
         {
             try
             {

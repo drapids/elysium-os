@@ -612,8 +612,15 @@ namespace Heft.Ui
             h.Children.Add(Kit.Group(rows));
         }
 
+        public Action? PhoneDrop;
+
         void Share(Panel h)
         {
+            h.Children.Add(Kit.Header("Phone"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("Send files from your phone", "shows a qr code, your phone uploads straight to Downloads\\from phone. same wi-fi, nothing in the cloud", Kit.Push("Start", () => PhoneDrop?.Invoke(), true)),
+                Kit.Row("Send files to your phone", Hotkeys.Spec(_s, "share").Length > 0 ? "select something in explorer and hit " + Hotkeys.Spec(_s, "share").ToLowerInvariant().Replace("+", " + ") : "give it a key in the keys tab, then select something in explorer and hit it", null)));
+
             h.Children.Add(Kit.Header("Your setup"));
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(14, 10, 14, 12) };
             row.Children.Add(Kit.Push("Export...", () => _dialog(() =>

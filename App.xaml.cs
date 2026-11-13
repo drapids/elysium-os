@@ -53,6 +53,7 @@ namespace Heft
         SnapZones? _snap;
         Pip _pip = null!;
         QuickShare _share = null!;
+        PhoneDrop _phoneDrop = null!;
         VersionShelf _versions = null!;
         DownloadSorter _sorter = null!;
         Slit _slit = null!;
@@ -159,12 +160,14 @@ namespace Heft
             _keyHook = new KeyHook(_s, Dispatcher);
             _keyHook.ExplorerSpace += PreviewExplorer;
             _share = new QuickShare(_s, _notes);
+            _phoneDrop = new PhoneDrop(_s, _notes);
             _versions = new VersionShelf(_s);
             _sorter = new DownloadSorter(_s, _notes);
 
             _actions = new ObjectActions(_s, _notes);
             _inspector = new Inspector(_s, _catalog, _actions);
             _shelf = new Shelf(_s, _catalog, _lib, _actions, _pocket, _notes);
+            _phoneDrop.Received += path => _shelf.AddToShelf(new[] { path });
             _launcher = new Launcher(_s, _catalog, _apps, _cmds, _clips, _notes, _lib);
             _drop = new Panels(_s, _catalog, _activity, _audio, _notes, _clips, _cmds, _np);
             _dock = new ArcDock(_s, _catalog);
@@ -218,6 +221,11 @@ namespace Heft
             };
             pages.KeyFree = spec => _keys.Free(spec);
             pages.SnapshotMode = SnapshotMode;
+            pages.PhoneDrop = () =>
+            {
+                _panel.SlideOut();
+                _phoneDrop.Start();
+            };
             pages.UseMode = m => ApplyMode(m);
             pages.AudioApps = () => _audio.Apps().Where(a => !a.System).Select(a => a.Exe);
             pages.PauseKeys = on =>
@@ -655,6 +663,7 @@ namespace Heft
                 ["reopen"] = ReopenLast,
                 ["scratch"] = () => OpenDrop("scratch"),
                 ["lastdl"] = () => GrabDownload(),
+                ["phonedrop"] = () => _phoneDrop.Toggle(),
                 ["remember"] = RememberWindow
             };
             _keyActions.Clear();
@@ -1001,6 +1010,7 @@ namespace Heft
             c.Add("heft", "notes", "Notifications", "\uEA8F", () => OpenDrop("notes"), "notification center history");
             c.Add("heft", "center", "Control center", "\uE9E9", () => OpenDrop("center"), "system monitor cpu gpu ram toggles");
             c.Add("heft", "settings", "heft settings", "\uE713", () => _panel.Open(), "preferences options");
+            c.Add("heft", "phone-drop", "Send files from your phone", "\uE8EA", () => _phoneDrop.Toggle(), "phone upload receive airdrop transfer qr");
             c.Add("heft", "scratch", "Scratchpad", "\uE70B", () => OpenDrop("scratch"), "notes scratch jot pad text");
             c.Add("heft", "last-download", "Grab your last download", "\uE896", () => GrabDownload(), "download recent file drag");
             c.Add("heft", "reopen", "Reopen last closed app", "\uE7A7", ReopenLast, "undo close restore app again");
@@ -1178,6 +1188,7 @@ namespace Heft
             Try(() => _grab?.Close());
             Try(() => _pip?.ReleaseAll());
             Try(() => _share?.Dispose());
+            Try(() => _phoneDrop?.Dispose());
             Try(() => _versions?.Dispose());
             Try(() => _sorter?.Dispose());
             Try(() => _spaces?.Close2());
