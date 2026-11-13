@@ -394,6 +394,12 @@ namespace Heft.Ui
             Native.SHAppBarMessage(Native.ABM_REMOVE, ref abd);
         }
 
+        public void Rebind()
+        {
+            _registered = false;
+            Apply(Display);
+        }
+
         public void Shutdown()
         {
             _edge.Stop();

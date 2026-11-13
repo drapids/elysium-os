@@ -237,6 +237,7 @@ namespace Heft
             {
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
+                    foreach (var b in _bars) b.Rebind();
                     Layout(true);
                     DesktopIcons.Set(!_s.HideDesktop);
                 }), DispatcherPriority.Background);
