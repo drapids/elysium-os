@@ -24,6 +24,8 @@ namespace Heft.Ui
         readonly NowPlaying _np;
 
         readonly Border _surface;
+
+        public void Prewarm() => Glass.Prewarm(this, _surface);
         readonly ScrollViewer _scroll;
         readonly StackPanel _body = new() { Margin = new Thickness(14, 12, 14, 14) };
         readonly DispatcherTimer _live = new() { Interval = TimeSpan.FromMilliseconds(1000) };

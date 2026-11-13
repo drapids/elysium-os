@@ -123,6 +123,31 @@ namespace Heft.Ui
             surface.BeginAnimation(UIElement.OpacityProperty, fade);
         }
 
+        public static void Prewarm(Window w, UIElement surface)
+        {
+            try
+            {
+                if (w.IsVisible) return;
+                var st = Of(w);
+                int token = st.Token;
+                var h = new WindowInteropHelper(w).EnsureHandle();
+                surface.Opacity = 0;
+                bool act = w.ShowActivated;
+                w.ShowActivated = false;
+                Native.SetWindowPos(h, IntPtr.Zero, -32000, -32000, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
+                w.Show();
+                w.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    w.ShowActivated = act;
+                    if (st.Token == token && w.IsVisible) w.Hide();
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("prewarm failed " + ex.Message);
+            }
+        }
+
         public static void Dismiss(Window w, UIElement surface, Action? after = null, int ms = 130)
         {
             var st = Of(w);

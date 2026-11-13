@@ -185,6 +185,12 @@ namespace Heft
             {
                 warm.Stop();
                 _start.Prewarm();
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    _launcher.Prewarm();
+                    _shelf.Prewarm();
+                    _drop.Prewarm();
+                }), DispatcherPriority.ApplicationIdle);
             };
             warm.Start();
             _slit = new Slit(p => _catalog.Icon(p, 64, Files.IsApp(p)));

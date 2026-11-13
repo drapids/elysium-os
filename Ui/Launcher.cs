@@ -105,6 +105,8 @@ namespace Heft.Ui
         readonly Library _lib;
 
         readonly Border _surface;
+
+        public void Prewarm() => Glass.Prewarm(this, _surface);
         readonly TextBox _box;
         readonly TextBlock _placeholder;
         readonly Border _chip;

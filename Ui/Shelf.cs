@@ -26,6 +26,8 @@ namespace Heft.Ui
         readonly Notifier _notes;
 
         readonly Border _surface;
+
+        public void Prewarm() => Glass.Prewarm(this, _surface);
         readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal };
         readonly StackPanel _crumbs = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         readonly TextBox _filter;
