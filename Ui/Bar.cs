@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -62,6 +64,8 @@ namespace Heft.Ui
         bool _slitOpen, _dragInside;
         long _lastDrag;
 
+        readonly StackPanel _ext = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        readonly Dictionary<string, (Border host, TextBlock glyph, TextBlock text)> _extItems = new();
         TextBlock? _clipIcon, _focusIcon, _lockIcon, _volIcon, _volText, _bellIcon, _batIcon, _batText;
         Border? _badge;
         IntPtr _hwnd;
@@ -180,6 +184,7 @@ namespace Heft.Ui
 
             _stats = Kit.Text("", 11.5, false, "SubText");
             _stats.Margin = new Thickness(0, 0, 12, 0);
+            _right.Children.Add(_ext);
             _right.Children.Add(_stats);
 
             _clipIcon = AddIcon("\uE77F", "clipboard. click for history", () => ClipClicked?.Invoke());
@@ -326,6 +331,55 @@ namespace Heft.Ui
                 _slitSpring.Stop();
                 Dropped?.Invoke(e.Data);
             };
+        }
+
+        public void SetExt(IEnumerable<ExtBarItem> items)
+        {
+            var seen = new HashSet<string>();
+            int index = 0;
+            foreach (var it in items)
+            {
+                var item = it;
+                seen.Add(item.Ext);
+                if (!_extItems.TryGetValue(item.Ext, out var parts))
+                {
+                    var sp = new StackPanel { Orientation = Orientation.Horizontal };
+                    var g = Kit.Icon("", 12, "SubText");
+                    g.VerticalAlignment = VerticalAlignment.Center;
+                    var t = Kit.Text("", 12);
+                    t.MaxWidth = 340;
+                    t.TextTrimming = TextTrimming.CharacterEllipsis;
+                    t.VerticalAlignment = VerticalAlignment.Center;
+                    sp.Children.Add(g);
+                    sp.Children.Add(t);
+                    var host = new Border { Child = sp, Padding = new Thickness(7, 2, 7, 2), Margin = new Thickness(0, 0, 4, 0), CornerRadius = new CornerRadius(7), Background = Brushes.Transparent };
+                    host.MouseEnter += (_, _) => host.SetResourceReference(Border.BackgroundProperty, "RowHover");
+                    host.MouseLeave += (_, _) => host.Background = Brushes.Transparent;
+                    host.MouseLeftButtonUp += (_, e) =>
+                    {
+                        if (host.Tag is not ExtBarItem bi || bi.Click == null) return;
+                        e.Handled = true;
+                        bi.Click();
+                    };
+                    parts = (host, g, t);
+                    _extItems[item.Ext] = parts;
+                    _ext.Children.Insert(Math.Min(index, _ext.Children.Count), host);
+                    Glass.FadeIn(host, 0, 200);
+                }
+                parts.glyph.Text = item.Glyph;
+                parts.glyph.Visibility = item.Glyph.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+                parts.glyph.Margin = new Thickness(0, 0, item.Text.Length > 0 && item.Glyph.Length > 0 ? 6 : 0, 0);
+                parts.text.Text = item.Text;
+                parts.text.Visibility = item.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+                parts.host.Cursor = item.Click != null ? Cursors.Hand : null;
+                parts.host.Tag = item;
+                index++;
+            }
+            foreach (var key in _extItems.Keys.Where(k => !seen.Contains(k)).ToList())
+            {
+                _ext.Children.Remove(_extItems[key].host);
+                _extItems.Remove(key);
+            }
         }
 
         public bool SlitOpen => _slitOpen;

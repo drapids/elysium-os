@@ -52,6 +52,9 @@ namespace Heft.Ui
         List<string>? _pendingCollect;
 
         public Action<Obj, Rect?, ImageSource?>? Inspect;
+        public Func<IEnumerable<(string name, Action<List<string>> run)>>? ExtraDrops;
+
+        public void RefreshDrops() => BuildDrops();
         public bool IsOpen => _open;
 
         public Shelf(Settings s, AppCatalog cat, Library lib, ObjectActions actions, Pocket pocket, Notifier notes)
@@ -455,6 +458,8 @@ namespace Heft.Ui
             {
                 if (paths.Count > 0) Inspect?.Invoke(Obj.From(paths[0]), null, null);
             });
+            if (ExtraDrops != null)
+                foreach (var (name, run) in ExtraDrops()) DropTarget("\uEA86", name, run);
         }
 
         void Convert(List<string> paths, string ext)

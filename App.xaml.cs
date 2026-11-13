@@ -59,6 +59,8 @@ namespace Heft
         Spaces _spaces = null!;
         readonly Dictionary<string, Action> _keyActions = new();
         Lens _lens = null!;
+        ExtHost _ext = null!;
+        string _songKey = "";
         Recording? _rec;
         RecChip? _recChip;
         readonly DispatcherTimer _cornerTimer = new() { Interval = TimeSpan.FromMilliseconds(140) };
@@ -196,6 +198,8 @@ namespace Heft
                 _shelf.OpenShelf(BarDisplay(), BarBottom(), "dupes");
             };
             pages.Cmds = _cmds;
+            _ext = new ExtHost(_s, _cmds, _notes, _np);
+            pages.Ext = _ext;
             pages.KeyFree = spec => _keys.Free(spec);
             pages.PauseKeys = on =>
             {
@@ -231,6 +235,20 @@ namespace Heft
             _drop.OpenSettingsPage = tab => _panel.OpenTab(tab);
 
             RegisterCommands();
+            _ext.Changed += () => _shelf.RefreshDrops();
+            _ext.BarChanged += () =>
+            {
+                foreach (var bar in _bars) bar.SetExt(_ext.BarItems);
+            };
+            _ext.KeysUpdated += () => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!_keyHook.Paused) RegisterKeys();
+            }), DispatcherPriority.Background);
+            _shelf.ExtraDrops = () => _ext.DropActions;
+            _start.ExtWidgets = () => _ext.Widgets;
+            _activity.Downloaded += path => Dispatcher.BeginInvoke(new Action(() => _ext.Emit("download", path)));
+            _clips.Changed += () => Dispatcher.BeginInvoke(new Action(() => _ext.Emit("clipboard", _clips.Latest?.Text ?? "")));
+            _ext.Start();
             _keyHook.WinTapped += () => _start.Toggle();
             _mouse.Corner += corner =>
             {
@@ -324,6 +342,7 @@ namespace Heft
             string file = Path.GetFileNameWithoutExtension(path);
             if (file.Equals("heft", StringComparison.OrdinalIgnoreCase)) return;
             _appName = file.Equals("explorer", StringComparison.OrdinalIgnoreCase) ? "Desktop" : _catalog.DisplayName(path);
+            _ext?.Emit("window", _appName, path);
         }
 
         IntPtr ShellHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -346,6 +365,7 @@ namespace Heft
             string sig = string.Join("|", all.Select(d => d.Key + d.Scale)) + $"|{_s.BarEnabled}|{_s.BarScreens}|{_s.BarAutoHide}|{_s.BarHeight}|{_s.DockScreens}|{_s.DockSide}|{_s.ShowHandle}";
             if (!force && sig == _layoutSig) return;
             _layoutSig = sig;
+            _ext?.Emit("monitor", all.Count);
 
             var wantBars = _s.BarEnabled ? Displays.BarScreens(_s, all) : new List<Display>();
             while (_bars.Count > wantBars.Count)
@@ -386,6 +406,7 @@ namespace Heft
         {
             var b = new Bar(_s, d);
             b.KeepOpen = () => _shelf.IsOpen || _drop.Shown;
+            if (_ext != null) b.SetExt(_ext.BarItems);
             b.PillClicked += bar => _drop.Toggle("center", bar.Display, bar.BottomPx, bar.Display.Bounds.Left + bar.Display.Bounds.Width / 2.0);
             b.AudioClicked += (bar, x) => _drop.Toggle("audio", bar.Display, bar.BottomPx, x);
             b.NotesClicked += (bar, x) => _drop.Toggle("notes", bar.Display, bar.BottomPx, x);
@@ -446,7 +467,16 @@ namespace Heft
         void Tick()
         {
             _tick++;
-            if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown)) _ = _np.Refresh();
+            if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown || (_ext != null && _ext.WantsMedia))) _ = _np.Refresh();
+            if (_ext != null)
+            {
+                string song = _np.HasSession ? _np.Title + "|" + _np.Artist + "|" + _np.Playing : "";
+                if (song != _songKey)
+                {
+                    _songKey = song;
+                    _ext.Emit("song", _np.Title, _np.Artist, _np.Playing);
+                }
+            }
 
             int vol = -1;
             bool muted = false;
@@ -603,6 +633,8 @@ namespace Heft
                     Flash("audio: " + pr.Name);
                 }, "profile " + pr.Name);
             }
+            if (_ext != null)
+                foreach (var (spec, run, label) in _ext.Hotkeys) _keys.Add(spec, run, label);
             foreach (var ck in _s.CustomKeys)
             {
                 var k = ck;
@@ -1097,6 +1129,7 @@ namespace Heft
             Try(() => _versions?.Dispose());
             Try(() => _sorter?.Dispose());
             Try(() => _spaces?.Close2());
+            Try(() => _ext?.Dispose());
             Try(() => Sfx.Stop());
             Try(() => _notes?.Save());
             Try(() => _s?.SaveNow());

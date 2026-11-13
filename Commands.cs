@@ -34,6 +34,8 @@ namespace Heft
 
         public Command? Get(string id) => _map.TryGetValue(id, out var c) ? c : null;
 
+        public void Remove(string id) => _map.Remove(id);
+
         public bool Run(string id)
         {
             var c = Get(id);

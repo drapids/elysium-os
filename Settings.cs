@@ -166,6 +166,9 @@ namespace Heft
         public string CaptureFolder { get; set; } = "";
         public List<string> Palette { get; set; } = new();
 
+        public Dictionary<string, bool> ExtEnabled { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public bool ExtSeeded { get; set; }
+
         public bool Lerp { get; set; } = false;
         public double LerpLag { get; set; } = 0.45;
         public double LerpWobble { get; set; } = 0.25;
@@ -220,6 +223,7 @@ namespace Heft
                         s.VersionFolders ??= new List<string>();
                         s.CustomKeys ??= new List<CustomKey>();
                         s.Palette ??= new List<string>();
+                        s.ExtEnabled = new Dictionary<string, bool>(s.ExtEnabled ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         return s;
                     }

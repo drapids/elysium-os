@@ -44,6 +44,7 @@ namespace Heft.Ui
         public Action<string>? Search;
         public Action? OpenSettings;
         public Action? Overview;
+        public Func<IEnumerable<ExtWidget>>? ExtWidgets;
 
         public bool Shown => _shown;
 
@@ -659,6 +660,23 @@ namespace Heft.Ui
                 sys.Children.Add(row);
             }
             _side.Children.Add(Card(sys));
+
+            if (ExtWidgets != null)
+            {
+                foreach (var wdg in ExtWidgets())
+                {
+                    var sp = new StackPanel();
+                    if (wdg.Title.Length > 0) sp.Children.Add(W(wdg.Title, 13, true, 0xC8));
+                    if (wdg.Body.Length > 0)
+                    {
+                        var body = W(wdg.Body, 12.5);
+                        body.TextWrapping = TextWrapping.Wrap;
+                        body.Margin = new Thickness(0, wdg.Title.Length > 0 ? 6 : 0, 0, 0);
+                        sp.Children.Add(body);
+                    }
+                    _side.Children.Add(Card(sp));
+                }
+            }
 
             if (_s.Reminders.Count > 0)
             {

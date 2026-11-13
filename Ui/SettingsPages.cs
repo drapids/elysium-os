@@ -19,6 +19,7 @@ namespace Heft.Ui
             ("audio", "Audio"),
             ("alerts", "Alerts & focus"),
             ("search", "Search & files"),
+            ("extensions", "Extensions"),
             ("keys", "Keys"),
             ("share", "Share")
         };
@@ -86,6 +87,9 @@ namespace Heft.Ui
                     break;
                 case "search":
                     Search(host);
+                    break;
+                case "extensions":
+                    ExtensionsPage(host);
                     break;
                 case "keys":
                     Keys(host);
