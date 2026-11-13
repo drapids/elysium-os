@@ -55,6 +55,12 @@ namespace Heft.Ui
         readonly TextBlock _stackText;
         readonly DispatcherTimer _flashTimer = new() { Interval = TimeSpan.FromMilliseconds(1400) };
         readonly DispatcherTimer _edge = new() { Interval = TimeSpan.FromMilliseconds(90) };
+        readonly Border _groove = new() { Height = 6, Width = 0, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+        readonly Border _grooveGlow = new() { Height = 12, Width = 0, CornerRadius = new CornerRadius(6), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false, Opacity = 0 };
+        readonly DispatcherTimer _slitWatch = new() { Interval = TimeSpan.FromMilliseconds(200) };
+        readonly DispatcherTimer _slitSpring = new() { Interval = TimeSpan.FromMilliseconds(900) };
+        bool _slitOpen, _dragInside;
+        long _lastDrag;
 
         TextBlock? _clipIcon, _focusIcon, _lockIcon, _volIcon, _volText, _bellIcon, _batIcon, _batText;
         Border? _badge;
@@ -79,6 +85,7 @@ namespace Heft.Ui
         public event Action<Bar>? ShelfPull;
         public event Action<Bar>? DragNear;
         public event Action<Bar>? EmptyClicked;
+        public event Action<Bar>? SlitSpring;
         public event Action? SettingsRequested;
         public event Action<IDataObject>? Dropped;
         public event Action? MediaToggle;
@@ -142,6 +149,23 @@ namespace Heft.Ui
                 else PillClicked?.Invoke(this);
             };
             grid.Children.Add(_pill);
+            _groove.Background = new LinearGradientBrush(Color.FromArgb(0xF2, 0, 0, 0), Color.FromArgb(0xB0, 0, 0, 0), 90);
+            _groove.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 3, ShadowDepth = 1, Direction = 90, Opacity = 0.5, Color = Colors.White };
+            _grooveGlow.SetResourceReference(Border.BackgroundProperty, "AccentFill");
+            _grooveGlow.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 9 };
+            grid.Children.Add(_grooveGlow);
+            grid.Children.Add(_groove);
+            _slitWatch.Tick += (_, _) =>
+            {
+                if (!_slitOpen) return;
+                if (_dragInside || IsMouseOver) return;
+                if (Environment.TickCount64 - _lastDrag > 1400) CloseSlit();
+            };
+            _slitSpring.Tick += (_, _) =>
+            {
+                _slitSpring.Stop();
+                if (_dragInside && _slitOpen) SlitSpring?.Invoke(this);
+            };
 
             _flash = Kit.Text("", 12);
             _flash.Opacity = 0;
@@ -270,19 +294,106 @@ namespace Heft.Ui
             {
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
+                _dragInside = true;
+                _lastDrag = Environment.TickCount64;
                 if (DragNear != null) DragNear.Invoke(this);
                 else ShelfPull?.Invoke(this);
+                if (_slitOpen)
+                {
+                    Glow(0.9);
+                    _slitSpring.Stop();
+                    _slitSpring.Start();
+                }
             };
             DragOver += (_, e) =>
             {
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
+                _dragInside = true;
+                _lastDrag = Environment.TickCount64;
+            };
+            DragLeave += (_, _) =>
+            {
+                _dragInside = false;
+                _lastDrag = Environment.TickCount64;
+                _slitSpring.Stop();
+                if (_slitOpen) Glow(0);
             };
             Drop += (_, e) =>
             {
                 e.Handled = true;
+                _dragInside = false;
+                _slitSpring.Stop();
                 Dropped?.Invoke(e.Data);
             };
+        }
+
+        public bool SlitOpen => _slitOpen;
+
+        public Native.POINT SlotPx
+        {
+            get
+            {
+                Native.GetWindowRect(_hwnd != IntPtr.Zero ? _hwnd : new WindowInteropHelper(this).Handle, out var r);
+                return new Native.POINT { X = r.Left + r.Width / 2, Y = r.Top + r.Height / 2 + 1 };
+            }
+        }
+
+        public void OpenSlit()
+        {
+            _lastDrag = Environment.TickCount64;
+            if (_slitOpen) return;
+            _slitOpen = true;
+            if (!_revealed) Reveal(true);
+            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            _pill.IsHitTestVisible = false;
+            _pill.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(140)));
+            _app.BeginAnimation(OpacityProperty, new DoubleAnimation(0.35, TimeSpan.FromMilliseconds(200)));
+            _groove.BeginAnimation(WidthProperty, new DoubleAnimation(0, 220, TimeSpan.FromMilliseconds(380)) { EasingFunction = ease, BeginTime = TimeSpan.FromMilliseconds(60) });
+            _grooveGlow.BeginAnimation(WidthProperty, new DoubleAnimation(0, 236, TimeSpan.FromMilliseconds(380)) { EasingFunction = ease, BeginTime = TimeSpan.FromMilliseconds(60) });
+            Glow(_dragInside ? 0.9 : 0.35);
+            _slitWatch.Start();
+        }
+
+        public void CloseSlit()
+        {
+            if (!_slitOpen) return;
+            _slitOpen = false;
+            _slitWatch.Stop();
+            _slitSpring.Stop();
+            var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+            _groove.BeginAnimation(WidthProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+            _grooveGlow.BeginAnimation(WidthProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
+            Glow(0);
+            _pill.IsHitTestVisible = true;
+            _pill.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(220)) { BeginTime = TimeSpan.FromMilliseconds(160) });
+            _app.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(220)) { BeginTime = TimeSpan.FromMilliseconds(160) });
+        }
+
+        public void Gulp()
+        {
+            if (!_slitOpen) return;
+            _lastDrag = Environment.TickCount64;
+            var bump = new DoubleAnimationUsingKeyFrames { BeginTime = TimeSpan.FromMilliseconds(420) };
+            bump.KeyFrames.Add(new EasingDoubleKeyFrame(250, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(90)), new CubicEase { EasingMode = EasingMode.EaseOut }));
+            bump.KeyFrames.Add(new EasingDoubleKeyFrame(220, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(380)), new ElasticEase { Oscillations = 1, Springiness = 5, EasingMode = EasingMode.EaseOut }));
+            _groove.BeginAnimation(WidthProperty, bump);
+            var flash = new DoubleAnimationUsingKeyFrames { BeginTime = TimeSpan.FromMilliseconds(400) };
+            flash.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(70))));
+            flash.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(520))));
+            _grooveGlow.BeginAnimation(OpacityProperty, flash);
+            var close = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1300) };
+            close.Tick += (_, _) =>
+            {
+                close.Stop();
+                if (!_dragInside && Environment.TickCount64 - _lastDrag > 1200) CloseSlit();
+            };
+            close.Start();
+        }
+
+        void Glow(double to)
+        {
+            _grooveGlow.BeginAnimation(OpacityProperty, new DoubleAnimation(to, TimeSpan.FromMilliseconds(180)));
         }
 
         void root_ReleaseCapture()
