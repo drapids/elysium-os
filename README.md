@@ -22,10 +22,11 @@ a whole new layer on top of windows. glass top bar, an arc dock on the screen ed
 - sort by modified, name, last opened, size, type, color, how often you open it, or relevance
 - pocket a window (ctrl + alt + p) and it hides on the shelf with a live preview
 - drag something onto the bar and you get drop actions: shelf, zip, to png, to jpg, copy path, collection, inspect
+- once it gets busy the same kind of stuff stacks into piles. click a pile to spread it out, drag it to take the whole thing
 
 **inspect anything.** space or right-click on anything in the dock, shelf or launcher and it zooms into a card with a preview, info, related files and what you can do with it. in File Explorer just select a file and hit space. project folders show their readme and latest commits, and there's open in vs code. if version shelf is on, older versions of the file show up there too.
 
-**spaces** (ctrl + alt + g) is a zoomable desktop. drag files in, double-click for a note, right-click for widgets (clock, now playing, weather, smart folders, a live portal to any window), make groups and drag them around with everything inside. scroll to zoom, drag empty space to pan, t tidies up, f fits everything. you can have a bunch of spaces and each one can remember which windows were open and where.
+**spaces** (ctrl + alt + g) is a zoomable desktop. drag files in, double-click for a note, right-click for widgets (clock, now playing, weather, smart folders, a live portal to any window), make groups and drag them around with everything inside. scroll to zoom, drag empty space to pan, t tidies up, f fits everything, g snaps to the grid (hold alt to place freely). pictures show up as actual previews, right-click something to draw an arrow to something else, and the minimap in the corner gets you around big spaces. you can have a bunch of spaces and each one can remember which windows were open and where. with more than one virtual desktop, each desktop gets its own space.
 
 **window stacks.** drag a window's title bar onto another window's title bar and hold for a sec. they turn into tabs. click a tab to switch, scroll the tabs to flip through, middle-click one to pull it back out.
 
@@ -46,7 +47,35 @@ a whole new layer on top of windows. glass top bar, an arc dock on the screen ed
 
 pinned shots float on top. drag them around, scroll to resize, ctrl+scroll for see-through, double-click to close. markup has arrows, boxes, a highlighter, a pen, blur and text.
 
-**sounds.** off by default. turn them on in settings > general, pick glass, soft or retro, set the volume, pick which things make noise. they get quieter while music plays.
+**snap zones.** hold shift while you drag a window and zones show up. drop it in one and it fills it. pick a layout per monitor (halves, quarters, thirds, focus, mix, or auto which picks by screen shape) and the gap in settings > windows.
+
+**window rules.** put an app where you want it and run "remember where this window goes" (or the button in settings > windows). next time it opens it goes right there, maximized, or centered, on the same monitor. can keep it on top too.
+
+**reopen closed apps.** ctrl + alt + z brings back the last app you closed. start has a recently closed card too.
+
+**game mode.** when something goes fullscreen heft goes quiet: no sounds, slower polling, no gestures, notifications wait in the bell and you get one summary after. can ignore the windows key while you play.
+
+**modes.** a mode flips a bunch at once: light or dark, accent, focus, sounds, audio profile. switch with a hotkey, from the launcher, at a time of day, or when an app opens (like gaming mode when valorant starts). settings > alerts.
+
+**text shortcuts.** type `;date` anywhere and it turns into the date. make your own in settings > keys. `{date}` `{time}` `{day}` `{iso}` `{clipboard}` fill themselves in.
+
+**mouse gestures** (off by default). hold right click, draw, let go: up for overview, down minimizes, left / right go back and forward, up-down refreshes. set them all in settings > keys. a normal right click still works.
+
+**scratchpad.** ctrl + alt + q or the note icon in the bar. a little pad that saves as you type.
+
+**last download.** ctrl + alt + j pops your newest download right at your mouse, drag it straight into discord or an upload box. it also sits in the bar for a bit after something downloads.
+
+**from your phone.** "send files from your phone" in the launcher shows a qr code. scan it, pick photos or whatever, they land in Downloads\from phone and on the shelf. same wi-fi, nothing in the cloud.
+
+**desktops.** dots in the bar for each virtual desktop, click one to jump there.
+
+**look.** settings > look: accent from windows, your wallpaper, or any color. how see-through the glass is, how round the corners are, how fast stuff animates, the font, and a different bar color per monitor. icon packs too: drop pngs named after apps (chrome.png, code.png) in a folder in `%AppData%\heft\icons` and pick it.
+
+**bar editor.** settings > bar & desktop: move anything in the bar left or right, reorder it, or turn it off.
+
+**extensions.** settings > extensions. an extension is a folder with a `manifest.json` and a `main.js`, it runs inside heft and can only do what its manifest asks for. it can add launcher commands, shortcuts, stuff in the top bar, cards on start, shelf drop actions, react to songs, windows, downloads and the clipboard, and fetch things from the web. save the file and heft reloads it. share one by zipping the folder and renaming it to `.heftext`. comes with pomodoro, github notifications, world clock, what's playing and synced lyrics to start from.
+
+**sounds.** off by default. turn them on in settings > general, pick glass, soft or retro, set the volume, pick which things make noise. they get quieter while music plays. make your own pack by putting wavs named open, close, drop, notify, chime, throw, stack and tick in a folder in `%AppData%\heft\sounds`.
 
 **launcher** is alt + space.
 
@@ -76,6 +105,8 @@ ctrl + p pins a result. stuff you use a lot floats up.
 
 your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https://docs.google.com`
 
+**the dock** shows a little red count on apps with unread notifications.
+
 **notifications.** heft shows Windows notifications its own way and turns off Windows' popups for those apps so you don't get both. there's a searchable history grouped by app, and per-app rules: pop up, silent, or blocked. focus mode mutes the apps you pick and holds notifications.
 
 **start.** tap the windows key and a fullscreen glass start fades in over everything: a big clock, search (just start typing), your real Windows Start pins with their groups and sizes, the apps you use most, recent files, your taskbar apps along the bottom, and widgets on the side for weather, what's playing, quick toggles, cpu / ram / gpu, reminders and power. "all apps" has every app A to Z. ctrl + esc still opens the old start.
@@ -96,6 +127,9 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 - version shelf keeps older copies of files in the folders you pick so you can go back (off by default)
 - notifications pop up on whatever screen your mouse is on
 - ctrl + alt + y shows every shortcut, click one to run it
+- settings has a search box up top
+- shortcuts can turn one app up or down (or mute it), like spotify louder without touching anything else
+- the clipboard history in the launcher shows color swatches, link domains, file icons and image thumbnails
 
 ## keys
 
@@ -121,6 +155,10 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | ctrl + alt + u | send Explorer selection to phone |
 | ctrl + alt + y | every shortcut |
 | ctrl + alt + x | screenshot / text / colors |
+| ctrl + alt + z | reopen the last closed app |
+| ctrl + alt + q | scratchpad |
+| ctrl + alt + j | grab your last download |
+| shift while dragging a window | snap zones |
 | space (in File Explorer) | inspect |
 | windows key | start |
 
@@ -152,5 +190,7 @@ settings live in `%AppData%\heft\settings.json`, and `%AppData%\heft\log.txt` ha
 - making GIFs and shrinking videos for discord shows up in inspect when ffmpeg is installed
 - send to phone needs windows to let heft through the firewall the first time (allow it on private networks)
 - window lerp and stacks skip admin windows unless heft runs as admin too
+- text shortcuts and gestures don't reach admin windows unless heft runs as admin too
+- desktop dots read the desktop list windows keeps in the registry, and switching sends ctrl + win + arrows
 
 made by mason arcieri
