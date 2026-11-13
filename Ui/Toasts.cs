@@ -17,7 +17,7 @@ namespace Heft.Ui
         {
             public readonly Note Note;
             public readonly DispatcherTimer Life = new();
-            public bool Closing;
+            public bool Dying;
             public double TargetY;
 
             public ToastWindow(Note n, double seconds)
@@ -120,7 +120,7 @@ namespace Heft.Ui
             for (int i = _open.Count - 1; i >= 0; i--)
             {
                 var w = _open[i];
-                if (w.Closing) continue;
+                if (w.Dying) continue;
                 w.TargetY = y;
                 if (instantForNewest && i == _open.Count - 1)
                 {
@@ -137,8 +137,8 @@ namespace Heft.Ui
 
         void Close(ToastWindow w)
         {
-            if (w.Closing) return;
-            w.Closing = true;
+            if (w.Dying) return;
+            w.Dying = true;
             w.Life.Stop();
             var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(180));
             fade.Completed += (_, _) =>

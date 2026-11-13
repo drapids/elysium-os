@@ -119,7 +119,7 @@ namespace Heft
                 {
                     if (IsPartial(e.OldFullPath) && !IsPartial(e.FullPath))
                     {
-                        _downloads.TryRemove(e.OldFullPath, out _);
+                        _downloads.TryRemove(e.OldFullPath, out var gone);
                         Downloaded?.Invoke(e.FullPath);
                     }
                     else
@@ -127,7 +127,7 @@ namespace Heft
                         Touch(e.FullPath);
                     }
                 };
-                _watcher.Deleted += (_, e) => _downloads.TryRemove(e.FullPath, out _);
+                _watcher.Deleted += (_, e) => _downloads.TryRemove(e.FullPath, out var gone);
                 _watcher.EnableRaisingEvents = true;
             }
             catch

@@ -222,7 +222,8 @@ namespace Heft
             if (_s.AutoLockFullscreen)
             {
                 IntPtr fg = Native.GetForegroundWindow();
-                bool full = fg != IntPtr.Zero && IsFullscreen(fg, out var mon);
+                Native.RECT mon = default;
+                bool full = fg != IntPtr.Zero && IsFullscreen(fg, out mon);
                 if (full && !Locked)
                 {
                     Lock(Displays.At(mon.Left + 1, mon.Top + 1));

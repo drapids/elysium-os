@@ -441,7 +441,7 @@ namespace Heft.Ui
             var mval = Kit.Text($"{Math.Max(0, master)}%", 12, false, "SubText");
             mslider.ValueChanged += (_, e) =>
             {
-                int cur = Audio.Volume(out _);
+                int cur = Audio.Volume(out bool ignore);
                 Audio.Nudge((int)Math.Round(e.NewValue) - cur);
                 mval.Text = $"{(int)e.NewValue}%";
             };
