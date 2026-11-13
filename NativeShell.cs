@@ -278,6 +278,9 @@ namespace Heft
         public static extern IntPtr CreateRectRgn(int x1, int y1, int x2, int y2);
 
         [DllImport("user32.dll")]
+        public static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
         public static extern bool RegisterShellHookWindow(IntPtr hwnd);
 
         [DllImport("user32.dll")]
