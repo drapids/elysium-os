@@ -751,9 +751,9 @@ namespace Heft.Ui
             return new Result
             {
                 Title = $"Search the web for \"{q}\"",
-                Sub = new Uri(_s.SearchEngine.Length > 0 ? _s.SearchEngine : "https://www.google.com/").Host,
+                Sub = Uri.TryCreate(_s.SearchEngine, UriKind.Absolute, out var engine) ? engine.Host : "web",
                 Glyph = "\uE774",
-                Run = () => Go(() => Launch.Url(_s.SearchEngine + Uri.EscapeDataString(q)))
+                Run = () => Go(() => Launch.Url((_s.SearchEngine.Length > 0 ? _s.SearchEngine : "https://www.google.com/search?q=") + Uri.EscapeDataString(q)))
             };
         }
 
