@@ -292,6 +292,21 @@ namespace Heft
         [DllImport("user32.dll")]
         public static extern bool LockWorkStation();
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetParent(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetWindow(IntPtr hwnd, uint cmd);
+
+        [DllImport("user32.dll")]
+        public static extern bool ReleaseCapture();
+
+        public const uint GW_HWNDNEXT = 2;
+        public const int GWLP_HWNDPARENT = -8;
+        public const int WM_SYSCOMMAND = 0x0112;
+        public const int SC_MAXIMIZE = 0xF030;
+        public const int SC_RESTORE = 0xF120;
+
         [DllImport("powrprof.dll")]
         public static extern bool SetSuspendState(bool hibernate, bool force, bool disableWake);
 
@@ -345,6 +360,41 @@ namespace Heft
             SetForegroundWindow(hwnd);
             keybd_event(0x12, 0, 2, UIntPtr.Zero);
             BringWindowToTop(hwnd);
+        }
+
+        [DllImport("user32.dll")]
+        static extern bool AttachThreadInput(uint attach, uint to, bool on);
+
+        [DllImport("user32.dll")]
+        static extern void SwitchToThisWindow(IntPtr hwnd, bool altTab);
+
+        public static void ForceForeground(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            IntPtr fg = GetForegroundWindow();
+            if (fg == hwnd) return;
+            uint me = GetCurrentThreadId();
+            uint other = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, out uint ignore) : 0;
+            bool attached = other != 0 && other != me && AttachThreadInput(me, other, true);
+            try
+            {
+                SetForegroundWindow(hwnd);
+                BringWindowToTop(hwnd);
+            }
+            finally
+            {
+                if (attached) AttachThreadInput(me, other, false);
+            }
+            if (GetForegroundWindow() != hwnd)
+            {
+                try
+                {
+                    SwitchToThisWindow(hwnd, true);
+                }
+                catch
+                {
+                }
+            }
         }
 
         public static void Tap(byte vk)

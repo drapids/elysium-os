@@ -46,6 +46,23 @@ namespace Heft
         int _offX, _offY, _lastDir;
         double _extremeX;
 
+        readonly object _gate = new();
+        IntPtr _lerpReq;
+        Native.POINT _lerpReqPt;
+        bool _lerpEndReq;
+        IntPtr _lerp;
+        double _lx, _ly, _lvx, _lvy, _ltx, _lty, _lStart;
+        int _loffX, _loffY, _lfx, _lfy, _lw, _lh;
+        int _lLastX = int.MinValue, _lLastY = int.MinValue;
+        bool _lerpHeld;
+
+        IntPtr _stackTarget;
+        double _stackSince, _stackCheckAt;
+        bool _stackArmed;
+
+        public event Action<IntPtr, bool>? StackHover;
+        public event Action<IntPtr, IntPtr>? StackDrop;
+
         public PhysicsEngine(Settings settings)
         {
             _s = settings;
@@ -57,6 +74,25 @@ namespace Heft
         double Now => _clock.Elapsed.TotalSeconds;
 
         public void StopAll() => _clear = true;
+
+        public bool LerpWanted => _s.Enabled && _s.Lerp;
+
+        public bool CanLerp(IntPtr hwnd) => Eligible(hwnd);
+
+        public void BeginLerp(IntPtr hwnd, Native.POINT pt)
+        {
+            lock (_gate)
+            {
+                _lerpReq = hwnd;
+                _lerpReqPt = pt;
+                _lerpEndReq = false;
+            }
+        }
+
+        public void EndLerp()
+        {
+            lock (_gate) _lerpEndReq = true;
+        }
 
         void Loop()
         {
@@ -76,8 +112,10 @@ namespace Heft
                         _bodies.Clear();
                         _cand = IntPtr.Zero;
                         _dragging = false;
+                        _lerp = IntPtr.Zero;
+                        _lerpHeld = false;
                     }
-                    bool busy = _down || _bodies.Count > 0;
+                    bool busy = _down || _bodies.Count > 0 || _lerp != IntPtr.Zero;
                     Thread.Sleep(busy ? 3 : 10);
                 }
             }
@@ -109,12 +147,38 @@ namespace Heft
             bool down = (Native.GetAsyncKeyState(_button) & 0x8000) != 0;
             Native.GetCursorPos(out var c);
 
+            IntPtr startLerp;
+            Native.POINT startPt;
+            bool endLerp;
+            lock (_gate)
+            {
+                startLerp = _lerpReq;
+                startPt = _lerpReqPt;
+                endLerp = _lerpEndReq;
+                _lerpReq = IntPtr.Zero;
+                _lerpEndReq = false;
+            }
+
             if (!enabled)
             {
                 _bodies.Clear();
                 _cand = IntPtr.Zero;
                 _dragging = false;
+                _lerp = IntPtr.Zero;
                 _down = down;
+                ResetStack();
+                return;
+            }
+
+            if (startLerp != IntPtr.Zero) StartLerp(startLerp, startPt, now);
+            if (endLerp && _lerp != IntPtr.Zero && _lerpHeld) ReleaseLerp(c, now);
+            if (_lerp != IntPtr.Zero)
+            {
+                _cand = IntPtr.Zero;
+                _dragging = false;
+                if (dt > 0) LerpStep(c, now, dt);
+                _down = down;
+                if (_bodies.Count > 0 && dt > 0) Step(dt, now);
                 return;
             }
 
@@ -146,6 +210,7 @@ namespace Heft
 
         void Press(Native.POINT c, double now)
         {
+            ResetStack();
             _cand = IntPtr.Zero;
             _dragging = false;
             _samples.Clear();
@@ -200,6 +265,7 @@ namespace Heft
             _samples.Add((now, c.X, c.Y));
             while (_samples.Count > 2 && now - _samples[0].t > 0.25) _samples.RemoveAt(0);
             Shake(c.X, now);
+            if (_cand != IntPtr.Zero) StackCheck(c, now, _cand);
         }
 
         void Shake(double x, double now)
@@ -231,10 +297,12 @@ namespace Heft
             int needed = (int)Math.Round(7 - 4 * _s.ShakeSensitivity);
             if (_turns.Count >= needed)
             {
-                var target = _cand;
+                var target = _lerp != IntPtr.Zero ? _lerp : _cand;
                 _cand = IntPtr.Zero;
                 _dragging = false;
                 _turns.Clear();
+                if (_lerp != IntPtr.Zero) StopLerp();
+                if (target == IntPtr.Zero) return;
                 Native.ShowWindow(target, Native.SW_MINIMIZE);
                 Log("shake minimized " + Describe(target));
             }
@@ -246,29 +314,21 @@ namespace Heft
             bool dragging = _dragging;
             _cand = IntPtr.Zero;
             _dragging = false;
+            if (h != IntPtr.Zero && dragging && _stackArmed && _stackTarget != IntPtr.Zero)
+            {
+                var target = _stackTarget;
+                ResetStack();
+                StackDrop?.Invoke(h, target);
+                return;
+            }
+            ResetStack();
             if (h == IntPtr.Zero || !dragging) return;
             if (!Native.IsWindow(h) || Native.IsZoomed(h) || Native.IsIconic(h)) return;
 
             var r = Native.FrameBounds(h);
             if (Math.Abs(r.Width - _startRect.Width) > 2 || Math.Abs(r.Height - _startRect.Height) > 2) return;
 
-            double vx = 0, vy = 0;
-            if (_samples.Count >= 2)
-            {
-                var last = _samples[^1];
-                var first = last;
-                for (int i = _samples.Count - 1; i >= 0; i--)
-                {
-                    if (now - _samples[i].t > 0.08) break;
-                    first = _samples[i];
-                }
-                double dt = last.t - first.t;
-                if (dt > 0.01 && now - last.t < 0.05)
-                {
-                    vx = (last.x - first.x) / dt;
-                    vy = (last.y - first.y) / dt;
-                }
-            }
+            var (vx, vy) = CursorVelocity(now);
 
             vx *= _s.Throw;
             vy *= _s.Throw;
@@ -303,6 +363,281 @@ namespace Heft
                 Wait = 0.03
             };
             Log($"threw {Describe(h)} at {speed:0} px/s");
+            Sfx.Play("throw");
+        }
+
+        (double vx, double vy) CursorVelocity(double now)
+        {
+            double vx = 0, vy = 0;
+            if (_samples.Count >= 2)
+            {
+                var last = _samples[^1];
+                var first = last;
+                for (int i = _samples.Count - 1; i >= 0; i--)
+                {
+                    if (now - _samples[i].t > 0.08) break;
+                    first = _samples[i];
+                }
+                double span = last.t - first.t;
+                if (span > 0.01 && now - last.t < 0.05)
+                {
+                    vx = (last.x - first.x) / span;
+                    vy = (last.y - first.y) / span;
+                }
+            }
+            return (vx, vy);
+        }
+
+        void StartLerp(IntPtr h, Native.POINT p, double now)
+        {
+            if (!Native.IsWindow(h) || Native.IsZoomed(h) || Native.IsIconic(h)) return;
+            _bodies.Remove(h);
+            ResetStack();
+            var r = Native.FrameBounds(h);
+            Native.GetWindowRect(h, out var wr);
+            _lerp = h;
+            _lx = r.Left;
+            _ly = r.Top;
+            _lvx = 0;
+            _lvy = 0;
+            _loffX = p.X - r.Left;
+            _loffY = p.Y - r.Top;
+            _ltx = _lx;
+            _lty = _ly;
+            _lfx = r.Left - wr.Left;
+            _lfy = r.Top - wr.Top;
+            _lw = r.Width;
+            _lh = r.Height;
+            _lLastX = int.MinValue;
+            _lLastY = int.MinValue;
+            _lerpHeld = true;
+            _lStart = now;
+            _samples.Clear();
+            _turns.Clear();
+            _lastDir = 0;
+            _extremeX = p.X;
+            Native.ForceForeground(h);
+        }
+
+        void StopLerp()
+        {
+            _lerp = IntPtr.Zero;
+            _lerpHeld = false;
+            ResetStack();
+        }
+
+        void LerpStep(Native.POINT c, double now, double dt)
+        {
+            var h = _lerp;
+            if (!Native.IsWindow(h) || Native.IsIconic(h) || Native.IsZoomed(h))
+            {
+                StopLerp();
+                return;
+            }
+
+            if (_lerpHeld)
+            {
+                _ltx = c.X - _loffX;
+                _lty = c.Y - _loffY;
+                _samples.Add((now, c.X, c.Y));
+                while (_samples.Count > 2 && now - _samples[0].t > 0.25) _samples.RemoveAt(0);
+                if (now - _lStart > 120)
+                {
+                    ReleaseLerp(c, now);
+                    if (_lerp == IntPtr.Zero) return;
+                }
+            }
+
+            double lag = Math.Clamp(_s.LerpLag, 0, 1);
+            double k = 900 * Math.Pow(40.0 / 900.0, lag);
+            double zeta = 1.0 - 0.65 * Math.Clamp(_s.LerpWobble, 0, 1);
+            double damp = 2 * zeta * Math.Sqrt(k);
+            double left = Math.Min(dt, 0.05);
+            while (left > 1e-6)
+            {
+                double step = Math.Min(0.004, left);
+                double ax = k * (_ltx - _lx) - damp * _lvx;
+                double ay = k * (_lty - _ly) - damp * _lvy;
+                _lvx += ax * step;
+                _lvy += ay * step;
+                _lx += _lvx * step;
+                _ly += _lvy * step;
+                left -= step;
+            }
+
+            bool done = false;
+            if (!_lerpHeld && Math.Abs(_ltx - _lx) < 0.6 && Math.Abs(_lty - _ly) < 0.6 && Math.Abs(_lvx) < 25 && Math.Abs(_lvy) < 25)
+            {
+                _lx = _ltx;
+                _ly = _lty;
+                done = true;
+            }
+
+            int x = (int)Math.Round(_lx) - _lfx;
+            int y = (int)Math.Round(_ly) - _lfy;
+            if (x != _lLastX || y != _lLastY)
+            {
+                _lLastX = x;
+                _lLastY = y;
+                Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0,
+                    Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER | Native.SWP_ASYNCWINDOWPOS);
+            }
+
+            if (_lerpHeld)
+            {
+                Shake(c.X, now);
+                if (_lerp == IntPtr.Zero) return;
+                StackCheck(c, now, h);
+            }
+            if (done) StopLerp();
+        }
+
+        void ReleaseLerp(Native.POINT c, double now)
+        {
+            var h = _lerp;
+            _lerpHeld = false;
+            _ltx = c.X - _loffX;
+            _lty = c.Y - _loffY;
+
+            if (_stackArmed && _stackTarget != IntPtr.Zero)
+            {
+                var target = _stackTarget;
+                StopLerp();
+                StackDrop?.Invoke(h, target);
+                return;
+            }
+            ResetStack();
+
+            if (_s.LerpSnap && Snap(h, c))
+            {
+                StopLerp();
+                return;
+            }
+
+            var (vx, vy) = CursorVelocity(now);
+            vx *= _s.Throw;
+            vy *= _s.Throw;
+            double speed = Math.Sqrt(vx * vx + vy * vy);
+            const double max = 9000;
+            if (speed > max)
+            {
+                vx *= max / speed;
+                vy *= max / speed;
+                speed = max;
+            }
+            bool grav = _s.Gravity > 0.001;
+            if (speed < 260 && !grav) return;
+
+            var wr = new Native.RECT();
+            Native.GetWindowRect(h, out wr);
+            var fr = Native.FrameBounds(h);
+            StopLerp();
+            _bodies[h] = new Body
+            {
+                Hwnd = h,
+                X = fr.Left,
+                Y = fr.Top,
+                W = fr.Width,
+                H = fr.Height,
+                OffX = fr.Left - wr.Left,
+                OffY = fr.Top - wr.Top,
+                Vx = vx,
+                Vy = vy,
+                Wait = 0
+            };
+            Log($"lerp threw {Describe(h)} at {speed:0} px/s");
+            Sfx.Play("throw");
+        }
+
+        bool Snap(IntPtr h, Native.POINT c)
+        {
+            IntPtr mon = Native.MonitorFromPoint(c, Native.MONITOR_DEFAULTTONEAREST);
+            var info = new Native.MONITORINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf<Native.MONITORINFO>() };
+            if (!Native.GetMonitorInfo(mon, ref info)) return false;
+            var b = info.rcMonitor;
+            var w = info.rcWork;
+            if (c.Y <= b.Top + 1)
+            {
+                Native.ShowWindow(h, Native.SW_MAXIMIZE);
+                return true;
+            }
+            bool left = c.X <= b.Left + 1;
+            bool right = c.X >= b.Right - 2;
+            if (!left && !right) return false;
+            if (Native.IsZoomed(h)) Native.ShowWindow(h, Native.SW_RESTORE);
+            Native.GetWindowRect(h, out var wr);
+            var fr = Native.FrameBounds(h);
+            int padL = fr.Left - wr.Left, padT = fr.Top - wr.Top, padR = wr.Right - fr.Right, padB = wr.Bottom - fr.Bottom;
+            int half = w.Width / 2;
+            int x = left ? w.Left : w.Left + half;
+            int width = left ? half : w.Width - half;
+            Native.SetWindowPos(h, IntPtr.Zero, x - padL, w.Top - padT, width + padL + padR, w.Height + padT + padB, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+            return true;
+        }
+
+        void ResetStack()
+        {
+            bool was = _stackArmed;
+            _stackArmed = false;
+            _stackTarget = IntPtr.Zero;
+            if (was) StackHover?.Invoke(IntPtr.Zero, false);
+        }
+
+        void StackCheck(Native.POINT c, double now, IntPtr dragged)
+        {
+            if (!_s.WindowStacks) return;
+            if (now - _stackCheckAt < 0.06) return;
+            _stackCheckAt = now;
+            IntPtr under = WindowBelow(c, dragged);
+            IntPtr t = under != IntPtr.Zero && CaptionAt(under, c) ? under : IntPtr.Zero;
+            if (t != _stackTarget)
+            {
+                bool was = _stackArmed;
+                _stackTarget = t;
+                _stackSince = now;
+                _stackArmed = false;
+                if (was) StackHover?.Invoke(IntPtr.Zero, false);
+                return;
+            }
+            if (t != IntPtr.Zero && !_stackArmed && now - _stackSince > 0.35)
+            {
+                _stackArmed = true;
+                StackHover?.Invoke(t, true);
+            }
+        }
+
+        IntPtr WindowBelow(Native.POINT c, IntPtr dragged)
+        {
+            IntPtr found = IntPtr.Zero;
+            Native.EnumWindows((h, _) =>
+            {
+                if (h == dragged) return true;
+                if (!Native.IsWindowVisible(h) || Native.IsIconic(h) || Native.IsCloaked(h)) return true;
+                if ((Native.ExStyle(h) & Native.WS_EX_TOOLWINDOW) != 0) return true;
+                if ((Native.Style(h) & Native.WS_CHILD) != 0) return true;
+                Native.GetWindowThreadProcessId(h, out uint pid);
+                if (pid == _pid) return true;
+                var r = Native.FrameBounds(h);
+                if (!r.Contains(c.X, c.Y)) return true;
+                if (Native.GetWindowTextLength(h) == 0 || ShellClasses.Contains(Native.ClassName(h)))
+                {
+                    found = IntPtr.Zero;
+                    return false;
+                }
+                found = h;
+                return false;
+            }, IntPtr.Zero);
+            return found;
+        }
+
+        static bool CaptionAt(IntPtr h, Native.POINT c)
+        {
+            var r = Native.FrameBounds(h);
+            int packed = ((c.Y & 0xFFFF) << 16) | (c.X & 0xFFFF);
+            IntPtr ok = Native.SendMessageTimeout(h, Native.WM_NCHITTEST, IntPtr.Zero, new IntPtr(packed), 2, 40, out IntPtr hit);
+            if (ok != IntPtr.Zero && hit.ToInt64() == Native.HTCAPTION) return true;
+            double scale = Native.DpiScaleAt(c.X, c.Y);
+            return c.Y - r.Top < 30 * scale && c.Y >= r.Top;
         }
 
         void Step(double dt, double now)

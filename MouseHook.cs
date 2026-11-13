@@ -34,6 +34,12 @@ namespace Heft
         public event Action? DesktopDoubleClick;
         public event Action<string>? Corner;
 
+        public PhysicsEngine? Physics;
+        bool _lerping, _swallowLeftUp;
+        IntPtr _lerpLast;
+        uint _lerpLastTime;
+        Native.POINT _lerpLastPt;
+
         string _corner = "";
         List<Native.RECT> _screens = new();
         long _screensAt;
@@ -119,7 +125,22 @@ namespace Heft
                     _swallowMiddleUp = false;
                     return true;
 
+                case 0x0202:
+                    if (_lerping)
+                    {
+                        _lerping = false;
+                        Physics?.EndLerp();
+                        return true;
+                    }
+                    if (_swallowLeftUp)
+                    {
+                        _swallowLeftUp = false;
+                        return true;
+                    }
+                    return false;
+
                 case Native.WM_LBUTTONDOWN:
+                    if (TryLerp(m)) return true;
                     bool dbl = m.time - _lastDownTime <= Native.GetDoubleClickTime()
                                && Math.Abs(m.pt.X - _lastDown.X) < 5 && Math.Abs(m.pt.Y - _lastDown.Y) < 5;
                     _lastDownTime = dbl ? 0 : m.time;
@@ -128,6 +149,29 @@ namespace Heft
                     return false;
             }
             return false;
+        }
+
+        bool TryLerp(Native.MSLLHOOKSTRUCT m)
+        {
+            var phys = Physics;
+            if (phys == null || !phys.LerpWanted) return false;
+            if (Native.ModifiersDown()) return false;
+            IntPtr cap = TitleAt(m.pt);
+            if (cap == IntPtr.Zero || Native.IsZoomed(cap) || !phys.CanLerp(cap)) return false;
+            bool dbl = cap == _lerpLast && m.time - _lerpLastTime <= Native.GetDoubleClickTime()
+                       && Math.Abs(m.pt.X - _lerpLastPt.X) < 6 && Math.Abs(m.pt.Y - _lerpLastPt.Y) < 6;
+            _lerpLast = cap;
+            _lerpLastTime = dbl ? 0 : m.time;
+            _lerpLastPt = m.pt;
+            if (dbl)
+            {
+                _swallowLeftUp = true;
+                Native.PostMessage(cap, Native.WM_SYSCOMMAND, new IntPtr(Native.SC_MAXIMIZE), IntPtr.Zero);
+                return true;
+            }
+            _lerping = true;
+            phys.BeginLerp(cap, m.pt);
+            return true;
         }
 
         void CheckCorner(Native.POINT p)
