@@ -156,6 +156,11 @@ namespace Heft
         public Dictionary<string, bool> SoundEvents { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         public bool StartEarly { get; set; } = true;
+        public bool SnapZones { get; set; } = true;
+        public double SnapGap { get; set; } = 8;
+        public Dictionary<string, string> SnapLayouts { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public List<WindowRule> WindowRules { get; set; } = new();
+        public List<ClosedApp> RecentlyClosed { get; set; } = new();
         public bool GameMode { get; set; } = true;
         public bool GameHoldToasts { get; set; } = true;
         public bool GameBlockWin { get; set; } = false;
@@ -237,6 +242,7 @@ namespace Heft
                         s.CustomKeys ??= new List<CustomKey>();
                         s.Palette ??= new List<string>();
                         s.MonitorTints = new Dictionary<string, string>(s.MonitorTints ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+                        s.SnapLayouts = new Dictionary<string, string>(s.SnapLayouts ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         s.ExtEnabled = new Dictionary<string, bool>(s.ExtEnabled ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         return s;

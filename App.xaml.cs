@@ -50,6 +50,7 @@ namespace Heft
         StartScreen _start = null!;
         Overview _overview = null!;
         WindowStacks _stacks = null!;
+        SnapZones? _snap;
         Pip _pip = null!;
         QuickShare _share = null!;
         VersionShelf _versions = null!;
@@ -122,6 +123,7 @@ namespace Heft
             _catalog = new AppCatalog(_s);
             _catalog.Foreground += OnForeground;
             _stacks = new WindowStacks(_s, _catalog);
+            _snap = new SnapZones(_s, _physics);
             _stacks.RestoreLeftovers();
             _physics.StackHover += (h, on) => Dispatcher.BeginInvoke(new Action(() => _stacks.Hover(h, on)));
             _physics.StackDrop += (a, b) => Dispatcher.BeginInvoke(new Action(() => _stacks.Join(a, b)));
@@ -202,6 +204,7 @@ namespace Heft
                 _shelf.OpenShelf(BarDisplay(), BarBottom(), "dupes");
             };
             pages.Cmds = _cmds;
+            InitWindows(pages);
             _ext = new ExtHost(_s, _cmds, _notes, _np);
             pages.Ext = _ext;
             pages.IconsChanged = () =>
@@ -352,6 +355,7 @@ namespace Heft
         void OnForeground(string? path)
         {
             if (string.IsNullOrEmpty(path)) return;
+            _rules?.Saw(Native.GetForegroundWindow(), path);
             string file = Path.GetFileNameWithoutExtension(path);
             if (file.Equals("heft", StringComparison.OrdinalIgnoreCase)) return;
             _appName = file.Equals("explorer", StringComparison.OrdinalIgnoreCase) ? "Desktop" : _catalog.DisplayName(path);
@@ -633,7 +637,9 @@ namespace Heft
                 ["sheet"] = () => _sheet.Toggle(),
                 ["capture"] = () => _lens.Open(),
                 ["pickcolor"] = () => _lens.Open("color"),
-                ["start"] = () => _start.Toggle()
+                ["start"] = () => _start.Toggle(),
+                ["reopen"] = ReopenLast,
+                ["remember"] = RememberWindow
             };
             _keyActions.Clear();
             foreach (var kv in map) _keyActions[kv.Key] = kv.Value;
@@ -971,6 +977,8 @@ namespace Heft
             c.Add("heft", "notes", "Notifications", "\uEA8F", () => OpenDrop("notes"), "notification center history");
             c.Add("heft", "center", "Control center", "\uE9E9", () => OpenDrop("center"), "system monitor cpu gpu ram toggles");
             c.Add("heft", "settings", "heft settings", "\uE713", () => _panel.Open(), "preferences options");
+            c.Add("heft", "reopen", "Reopen last closed app", "\uE7A7", ReopenLast, "undo close restore app again");
+            c.Add("heft", "remember-window", "Remember where this window goes", "\uE8A7", RememberWindow, "window rule position monitor place open");
             c.Add("heft", "dock", "Dock", "\uE8A9", () =>
             {
                 var (d, side) = Displays.DockForCursor(_s);
@@ -1139,6 +1147,8 @@ namespace Heft
             Try(() => _autosave?.Stop());
             Try(() => _catalog?.Dispose());
             Try(() => _stacks?.ReleaseAll());
+            Try(() => _snap?.Dispose());
+            Try(() => _watch?.Dispose());
             Try(() => _pip?.ReleaseAll());
             Try(() => _share?.Dispose());
             Try(() => _versions?.Dispose());

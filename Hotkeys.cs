@@ -32,6 +32,8 @@ namespace Heft
             ("sheet", "Shortcut sheet", "Ctrl+Alt+Y"),
             ("capture", "Screenshot, text, colors", "Ctrl+Alt+X"),
             ("pickcolor", "Pick a color", ""),
+            ("reopen", "Reopen last closed app", "Ctrl+Alt+Z"),
+            ("remember", "Remember where this window goes", ""),
             ("start", "Start", "")
         };
 

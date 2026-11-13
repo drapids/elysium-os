@@ -45,6 +45,16 @@ namespace Heft.Ui
         public Action? OpenSettings;
         public Action? Overview;
         public Func<IEnumerable<ExtWidget>>? ExtWidgets;
+        public Action<ClosedApp>? Reopen;
+
+        static string Ago(DateTime when)
+        {
+            var span = DateTime.Now - when;
+            if (span.TotalMinutes < 1) return "just now";
+            if (span.TotalMinutes < 60) return (int)span.TotalMinutes + "m ago";
+            if (span.TotalHours < 24) return (int)span.TotalHours + "h ago";
+            return (int)span.TotalDays + "d ago";
+        }
 
         public bool Shown => _shown;
 
@@ -684,6 +694,34 @@ namespace Heft.Ui
                     }
                     _side.Children.Add(Card(sp));
                 }
+            }
+
+            if (_s.RecentlyClosed.Count > 0)
+            {
+                var sp = new StackPanel();
+                sp.Children.Add(W("Recently closed", 13, true, 0xC8));
+                foreach (var c in _s.RecentlyClosed.Take(4).ToList())
+                {
+                    var app = c;
+                    var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 7, 0, 0), Cursor = Cursors.Hand, Background = Brushes.Transparent };
+                    var ic = new Image { Width = 18, Height = 18, Margin = new Thickness(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Center };
+                    _cat.Icons.Get(app.Path, 32, true, src => ic.Source = src);
+                    row.Children.Add(ic);
+                    var name = W(app.Name, 12.5);
+                    name.VerticalAlignment = VerticalAlignment.Center;
+                    row.Children.Add(name);
+                    var ago = W("  " + Ago(app.When), 11.5, false, 0x80);
+                    ago.VerticalAlignment = VerticalAlignment.Center;
+                    row.Children.Add(ago);
+                    row.ToolTip = app.Title.Length > 0 ? app.Title : app.Path;
+                    row.MouseLeftButtonUp += (_, _) =>
+                    {
+                        Close2();
+                        Reopen?.Invoke(app);
+                    };
+                    sp.Children.Add(row);
+                }
+                _side.Children.Add(Card(sp));
             }
 
             if (_s.Reminders.Count > 0)

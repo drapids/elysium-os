@@ -22,7 +22,7 @@ namespace Heft.Ui
             ("heft.bar(text, glyph, onClick)", "puts something in the top bar"),
             ("heft.widget(title, body)", "a card on Start"),
             ("heft.dropAction(name, paths => {})", "a shelf drop action"),
-            ("heft.on('song' | 'window' | 'download' | 'clipboard' | 'monitor' | 'game' | 'tick', fn)", "react to stuff"),
+            ("heft.on('song' | 'window' | 'download' | 'clipboard' | 'monitor' | 'game' | 'open' | 'tick', fn)", "react to stuff"),
             ("heft.every(ms, fn) / heft.after(ms, fn)", "timers"),
             ("heft.fetch(url, (text, status) => {})", "get something from the web"),
             ("heft.request(url, headersJson, fn)", "same with headers"),

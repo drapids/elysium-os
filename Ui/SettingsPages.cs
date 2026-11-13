@@ -200,6 +200,31 @@ namespace Heft.Ui
 
         void WindowsPage(Panel h)
         {
+            h.Children.Add(Kit.Header("Snap zones"));
+            var snapRows = new List<UIElement>
+            {
+                Kit.Row("Snap zones", "hold shift while you drag a window and drop it into a zone", Sw(_s.SnapZones, v => _s.SnapZones = v)),
+                Kit.SliderRow("Gap", 0, 24, _s.SnapGap, v => v < 1 ? "none" : Math.Round(v) + "px", v =>
+                {
+                    _s.SnapGap = Math.Round(v);
+                    Touch();
+                })
+            };
+            var layoutIds = SnapZones.Layouts.Select(l => l.id).ToArray();
+            var layoutLabels = SnapZones.Layouts.Select(l => l.label).ToArray();
+            foreach (var d in Displays.All())
+            {
+                string key = d.Key;
+                string cur = _s.SnapLayouts.TryGetValue(key, out var lay) && lay.Length > 0 ? lay : "auto";
+                snapRows.Add(Kit.Block($"Monitor {d.Index + 1}{(d.Primary ? " (main)" : "")}", null, Kit.Segments(layoutLabels, layoutIds, cur, v =>
+                {
+                    _s.SnapLayouts[key] = v;
+                    Touch();
+                })));
+            }
+            h.Children.Add(Kit.Group(snapRows.ToArray()));
+            RulesSection(h);
+
             h.Children.Add(Kit.Header("Window lerp"));
             h.Children.Add(Kit.Group(
                 Kit.Row("Lerp", "drag a window by its title bar and it trails your mouse smoothly, cutting corners. hold ctrl to drag the normal way. needs window physics on", Sw(_s.Lerp, v => _s.Lerp = v)),
