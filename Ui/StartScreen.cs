@@ -509,7 +509,7 @@ namespace Heft.Ui
             }
 
             var toggles = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3 };
-            void Toggle(string glyph, string label, string id)
+            void AddToggle(string glyph, string label, string id)
             {
                 var c = _cmds.Get(id);
                 if (c == null) return;
@@ -532,11 +532,11 @@ namespace Heft.Ui
                 };
                 toggles.Children.Add(b);
             }
-            Toggle("\uE708", "Focus", "focus");
-            Toggle("\uE72E", "Cursor lock", "lock");
-            Toggle("\uE7F4", "Desktop", "desktop");
-            Toggle("\uE945", "Physics", "physics");
-            Toggle("\uE77F", "Paste stack", "stack");
+            AddToggle("\uE708", "Focus", "focus");
+            AddToggle("\uE72E", "Cursor lock", "lock");
+            AddToggle("\uE7F4", "Desktop", "desktop");
+            AddToggle("\uE945", "Physics", "physics");
+            AddToggle("\uE77F", "Paste stack", "stack");
             var themeCmd = _cmds.Get("theme");
             if (themeCmd != null)
             {
