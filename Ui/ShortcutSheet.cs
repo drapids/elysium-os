@@ -129,7 +129,7 @@ namespace Heft.Ui
             foreach (var ck in _s.CustomKeys.Where(c => c.Keys.Length > 0))
             {
                 string cid = ck.Id;
-                string label = ck.Label.Length > 0 ? ck.Label : System.IO.Path.GetFileNameWithoutExtension(ck.Target.TrimEnd('\\'));
+                string label = ck.Label.Length > 0 ? ck.Label : ck.Kind == "volume" ? SettingsPages.VolumeTitle(ck.Target) : System.IO.Path.GetFileNameWithoutExtension(ck.Target.TrimEnd('\\'));
                 if (label.Length == 0) label = ck.Target;
                 list.Add(new Item { Group = "keys", Label = label, Keys = ck.Keys, Run = () => _run("custom:" + cid) });
             }

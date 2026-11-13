@@ -39,7 +39,8 @@ namespace Heft.Ui
             ("url", "Website", "\uE774"),
             ("text", "Type text", "\uE8D2"),
             ("heft", "heft action", "\uE945"),
-            ("script", "Steps", "\uE8FD")
+            ("script", "Steps", "\uE8FD"),
+            ("volume", "App volume", "\uE767")
         };
 
         CustomKey? _editing;
@@ -222,6 +223,19 @@ namespace Heft.Ui
 
         static Border Sep() => new() { Style = (Style)Application.Current.FindResource("Sep") };
 
+        public static string VolumeTitle(string target)
+        {
+            var parts = target.Split('|');
+            string app = parts.Length > 0 && parts[0].Length > 0 && parts[0] != "*" ? parts[0] : "focused app";
+            string act = parts.Length > 1 ? parts[1] : "up";
+            return act switch
+            {
+                "down" => app + " quieter",
+                "mute" => "Mute " + app,
+                _ => app + " louder"
+            };
+        }
+
         static string KeyTitle(CustomKey k)
         {
             if (k.Label.Length > 0) return k.Label;
@@ -231,6 +245,7 @@ namespace Heft.Ui
                 "app" or "file" or "folder" => Path.GetFileNameWithoutExtension(t.TrimEnd('\\')) is { Length: > 0 } n ? n : t,
                 "url" => t.Replace("https://", "").Replace("http://", "").TrimEnd('/'),
                 "text" => "Type \"" + (t.Length > 24 ? t[..24] + "..." : t) + "\"",
+                "volume" => VolumeTitle(t),
                 _ => t.Length > 30 ? t[..30] + "..." : t
             };
         }
@@ -288,6 +303,10 @@ namespace Heft.Ui
             if (k.Kind == "heft")
             {
                 box.Children.Add(HeftPicker(k));
+            }
+            else if (k.Kind == "volume")
+            {
+                box.Children.Add(VolumePicker(k));
             }
             else
             {
@@ -639,6 +658,54 @@ namespace Heft.Ui
                 Live();
             };
             return host;
+        }
+
+        public Func<IEnumerable<string>>? AudioApps;
+
+        UIElement VolumePicker(CustomKey k)
+        {
+            var parts = k.Target.Split('|');
+            string app = parts.Length > 0 && parts[0].Length > 0 ? parts[0] : "*";
+            string act = parts.Length > 1 ? parts[1] : "up";
+            if (k.Target.Length == 0) k.Target = app + "|" + act;
+            var box = new StackPanel();
+            var apps = new List<string> { "*" };
+            try
+            {
+                if (AudioApps != null) apps.AddRange(AudioApps().Where(a => a.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase));
+            }
+            catch
+            {
+            }
+            if (!apps.Contains(app, StringComparer.OrdinalIgnoreCase)) apps.Add(app);
+            var chips = new WrapPanel();
+            foreach (var a in apps.Take(14))
+            {
+                string id = a;
+                bool on = id.Equals(app, StringComparison.OrdinalIgnoreCase);
+                var chip = new Border { Child = Kit.Text(id == "*" ? "whatever's focused" : id, 12, on, on ? "OnAccent" : "Text"), CornerRadius = new CornerRadius(8), Padding = new Thickness(9, 4, 10, 5), Margin = new Thickness(0, 0, 6, 6), Cursor = Cursors.Hand, BorderThickness = new Thickness(1) };
+                chip.SetResourceReference(Border.BackgroundProperty, on ? "AccentFill" : "GroupBg");
+                chip.SetResourceReference(Border.BorderBrushProperty, on ? "AccentFill" : "GroupStroke");
+                chip.MouseLeftButtonUp += (_, _) =>
+                {
+                    k.Target = id + "|" + act;
+                    Rebuild();
+                };
+                chips.Children.Add(chip);
+            }
+            box.Children.Add(chips);
+            var other = Kit.Field(app == "*" ? "" : app, "or type an app name (spotify, discord, chrome)", v =>
+            {
+                string t = v.Trim().Replace(".exe", "", StringComparison.OrdinalIgnoreCase);
+                k.Target = (t.Length == 0 ? "*" : t) + "|" + (k.Target.Split('|').ElementAtOrDefault(1) ?? "up");
+            });
+            other.Margin = new Thickness(0, 2, 0, 8);
+            box.Children.Add(other);
+            box.Children.Add(Kit.Segments(new[] { "Louder", "Quieter", "Mute" }, new[] { "up", "down", "mute" }, act, v =>
+            {
+                k.Target = (k.Target.Split('|').ElementAtOrDefault(0) ?? "*") + "|" + v;
+            }));
+            return box;
         }
     }
 }

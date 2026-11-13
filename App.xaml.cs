@@ -217,6 +217,7 @@ namespace Heft
                 _start.MarkDirty();
             };
             pages.KeyFree = spec => _keys.Free(spec);
+            pages.AudioApps = () => _audio.Apps().Where(a => !a.System).Select(a => a.Exe);
             pages.PauseKeys = on =>
             {
                 _keyHook.Paused = on;
@@ -699,6 +700,9 @@ namespace Heft
                         break;
                     case "script":
                         _ = _cmds.Script(t);
+                        break;
+                    case "volume":
+                        AppVolume(t);
                         break;
                 }
             }

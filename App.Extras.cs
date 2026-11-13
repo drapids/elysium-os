@@ -104,6 +104,37 @@ namespace Heft
                  (exe.Length > 3 && n.AppId.IndexOf(exe, StringComparison.OrdinalIgnoreCase) >= 0)));
         }
 
+        void AppVolume(string target)
+        {
+            var parts = target.Split('|');
+            string exe = parts.Length > 0 ? parts[0].Trim() : "*";
+            string act = parts.Length > 1 ? parts[1] : "up";
+            if (exe.Length == 0 || exe == "*")
+            {
+                var fg = Native.ProcessPath(Native.GetForegroundWindow());
+                exe = fg == null ? "" : Path.GetFileNameWithoutExtension(fg);
+            }
+            if (exe.Length == 0) return;
+            var app = _audio.Apps().FirstOrDefault(a => a.Exe.Equals(exe, StringComparison.OrdinalIgnoreCase));
+            if (app == null)
+            {
+                Flash(exe + " isn't playing anything");
+                return;
+            }
+            string name = app.Name.Length > 0 ? app.Name : app.Exe;
+            if (act == "mute")
+            {
+                _audio.SetMute(app.Exe, !app.Muted);
+                Flash(name + (app.Muted ? " unmuted" : " muted"));
+                return;
+            }
+            float step = act == "down" ? -0.06f : 0.06f;
+            float level = Math.Clamp(app.Volume + step, 0f, 1f);
+            if (app.Muted && step > 0) _audio.SetMute(app.Exe, false);
+            _audio.SetVolume(app.Exe, level);
+            Flash($"{name} {Math.Round(level * 100)}%");
+        }
+
         void SyncBarLayout()
         {
             string sig = string.Join(",", _s.BarLayout);
