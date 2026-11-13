@@ -1,55 +1,109 @@
 # heft
 
-throw your windows around.
+a whole new layer on top of windows. glass top bar, an arc dock on the screen edge, a shelf that drops down from the top, a launcher, AudioFlow, notifications that actually look good, and you can still throw your windows around.
 
-grab any window, fling it, and it keeps going. it bounces off the screen edges, slides to a stop, and with gravity on it falls and stacks on top of other windows. shake a window while dragging it to minimize it.
+## the main stuff
 
-push your mouse into the edge of the screen (right by default, or left / top / bottom) and a dock fans out in a half circle. no outline, just your apps. scroll or drag to spin through them, hover to magnify, click to open. hangar29 gets found and pinned first, and if you have a fresh win-unpacked build it uses whichever exe is newest.
+**top bar** sits on every monitor (or just the main one). the pill in the middle changes with what's going on: song + controls when music plays, download speed when something's downloading, progress when you copy files, a pulsing dot when an app wants you, a countdown when a timer's running. otherwise it's just the clock. click it for the control center.
 
-ctrl + scroll (or pinch) zooms out to places like desktop, downloads, documents and your drives. click a folder to dive in, zoom out to go back up. right-click anything to show it in file explorer.
+**control center** has cpu / gpu / ram / network / battery, focus mode, cursor lock, desktop icons, physics, taskbar, paste stack, wi-fi and bluetooth toggles, sound output, your latest clipboard and audio profiles.
 
-## controls
+**AudioFlow** opens from the volume in the bar. volume and live levels per app, mute per app, send an app to a different output, switch outputs and mics, save setups as profiles (gaming, music, whatever) and give them hotkeys. plug in headphones and it can switch to them automatically.
+
+**dock** fans out from the screen edge. scroll, drag, ctrl+scroll to zoom out to folders. with two monitors it only lives on the outer edges, never the seam in the middle.
+
+**shelf** drags down from the top bar.
+- shelf: drop files, text or images to keep them close. drag them back out to move (hold ctrl to copy)
+- catalog: your folders as books. click one to walk in, drop files on one to move them there, hover with a file to spring it open
+- collections that fill themselves: recent, downloads, images, code, docs, archives, large, unsorted
+- your own collections that point at files wherever they live
+- sort by modified, name, last opened, size, type, color, how often you open it, or relevance
+- pocket a window (ctrl + alt + p) and it hides on the shelf with a live preview
+- drag something onto the bar and you get drop actions: shelf, zip, to png, to jpg, copy path, collection, inspect
+
+**inspect anything.** space or right-click on anything in the dock, shelf or launcher and it zooms into a card with a preview, info, related files and what you can do with it. ctrl + alt + i does it for whatever is selected in File Explorer.
+
+**launcher** is alt + space.
+
+| type | does |
+|---|---|
+| anything | apps, files, commands, settings, math, all fuzzy (vsco finds VS Code) |
+| `?` | web search |
+| `>` | run a command, or `> alias yt = https://youtube.com` to make your own |
+| `r ` | file search |
+| `@` | apps |
+| `#` | windows settings |
+| `=` | calculator + units (`5 km to mi`) |
+| `!` | system stuff (lock, sleep, restart, empty recycle bin...) |
+| `:` | clipboard history, enter pastes it |
+| `&` | heft stuff |
+| `/` | walk folders, tab goes in |
+
+plain english works too: `pdfs from this week`, `big videos in downloads`, `screenshots from yesterday`.
+
+pipes: `r screenshots > collection Memes`, `pdfs this week > zip`, `@ vscode > open`, `big files in downloads > delete` (asks twice).
+
+reminders and timers: `remind me in 10 min to stretch`, `remind me at 5pm to call grandma`, `timer 25m`, `pomodoro`.
+
+ctrl + p pins a result. stuff you use a lot floats up.
+
+your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https://docs.google.com`
+
+**notifications.** heft shows Windows notifications its own way and turns off Windows' popups for those apps so you don't get both. there's a searchable history grouped by app, and per-app rules: pop up, silent, or blocked. focus mode mutes the apps you pick and holds notifications.
+
+**everything else**
+- hide desktop icons (nothing gets deleted). double-click the desktop or ctrl + alt + e to peek
+- taskbar: clear / blur / acrylic, auto-hide or gone, centered icons, hide start and tray
+- scroll a window's title bar to make it see-through, middle-click it to pin it on top
+- scroll the screen edge for brightness, scroll the top bar for volume, middle-click the bar to play/pause
+- cursor lock keeps your mouse on one screen for games (ctrl + alt + l, or automatic in fullscreen)
+- paste stack: ctrl + alt + c, copy a bunch of things, then ctrl + alt + v pastes them in order
+- share your setup as a `.heftpack` file and import a friend's
+
+## keys
 
 | | |
 |---|---|
-| push into the edge | dock |
+| alt + space | launcher |
 | ctrl + alt + space | dock |
+| ctrl + alt + s | shelf |
+| ctrl + alt + a | AudioFlow |
+| ctrl + alt + n | notifications |
+| ctrl + alt + k | control center |
 | ctrl + alt + h | settings |
-| right-click the edge handle | settings |
-| tray icon | settings, dock, pause, quit |
+| ctrl + alt + l | cursor lock |
+| ctrl + alt + f | focus |
+| ctrl + alt + p | pocket the current window |
+| ctrl + alt + c / v | paste stack on, paste next |
+| ctrl + alt + i | inspect what's selected in Explorer |
+| ctrl + alt + d | next audio output |
+| ctrl + alt + e | peek desktop icons |
 
-on the dock: scroll, drag or arrow keys to spin, enter to open, ctrl + scroll / pinch to zoom, backspace to go back, esc to close. start typing to filter by name. in a folder, the sort button flips between a to z, recent, type and size.
-
-## settings
-
-- **physics**: one switch to turn it all off (the dock keeps working), chill / bouncy / chaos presets, or tune throw strength, friction, bounciness and gravity yourself
-- **behavior**: stack on other windows, shake to minimize, fly between monitors
-- **dock**: which side, icon size, magnification, edge trigger on/off
-- **apps on the dock**: favorites, your projects and stuff you use a lot. star to pin, x to take it off
-- **places**: the folders you zoom out to, plus drives, how folders sort, folders first, hidden files, type to filter
-- **general**: auto / light / dark, start with windows, apps to leave alone, project names to look for
-
-settings live in `%AppData%\heft\settings.json`.
+all of them can be changed in settings > keys.
 
 ## build
 
-needs the .NET 8 SDK on windows 10/11. the glass panel uses real acrylic on windows 11 22H2+, older builds get a blur fallback.
+needs the .NET 8 SDK, windows 10 or 11.
 
 ```
 dotnet run
 ```
 
-for a single exe:
+to make the exe:
 
 ```
-dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true -o publish
 ```
+
+put `publish\heft.exe` somewhere it'll stay, open it, then settings > general > start with windows. that sets up a task that runs heft the second you sign in, before the normal startup apps.
+
+settings live in `%AppData%\heft\settings.json`, and `%AppData%\heft\log.txt` has what heft saw if something acts weird.
 
 ## heads up
 
-- windows from apps running as admin can't be thrown unless heft is also running as admin
-- windows 11 has its own "title bar window shake" setting. if it's on, turn it off so it doesn't fight with shake to minimize
-- maximized and snapped windows are left alone
-- if throwing ever stops working, `%AppData%\heft\log.txt` shows what it saw (drags, throws, and why it skipped one)
+- windows of apps running as admin can't be thrown or pocketed unless heft runs as admin too
+- if heft crashes while it's handling notifications, Windows' popups stay off until you open heft again (or flip the switch off in settings > alerts)
+- per-app audio routing uses the same windows feature as the sound settings page, so it works on windows 10 2004 and newer
+- making GIFs and shrinking videos for discord shows up in inspect when ffmpeg is installed
 
 made by mason arcieri
