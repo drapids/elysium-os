@@ -73,6 +73,13 @@ namespace Heft
 
         double Now => _clock.Elapsed.TotalSeconds;
 
+        public volatile bool Hush;
+
+        public event Action<IntPtr>? LerpBegan;
+        public event Action<IntPtr>? LerpDropped;
+
+        public bool LerpHeld => _lerpHeld && _lerp != IntPtr.Zero;
+
         public void StopAll() => _clear = true;
 
         public bool LerpWanted => _s.Enabled && _s.Lerp;
@@ -314,6 +321,11 @@ namespace Heft
             bool dragging = _dragging;
             _cand = IntPtr.Zero;
             _dragging = false;
+            if (Hush)
+            {
+                ResetStack();
+                return;
+            }
             if (h != IntPtr.Zero && dragging && _stackArmed && _stackTarget != IntPtr.Zero)
             {
                 var target = _stackTarget;
@@ -417,6 +429,7 @@ namespace Heft
             _lastDir = 0;
             _extremeX = p.X;
             Native.ForceForeground(h);
+            LerpBegan?.Invoke(h);
         }
 
         void StopLerp()
@@ -498,6 +511,14 @@ namespace Heft
             _lerpHeld = false;
             _ltx = c.X - _loffX;
             _lty = c.Y - _loffY;
+
+            if (Hush)
+            {
+                ResetStack();
+                StopLerp();
+                LerpDropped?.Invoke(h);
+                return;
+            }
 
             if (_stackArmed && _stackTarget != IntPtr.Zero)
             {
