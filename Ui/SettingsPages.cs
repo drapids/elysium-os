@@ -256,6 +256,11 @@ namespace Heft.Ui
 
         void FilesPage(Panel h)
         {
+            h.Children.Add(Kit.Header("Shelf"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("Piles", "once the shelf gets busy, same kind of stuff stacks into a pile. click to spread it out, drag it to take the whole pile", Sw(_s.ShelfPiles, v => _s.ShelfPiles = v)),
+                Kit.Row("Take things off when you drag them out", "turn off to leave a copy on the shelf", Sw(_s.ShelfTakeOut, v => _s.ShelfTakeOut = v))));
+
             h.Children.Add(Kit.Header("Preview"));
             h.Children.Add(Kit.Group(
                 Kit.Row("Space previews in File Explorer", "select a file and hit space, like quick look on a mac", Sw(_s.PreviewSpace, v => _s.PreviewSpace = v))));

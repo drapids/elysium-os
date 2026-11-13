@@ -168,6 +168,7 @@ namespace Heft
         public string StartupPath { get; set; } = "";
 
         public bool ShelfPinned { get; set; } = false;
+        public bool ShelfPiles { get; set; } = true;
         public bool DropSlit { get; set; } = true;
         public bool ShelfTakeOut { get; set; } = true;
 

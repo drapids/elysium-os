@@ -262,6 +262,11 @@ namespace Heft.Ui
             {
                 case Key.Escape:
                     if (_selected.Count > 0) Select(Array.Empty<string>());
+                    else if (_pile.Length > 0 && _tab == "shelf" && _trail.Count == 0)
+                    {
+                        _pile = "";
+                        Render(-1);
+                    }
                     else HideShelf();
                     break;
                 case Key.A when Keyboard.Modifiers == ModifierKeys.Control:
@@ -269,6 +274,11 @@ namespace Heft.Ui
                     break;
                 case Key.Back:
                     if (_trail.Count > 0) Up();
+                    else if (_pile.Length > 0)
+                    {
+                        _pile = "";
+                        Render(-1);
+                    }
                     break;
                 case Key.Space:
                     if (_hovered != null && _hoveredEntry != null) InspectEl(_hovered, _hoveredEntry);
@@ -707,6 +717,10 @@ namespace Heft.Ui
                     foreach (var e in list.Where(x => x.Dir).Take(150)) _content.Children.Add(Spine(e.Path, e.Name));
                     var files = list.Where(x => !x.Dir).Take(240).ToList();
                     if (files.Count > 0) _content.Children.Add(Rack(files));
+                }
+                else if (Piles(list, q))
+                {
+                    RenderPiles(list);
                 }
                 else
                 {
