@@ -35,6 +35,8 @@ namespace Elysium
         bool _winDown, _other, _spaceHeld;
 
         public event Action? WinTapped;
+        public Action? AltF4;
+        public event Action<uint>? SysKey;
         public event Action? ExplorerSpace;
 
         public volatile bool Paused;
@@ -157,6 +159,23 @@ namespace Elysium
                     bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
                     bool up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
                     bool win = k.vkCode == 0x5B || k.vkCode == 0x5C;
+
+                    if (!injected && down && k.vkCode == 0x73 && (k.flags & 0x20) != 0 && AltF4 != null)
+                    {
+                        try
+                        {
+                            AltF4();
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    if (SysKey != null && ((down && k.vkCode is 0xAD or 0xAE or 0xAF) || (up && k.vkCode == 0x14)))
+                    {
+                        uint sys = k.vkCode;
+                        _ui.BeginInvoke(new Action(() => SysKey?.Invoke(sys)));
+                    }
 
                     if (!injected && HoldVk != 0 && k.vkCode == HoldVk && !Paused)
                     {

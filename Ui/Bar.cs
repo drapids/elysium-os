@@ -40,6 +40,7 @@ namespace Elysium.Ui
         public bool Locked;
         public int Stack = -1;
         public string Profile = "";
+        public DateTime? Rec;
     }
 
     internal sealed partial class Bar : Window
@@ -152,7 +153,10 @@ namespace Elysium.Ui
                 e.Handled = true;
                 _pressed = false;
                 root_ReleaseCapture();
-                if (_mode == "attention") AttentionClicked?.Invoke();
+                if (_mode == "pulse") return;
+                if (_mode == "rec") RecClicked?.Invoke();
+                else if (_mode == "idle" && _s.CalendarOn) ClockClicked?.Invoke(this, CenterX(_pill));
+                else if (_mode == "attention") AttentionClicked?.Invoke();
                 else if (_mode == "copy") CopyClicked?.Invoke();
                 else if (_mode == "download") DownloadClicked?.Invoke();
                 else if (_mode == "timer") TimerClicked?.Invoke();
@@ -233,6 +237,13 @@ namespace Elysium.Ui
 
             _clock = Kit.Text("", 12.5, true);
             _clock.Margin = new Thickness(6, 0, 8, 0);
+            _clock.Background = Brushes.Transparent;
+            _clock.MouseLeftButtonUp += (_, e) =>
+            {
+                if (!_s.CalendarOn) return;
+                e.Handled = true;
+                ClockClicked?.Invoke(this, CenterX(_clock));
+            };
             _right.Children.Add(_clock);
 
             var shelf = Kit.Plain("\uE70D", () => ShelfToggle?.Invoke(this), "shelf (or drag down from the bar)", 10);
@@ -723,11 +734,14 @@ namespace Elysium.Ui
         public void Refresh(BarState st)
         {
             if (!IsVisible) return;
+            _lastState = st;
             SetMic(st.MicMuted);
             _app.Visibility = _s.BarApp ? Visibility.Visible : Visibility.Collapsed;
             if (_app.Text != st.App) _app.Text = st.App;
 
-            string mode = st.Copy != null ? "copy"
+            string mode = PulseOn ? "pulse"
+                : st.Rec != null ? "rec"
+                : st.Copy != null ? "copy"
                 : st.Download != null ? "download"
                 : st.Attention.Length > 0 ? "attention"
                 : st.Timer != null ? "timer"
@@ -737,16 +751,13 @@ namespace Elysium.Ui
             if (mode != _mode)
             {
                 _mode = mode;
+                double oldW = _pill.ActualWidth;
                 BuildPill(mode, st);
-                var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
-                var sc = new ScaleTransform(0.92, 0.92);
-                _pill.RenderTransformOrigin = new Point(0.5, 0.5);
-                _pill.RenderTransform = sc;
-                sc.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.92, 1, TimeSpan.FromMilliseconds(320)) { EasingFunction = ease });
-                sc.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.92, 1, TimeSpan.FromMilliseconds(320)) { EasingFunction = ease });
-                _pillContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200)));
+                UpdatePill(st);
+                Morph(oldW);
+                _pillContent.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(Math.Max(80, 200 * Theme.Speed))));
             }
-            UpdatePill(st);
+            else UpdatePill(st);
 
             _clock.Visibility = mode == "idle" ? Visibility.Collapsed : Visibility.Visible;
             _clock.Text = DateTime.Now.ToString(_s.Bar24h ? "HH:mm" : "h:mm tt");
@@ -853,6 +864,11 @@ namespace Elysium.Ui
                     _pSub.Margin = new Thickness(10, 0, 0, 0);
                     row.Children.Add(_pSub);
                     AddBar(h);
+                    break;
+
+                case "pulse":
+                case "rec":
+                    BuildIsland(mode, row, h);
                     break;
 
                 case "attention":
@@ -970,6 +986,16 @@ namespace Elysium.Ui
                     break;
                 case "attention":
                     if (_pTitle != null) _pTitle.Text = st.Attention;
+                    break;
+                case "pulse":
+                    UpdatePulse();
+                    break;
+                case "rec":
+                    if (st.Rec is DateTime started && _pTime != null)
+                    {
+                        var took = now - started;
+                        _pTime.Text = took.TotalHours >= 1 ? took.ToString(@"h\:mm\:ss") : took.ToString(@"m\:ss");
+                    }
                     break;
             }
         }
