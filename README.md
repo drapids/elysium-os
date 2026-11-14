@@ -109,9 +109,26 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 
 **notifications.** heft shows Windows notifications its own way and turns off Windows' popups for those apps so you don't get both. there's a searchable history grouped by app, and per-app rules: pop up, silent, or blocked. focus mode mutes the apps you pick and holds notifications.
 
-**start.** tap the windows key and a fullscreen glass start fades in over everything: a big clock, search (just start typing), your real Windows Start pins with their groups and sizes, the apps you use most, recent files, your taskbar apps along the bottom, and widgets on the side for weather, what's playing, quick toggles, cpu / ram / gpu, reminders and power. "all apps" has every app A to Z. ctrl + esc still opens the old start.
+**start.** tap the windows key and a fullscreen glass start fades in over everything: a big clock, search (just start typing), your pinned apps, the apps you use most, recent files, your taskbar apps along the bottom, and widgets on the side for weather, what's playing, quick toggles, cpu / ram / gpu, reminders and power. "all apps" has every app A to Z. ctrl + esc still opens the old start.
+- a row of everything you have open with live previews. click to switch, hover for the x, middle-click to close, right-click for minimize / close / end task
+- taskbar apps get a little dot when they're running. click to jump to it, right-click for a new window, every window it has open, or close them all
+- pins are heft's own now (it copies your Windows pins the first time). drag to reorder, drop one on another to make a folder, right-click for run as admin, open file location, unpin or uninstall
+- a tools card for task manager, file explorer, settings, terminal, run and overview
+- what's playing updates live when the song changes
+- optional screen time card that shows how long you were in each app today (stays on your pc)
 
 **overview.** ctrl + alt + w (or the top-left corner) zooms out to every window on that screen as a live preview. click one to jump to it, type to filter, middle-click to close it.
+- right-click a window: move it to the other screen (works on fullscreen games too, it flips fullscreen off and back on if it has to), borderless fullscreen, snap to a zone, maximize / minimize, always on top, picture in picture, pocket it, tab it with another window, mute it, screenshot or record it, remember where it goes, add a note, show the app's file, inspect, close or end task
+- frozen windows say "not responding", windows making sound get a speaker you can click to mute
+- the screens along the top: click one to look at that screen, drag a window onto one to send it there
+- keys: arrows to move around, shift + arrows sends it to the next screen, delete closes it, 1-9 jumps straight to one, space zooms in, ctrl-click a few and press t to tile them
+- minimized windows show up dimmed at the end, "group by app" keeps the same app together, and recently closed apps sit along the bottom
+
+**workspaces.** drag a window onto another one's title bar and they become tabs. the tabs sit right above the window so they never cover anything. + adds a tab (stuff you have open, apps you usually pair with this one, or your favorites), double-click the name to rename it, and the ⋯ menu can minimize the whole thing into a floating pill you can drag around, keep it on top of everything or under everything, ungroup it or close every tab. scroll the tabs to flip through them.
+
+**themes.** settings > look has theme packs that restyle the bar, the dock, start, the glass, the accent and the corners all at once. it comes with frutiger aero, midnight, paper, y2k chrome, terminal and sunset. you can save your current look as a theme, share it as a `.hefttheme` file, and install other people's. a theme is just a folder with a `theme.json` in `%AppData%\heft\themes`, so you can go wild with gradients in there.
+
+**stuck windows.** ctrl + alt + r rescues the window you're in: first press sends it to the other screen, second flips fullscreen, third forces it borderless. windows that end up off-screen come back on their own when a monitor goes away (or run "bring back off-screen windows"). ctrl + alt + shift + m frees the mouse if a game crashed and left it trapped.
 
 **hot corners.** push the mouse into a corner of any screen: top-left is overview, bottom-left is start by default. you can set each corner to start, overview, control center or show desktop. fullscreen games are left alone.
 
@@ -130,6 +147,19 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 - settings has a search box up top
 - shortcuts can turn one app up or down (or mute it), like spotify louder without touching anything else
 - the clipboard history in the launcher shows color swatches, link domains, file icons and image thumbnails
+- the launcher finds your open windows too ("switch to ..."), shift + enter closes one
+- game mode still lets urgent stuff through, like defender finding something
+- animations run at your monitor's full refresh rate now, and look settings apply the second you change them
+
+**optional stuff** (all off until you turn it on)
+- focus border: a soft glow around the window you're typing in
+- spotlight (ctrl + alt + shift + s): dims everything except the window you're in
+- remember window spots per monitor setup, so unplugging a screen or waking the pc puts everything back
+- pause music for videos: start a video and spotify pauses, then picks back up when the video stops
+- pause when headphones come out
+- mic: ctrl + alt + m mutes it everywhere and a red mic shows in the bar. push to talk or push to mute on any key or a mouse side button, with a little blip when it turns on and off
+- paste plain (ctrl + shift + v) pastes without the formatting
+- notes on apps: a sticky note that shows up every time you're in that app
 
 ## keys
 
@@ -158,6 +188,11 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | ctrl + alt + z | reopen the last closed app |
 | ctrl + alt + q | scratchpad |
 | ctrl + alt + j | grab your last download |
+| ctrl + alt + r | rescue a stuck window |
+| ctrl + alt + m | mute / unmute your mic |
+| ctrl + alt + shift + s | spotlight |
+| ctrl + alt + shift + m | free the mouse |
+| ctrl + shift + v | paste plain (when it's on) |
 | shift while dragging a window | snap zones |
 | space (in File Explorer) | inspect |
 | windows key | start |
