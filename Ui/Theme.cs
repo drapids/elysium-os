@@ -18,6 +18,7 @@ namespace Elysium.Ui
         static Settings? _cfg;
         static string _wallKey = "";
         static Color? _wallAccent;
+        public static Color? AppColor;
         static bool _wallBusy;
 
         public static void Configure(Settings s) => _cfg = s;
@@ -55,6 +56,8 @@ namespace Elysium.Ui
                 case "wallpaper":
                     WallAccent();
                     return _wallAccent ?? fallback;
+                case "app":
+                    return AppColor ?? fallback;
                 default:
                     return fallback;
             }

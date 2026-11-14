@@ -27,7 +27,7 @@ namespace Elysium.Ui
                     _s.Theme = v;
                     ReTheme();
                 })),
-                Kit.Block("Accent color", null, Kit.Segments(new[] { "elysium blue", "Windows", "Wallpaper", "Pick" }, new[] { "default", "system", "wallpaper", "custom" }, _s.AccentMode, v =>
+                Kit.Block("Accent color", null, Kit.Segments(new[] { "elysium blue", "Windows", "Wallpaper", "App I'm in", "Pick" }, new[] { "default", "system", "wallpaper", "app", "custom" }, _s.AccentMode, v =>
                 {
                     _s.AccentMode = v;
                     ReTheme();
