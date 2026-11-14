@@ -13,7 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class Result
     {
@@ -47,7 +47,7 @@ namespace Heft.Ui
             ("=", "Calculator", "\uE8EF", "= 15% * 240    or    = 5 km to mi"),
             ("!", "System", "\uE7E8", "! lock"),
             (":", "Clipboard", "\uE77F", ": that link"),
-            ("&", "heft", "\uE945", "& shelf"),
+            ("&", "elysium", "\uE945", "& shelf"),
             ("/", "Folders", "\uE8B7", "/ c:\\users")
         };
 
@@ -140,7 +140,7 @@ namespace Heft.Ui
             _notes = notes;
             _lib = lib;
             Glass.Attach(this, 18);
-            Title = "heft launcher";
+            Title = "elysium launcher";
             Width = 680;
             SizeToContent = SizeToContent.Height;
 
@@ -340,7 +340,7 @@ namespace Heft.Ui
                         list = CommandResults(body, "system", 30);
                         break;
                     case "&":
-                        list = CommandResults(body, "heft", 30);
+                        list = CommandResults(body, "elysium", 30);
                         break;
                     case ":":
                         list = ClipResults(body);
@@ -734,7 +734,7 @@ namespace Heft.Ui
                 list.Add(new Result { Header = true, Title = "ALSO WORKS" });
                 foreach (var (t, sub) in new[]
                          {
-                             ("remind me in 10 min to stretch", "reminders send a heft notification"),
+                             ("remind me in 10 min to stretch", "reminders send an elysium notification"),
                              ("timer 25m", "the bar counts down"),
                              ("pdfs from this week", "plain english file search"),
                              ("r screenshots > shelf", "pipe results into an action")
@@ -769,7 +769,7 @@ namespace Heft.Ui
                 case "!":
                     return list.Concat(CommandResults("", "system", 40)).ToList();
                 case "&":
-                    return list.Concat(CommandResults("", "heft", 60)).ToList();
+                    return list.Concat(CommandResults("", "elysium", 60)).ToList();
                 case ":":
                     return list.Concat(ClipResults("")).ToList();
                 case "/":
@@ -911,9 +911,9 @@ namespace Heft.Ui
             {
                 Key = "cmd:" + c.Id,
                 Title = c.Name,
-                Sub = state ?? (c.Group == "heft" ? "heft" : "system"),
+                Sub = state ?? (c.Group == "elysium" ? "elysium" : "system"),
                 Glyph = c.Glyph,
-                Hint = c.Group == "heft" ? "&" : "!",
+                Hint = c.Group == "elysium" ? "&" : "!",
                 Score = score,
                 Danger = c.Danger,
                 Run = () =>

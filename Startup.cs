@@ -8,11 +8,12 @@ using System.Security;
 using System.Text.Json;
 using Microsoft.Win32;
 
-namespace Heft
+namespace Elysium
 {
     internal static class Startup
     {
-        const string TaskName = "heft";
+        const string TaskName = "elysium";
+        const string OldName = "heft";
 
         public static bool CanSet
         {
@@ -32,6 +33,7 @@ namespace Heft
             if (exe.EndsWith("dotnet.exe", StringComparison.OrdinalIgnoreCase)) return false;
 
             RunKey(false, exe);
+            Schtasks($"/Delete /TN \"{OldName}\" /F");
             if (!on || !early) Schtasks($"/Delete /TN \"{TaskName}\" /F");
             if (!on) return true;
             if (!early)
@@ -43,7 +45,7 @@ namespace Heft
             string user = Environment.UserDomainName + "\\" + Environment.UserName;
             string xml = $@"<?xml version=""1.0"" encoding=""UTF-16""?>
 <Task version=""1.2"" xmlns=""http://schemas.microsoft.com/windows/2004/02/mit/task"">
-  <RegistrationInfo><Description>starts heft right when you sign in</Description></RegistrationInfo>
+  <RegistrationInfo><Description>starts elysium right when you sign in</Description></RegistrationInfo>
   <Triggers>
     <LogonTrigger><Enabled>true</Enabled><UserId>{SecurityElement.Escape(user)}</UserId></LogonTrigger>
   </Triggers>
@@ -69,7 +71,7 @@ namespace Heft
     <Exec><Command>{SecurityElement.Escape(exe)}</Command><Arguments>--startup</Arguments><WorkingDirectory>{SecurityElement.Escape(Path.GetDirectoryName(exe) ?? "")}</WorkingDirectory></Exec>
   </Actions>
 </Task>";
-            string file = Path.Combine(Path.GetTempPath(), "heft-task.xml");
+            string file = Path.Combine(Path.GetTempPath(), "elysium-task.xml");
             try
             {
                 File.WriteAllText(file, xml, System.Text.Encoding.Unicode);
@@ -115,8 +117,9 @@ namespace Heft
             {
                 using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
                 if (key == null) return;
-                if (on) key.SetValue("heft", $"\"{exe}\" --startup");
-                else key.DeleteValue("heft", false);
+                key.DeleteValue(OldName, false);
+                if (on) key.SetValue("elysium", $"\"{exe}\" --startup");
+                else key.DeleteValue("elysium", false);
             }
             catch
             {
@@ -146,14 +149,14 @@ namespace Heft
             foreach (var p in Shared()) map[p.Name] = p.GetValue(s);
             var profiles = s.AudioProfiles.Select(a => new AudioProfile { Name = a.Name, Volumes = a.Volumes, Muted = a.Muted, Hotkey = a.Hotkey }).ToList();
             map[nameof(Settings.AudioProfiles)] = profiles;
-            var pack = new Dictionary<string, object?> { ["heftpack"] = 1, ["made"] = DateTime.Now, ["settings"] = map };
+            var pack = new Dictionary<string, object?> { ["elysiumpack"] = 1, ["made"] = DateTime.Now, ["settings"] = map };
             File.WriteAllText(path, JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true }));
         }
 
         public static int Import(Settings s, string path)
         {
             using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            if (!doc.RootElement.TryGetProperty("settings", out var map)) throw new InvalidDataException("that isn't a heft setup file");
+            if (!doc.RootElement.TryGetProperty("settings", out var map)) throw new InvalidDataException("that isn't an elysium setup file");
             int n = 0;
             foreach (var p in Shared())
             {

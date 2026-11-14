@@ -10,9 +10,9 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class WindowStacks
     {
@@ -413,7 +413,7 @@ namespace Heft
             if (exe.Length == 0) return;
             _waiting.RemoveAll(w => w.exe == exe);
             _waiting.Add((exe, st, Environment.TickCount64 + 20000));
-            Heft.Launch.Run(path);
+            Elysium.Launch.Run(path);
         }
 
         void Strip(Stack st, bool rebuild)
@@ -691,7 +691,7 @@ namespace Heft
             Glass.Attach(this, 10, true);
             Topmost = false;
             ShowActivated = false;
-            Title = "heft tabs";
+            Title = "elysium tabs";
             Height = Tall;
             _surface = Glass.Surface(10);
             var dock = new DockPanel { Margin = new Thickness(4, 0, 4, 0), LastChildFill = true };
@@ -896,7 +896,7 @@ namespace Heft
             _cat = cat;
             Glass.Attach(this, 18, true);
             ShowActivated = false;
-            Title = "heft workspace";
+            Title = "elysium workspace";
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(18);
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 7, 14, 7), Background = Brushes.Transparent };
@@ -1000,7 +1000,7 @@ namespace Heft
         public StackHint()
         {
             Glass.Attach(this, 12, true);
-            Title = "heft stack hint";
+            Title = "elysium stack hint";
             ShowActivated = false;
             IsHitTestVisible = false;
             _box = new Border { CornerRadius = Kit.Round(12), BorderThickness = new Thickness(2) };

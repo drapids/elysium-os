@@ -3,7 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -21,7 +21,7 @@ namespace Heft.Ui
 
             h.Children.Add(Kit.Header("Screens"));
             h.Children.Add(Kit.Group(
-                Kit.Row("Remember window spots per setup", "unplug a monitor or wake the pc and heft puts every window back where it was for that setup", Sw(_s.MonitorMemory, v => _s.MonitorMemory = v)),
+                Kit.Row("Remember window spots per setup", "unplug a monitor or wake the pc and elysium puts every window back where it was for that setup", Sw(_s.MonitorMemory, v => _s.MonitorMemory = v)),
                 Kit.Row("Rescue a stuck window", KeyHint("rescue") + " sends the window you're in to the other screen, again flips fullscreen, again forces it borderless", null),
                 Kit.Row("Free the mouse", KeyHint("unstick") + " if a game crashed and left your cursor trapped", null)));
         }

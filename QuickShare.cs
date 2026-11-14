@@ -15,9 +15,9 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class QuickShare : IDisposable
     {
@@ -68,7 +68,7 @@ namespace Heft
                 }
                 else
                 {
-                    _tempDir = Path.Combine(Path.GetTempPath(), "heft-share-" + Guid.NewGuid().ToString("N")[..8]);
+                    _tempDir = Path.Combine(Path.GetTempPath(), "elysium-share-" + Guid.NewGuid().ToString("N")[..8]);
                     Directory.CreateDirectory(_tempDir);
                     string baseName = list.Count == 1 ? Path.GetFileName(list[0].TrimEnd('\\')) : $"{list.Count} files";
                     _name = baseName + ".zip";
@@ -278,7 +278,7 @@ namespace Heft
                    + ".c{width:min(86vw,380px);padding:28px 24px;border-radius:22px;background:#1b1c20;border:1px solid #2c2d33;text-align:center}"
                    + ".n{font-size:18px;font-weight:600;word-break:break-word;margin:6px 0 4px}.s{color:#9a9ba3;font-size:13px}"
                    + "a{display:block;margin-top:22px;padding:14px;border-radius:14px;background:#0a84ff;color:#fff;text-decoration:none;font-weight:600}"
-                   + ".h{color:#6f7078;font-size:12px;margin-top:14px}</style></head><body><div class=\"c\"><div class=\"s\">heft is sending you</div>"
+                   + ".h{color:#6f7078;font-size:12px;margin-top:14px}</style></head><body><div class=\"c\"><div class=\"s\">elysium is sending you</div>"
                    + "<div class=\"n\">" + name + "</div><div class=\"s\">" + size + "</div><a href=\"" + link + "\">download</a>"
                    + "<div class=\"h\">only works while you're on the same wi-fi</div></div></body></html>";
         }
@@ -328,7 +328,7 @@ namespace Heft
         {
             _url = url;
             Glass.Attach(this, 20);
-            Title = "heft share";
+            Title = "elysium share";
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(20);
 

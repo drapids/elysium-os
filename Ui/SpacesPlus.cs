@@ -10,7 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Shapes = System.Windows.Shapes;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class SpaceLink
     {
@@ -19,7 +19,7 @@ namespace Heft
     }
 }
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class Spaces
     {

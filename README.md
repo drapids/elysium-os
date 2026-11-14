@@ -1,4 +1,4 @@
-# heft
+# elysium
 
 a whole new layer on top of windows. glass top bar, an arc dock on the screen edge, a shelf that drops down from the top, a launcher, AudioFlow, notifications that actually look good, and you can still throw your windows around.
 
@@ -53,7 +53,7 @@ pinned shots float on top. drag them around, scroll to resize, ctrl+scroll for s
 
 **reopen closed apps.** ctrl + alt + z brings back the last app you closed. start has a recently closed card too.
 
-**game mode.** when something goes fullscreen heft goes quiet: no sounds, slower polling, no gestures, notifications wait in the bell and you get one summary after. can ignore the windows key while you play.
+**game mode.** when something goes fullscreen elysium goes quiet: no sounds, slower polling, no gestures, notifications wait in the bell and you get one summary after. can ignore the windows key while you play.
 
 **modes.** a mode flips a bunch at once: light or dark, accent, focus, sounds, audio profile. switch with a hotkey, from the launcher, at a time of day, or when an app opens (like gaming mode when valorant starts). settings > alerts.
 
@@ -69,13 +69,13 @@ pinned shots float on top. drag them around, scroll to resize, ctrl+scroll for s
 
 **desktops.** dots in the bar for each virtual desktop, click one to jump there.
 
-**look.** settings > look: accent from windows, your wallpaper, or any color. how see-through the glass is, how round the corners are, how fast stuff animates, the font, and a different bar color per monitor. icon packs too: drop pngs named after apps (chrome.png, code.png) in a folder in `%AppData%\heft\icons` and pick it.
+**look.** settings > look: accent from windows, your wallpaper, or any color. how see-through the glass is, how round the corners are, how fast stuff animates, the font, and a different bar color per monitor. icon packs too: drop pngs named after apps (chrome.png, code.png) in a folder in `%AppData%\elysium\icons` and pick it.
 
 **bar editor.** settings > bar & desktop: move anything in the bar left or right, reorder it, or turn it off.
 
-**extensions.** settings > extensions. an extension is a folder with a `manifest.json` and a `main.js`, it runs inside heft and can only do what its manifest asks for. it can add launcher commands, shortcuts, stuff in the top bar, cards on start, shelf drop actions, react to songs, windows, downloads and the clipboard, and fetch things from the web. save the file and heft reloads it. share one by zipping the folder and renaming it to `.heftext`. comes with pomodoro, github notifications, world clock, what's playing and synced lyrics to start from.
+**extensions.** settings > extensions. an extension is a folder with a `manifest.json` and a `main.js`, it runs inside elysium and can only do what its manifest asks for. it can add launcher commands, shortcuts, stuff in the top bar, cards on start, shelf drop actions, react to songs, windows, downloads and the clipboard, and fetch things from the web. save the file and elysium reloads it. share one by zipping the folder and renaming it to `.elysiumext`. comes with pomodoro, github notifications, world clock, what's playing and synced lyrics to start from.
 
-**sounds.** off by default. turn them on in settings > general, pick glass, soft or retro, set the volume, pick which things make noise. they get quieter while music plays. make your own pack by putting wavs named open, close, drop, notify, chime, throw, stack and tick in a folder in `%AppData%\heft\sounds`.
+**sounds.** off by default. turn them on in settings > general, pick glass, soft or retro, set the volume, pick which things make noise. they get quieter while music plays. make your own pack by putting wavs named open, close, drop, notify, chime, throw, stack and tick in a folder in `%AppData%\elysium\sounds`.
 
 **launcher** is alt + space.
 
@@ -90,7 +90,7 @@ pinned shots float on top. drag them around, scroll to resize, ctrl+scroll for s
 | `=` | calculator + units (`5 km to mi`) |
 | `!` | system stuff (lock, sleep, restart, empty recycle bin...) |
 | `:` | clipboard history, enter pastes it |
-| `&` | heft stuff |
+| `&` | elysium stuff |
 | `/` | walk folders, tab goes in |
 
 plain english works too: `pdfs from this week`, `big videos in downloads`, `screenshots from yesterday`.
@@ -107,12 +107,12 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 
 **the dock** shows a little red count on apps with unread notifications.
 
-**notifications.** heft shows Windows notifications its own way and turns off Windows' popups for those apps so you don't get both. there's a searchable history grouped by app, and per-app rules: pop up, silent, or blocked. focus mode mutes the apps you pick and holds notifications.
+**notifications.** elysium shows Windows notifications its own way and turns off Windows' popups for those apps so you don't get both. there's a searchable history grouped by app, and per-app rules: pop up, silent, or blocked. focus mode mutes the apps you pick and holds notifications.
 
 **start.** tap the windows key and a fullscreen glass start fades in over everything: a big clock, search (just start typing), your pinned apps, the apps you use most, recent files, your taskbar apps along the bottom, and widgets on the side for weather, what's playing, quick toggles, cpu / ram / gpu, reminders and power. "all apps" has every app A to Z. ctrl + esc still opens the old start.
 - a row of everything you have open with live previews. click to switch, hover for the x, middle-click to close, right-click for minimize / close / end task
 - taskbar apps get a little dot when they're running. click to jump to it, right-click for a new window, every window it has open, or close them all
-- pins are heft's own now (it copies your Windows pins the first time). drag to reorder, drop one on another to make a folder, right-click for run as admin, open file location, unpin or uninstall
+- pins are elysium's own now (it copies your Windows pins the first time). drag to reorder, drop one on another to make a folder, right-click for run as admin, open file location, unpin or uninstall
 - a tools card for task manager, file explorer, settings, terminal, run and overview
 - what's playing updates live when the song changes
 - optional screen time card that shows how long you were in each app today (stays on your pc)
@@ -126,7 +126,7 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 
 **workspaces.** drag a window onto another one's title bar and they become tabs. the tabs sit right above the window so they never cover anything. + adds a tab (stuff you have open, apps you usually pair with this one, or your favorites), double-click the name to rename it, and the ⋯ menu can minimize the whole thing into a floating pill you can drag around, keep it on top of everything or under everything, ungroup it or close every tab. scroll the tabs to flip through them.
 
-**themes.** settings > look has theme packs that restyle the bar, the dock, start, the glass, the accent and the corners all at once. it comes with frutiger aero, midnight, paper, y2k chrome, terminal and sunset. you can save your current look as a theme, share it as a `.hefttheme` file, and install other people's. a theme is just a folder with a `theme.json` in `%AppData%\heft\themes`, so you can go wild with gradients in there.
+**themes.** settings > look has theme packs that restyle the bar, the dock, start, the glass, the accent and the corners all at once. it comes with frutiger aero, midnight, paper, y2k chrome, terminal and sunset. you can save your current look as a theme, share it as a `.elysiumtheme` file, and install other people's. a theme is just a folder with a `theme.json` in `%AppData%\elysium\themes`, so you can go wild with gradients in there.
 
 **stuck windows.** ctrl + alt + r rescues the window you're in: first press sends it to the other screen, second flips fullscreen, third forces it borderless. windows that end up off-screen come back on their own when a monitor goes away (or run "bring back off-screen windows"). ctrl + alt + shift + m frees the mouse if a game crashed and left it trapped.
 
@@ -139,7 +139,7 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 - scroll the screen edge for brightness, scroll the top bar for volume, middle-click the bar to play/pause
 - cursor lock keeps your mouse on one screen for games (ctrl + alt + l, or automatic in fullscreen)
 - paste stack: ctrl + alt + c, copy a bunch of things, then ctrl + alt + v pastes them in order
-- share your setup as a `.heftpack` file and import a friend's
+- share your setup as a `.elysiumpack` file and import a friend's
 - sort Downloads into folders by type on its own (off by default)
 - version shelf keeps older copies of files in the folders you pick so you can go back (off by default)
 - notifications pop up on whatever screen your mouse is on
@@ -197,7 +197,7 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | space (in File Explorer) | inspect |
 | windows key | start |
 
-all of them can be changed in settings > keys. click the keys and press a new combo. you can also make your own shortcuts there (open an app, a file, a folder or a site, type out text, run any heft action, or chain steps) and remap keys, like caps lock as escape. it warns you when something else already uses a combo.
+all of them can be changed in settings > keys. click the keys and press a new combo. you can also make your own shortcuts there (open an app, a file, a folder or a site, type out text, run any elysium action, or chain steps) and remap keys, like caps lock as escape. it warns you when something else already uses a combo.
 
 ## build
 
@@ -213,19 +213,19 @@ to make the exe:
 dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true -o publish
 ```
 
-put `publish\heft.exe` somewhere it'll stay, open it, then settings > general > start with windows. "start before other apps" (on by default) sets up a task that runs heft the second you sign in, ahead of the normal startup list. turn it off and heft goes in the regular startup list instead. if you move the exe later heft fixes the startup entry itself next time it opens.
+put `publish\elysium.exe` somewhere it'll stay, open it, then settings > general > start with windows. "start before other apps" (on by default) sets up a task that runs elysium the second you sign in, ahead of the normal startup list. turn it off and elysium goes in the regular startup list instead. if you move the exe later elysium fixes the startup entry itself next time it opens.
 
-settings live in `%AppData%\heft\settings.json`, and `%AppData%\heft\log.txt` has what heft saw if something acts weird.
+settings live in `%AppData%\elysium\settings.json`, and `%AppData%\elysium\log.txt` has what elysium saw if something acts weird.
 
 ## heads up
 
-- windows of apps running as admin can't be thrown or pocketed unless heft runs as admin too
-- if heft crashes while it's handling notifications, Windows' popups stay off until you open heft again (or flip the switch off in settings > alerts)
+- windows of apps running as admin can't be thrown or pocketed unless elysium runs as admin too
+- if elysium crashes while it's handling notifications, Windows' popups stay off until you open elysium again (or flip the switch off in settings > alerts)
 - per-app audio routing uses the same windows feature as the sound settings page, so it works on windows 10 2004 and newer
 - making GIFs and shrinking videos for discord shows up in inspect when ffmpeg is installed
-- send to phone needs windows to let heft through the firewall the first time (allow it on private networks)
-- window lerp and stacks skip admin windows unless heft runs as admin too
-- text shortcuts and gestures don't reach admin windows unless heft runs as admin too
+- send to phone needs windows to let elysium through the firewall the first time (allow it on private networks)
+- window lerp and stacks skip admin windows unless elysium runs as admin too
+- text shortcuts and gestures don't reach admin windows unless elysium runs as admin too
 - desktop dots read the desktop list windows keeps in the registry, and switching sends ctrl + win + arrows
 
 made by mason arcieri

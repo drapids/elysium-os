@@ -7,7 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -27,7 +27,7 @@ namespace Heft.Ui
                     _s.Theme = v;
                     ReTheme();
                 })),
-                Kit.Block("Accent color", null, Kit.Segments(new[] { "heft blue", "Windows", "Wallpaper", "Pick" }, new[] { "default", "system", "wallpaper", "custom" }, _s.AccentMode, v =>
+                Kit.Block("Accent color", null, Kit.Segments(new[] { "elysium blue", "Windows", "Wallpaper", "Pick" }, new[] { "default", "system", "wallpaper", "custom" }, _s.AccentMode, v =>
                 {
                     _s.AccentMode = v;
                     ReTheme();
@@ -73,7 +73,7 @@ namespace Heft.Ui
             }
             else if (_s.AccentMode == "wallpaper")
             {
-                var cap = Kit.Caption("heft pulls the boldest color out of your wallpaper and updates when you change it");
+                var cap = Kit.Caption("elysium pulls the boldest color out of your wallpaper and updates when you change it");
                 cap.Margin = new Thickness(14, 6, 14, 0);
                 h.Children.Add(cap);
             }

@@ -4,7 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class WheelItem
     {
@@ -258,7 +258,7 @@ namespace Heft
 
         public event Action? Changed;
 
-        static readonly string Dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft");
+        static readonly string Dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium");
         static readonly string FilePath = System.IO.Path.Combine(Dir, "settings.json");
         static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed partial class AudioFlow
     {

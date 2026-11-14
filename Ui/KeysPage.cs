@@ -8,7 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -38,7 +38,7 @@ namespace Heft.Ui
             ("folder", "Folder", "\uE8B7"),
             ("url", "Website", "\uE774"),
             ("text", "Type text", "\uE8D2"),
-            ("heft", "heft action", "\uE945"),
+            ("elysium", "elysium action", "\uE945"),
             ("script", "Steps", "\uE8FD"),
             ("volume", "App volume", "\uE767")
         };
@@ -60,7 +60,7 @@ namespace Heft.Ui
                 _keyNote = "";
             }
 
-            h.Children.Add(Kit.Header("heft shortcuts"));
+            h.Children.Add(Kit.Header("elysium shortcuts"));
             var rows = new List<UIElement>();
             foreach (var d in Hotkeys.Defaults)
             {
@@ -149,7 +149,7 @@ namespace Heft.Ui
                 mine.Add(add);
             }
             h.Children.Add(Kit.Group(mine.ToArray()));
-            var cap2 = Kit.Caption("open an app, a file, a folder or a website, type out text, run any heft action, or chain steps like &focus ; spotify: ; wait 2");
+            var cap2 = Kit.Caption("open an app, a file, a folder or a website, type out text, run any elysium action, or chain steps like &focus ; spotify: ; wait 2");
             cap2.Margin = new Thickness(14, 6, 14, 0);
             cap2.TextWrapping = TextWrapping.Wrap;
             h.Children.Add(cap2);
@@ -256,7 +256,7 @@ namespace Heft.Ui
         string Describe(CustomKey k)
         {
             string kind = Kinds.FirstOrDefault(x => x.id == k.Kind).label ?? k.Kind;
-            if (k.Kind == "heft")
+            if (k.Kind == "elysium")
             {
                 var c = Cmds?.Get(k.Target);
                 return kind + (c != null ? ": " + c.Name : "");
@@ -303,9 +303,9 @@ namespace Heft.Ui
                 _ => ""
             };
 
-            if (k.Kind == "heft")
+            if (k.Kind == "elysium")
             {
-                box.Children.Add(HeftPicker(k));
+                box.Children.Add(ElysiumPicker(k));
             }
             else if (k.Kind == "volume")
             {
@@ -399,7 +399,7 @@ namespace Heft.Ui
             return box;
         }
 
-        UIElement HeftPicker(CustomKey k)
+        UIElement ElysiumPicker(CustomKey k)
         {
             var wrap = new StackPanel();
             var list = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
@@ -408,7 +408,7 @@ namespace Heft.Ui
             {
                 list.Children.Clear();
                 var shown = q.Length == 0
-                    ? all.Where(c => c.Id == k.Target).Concat(all.Where(c => c.Group == "heft" && c.Id != k.Target)).Take(18)
+                    ? all.Where(c => c.Id == k.Target).Concat(all.Where(c => c.Group == "elysium" && c.Id != k.Target)).Take(18)
                     : all.Select(c => (c, score: Math.Max(Fuzzy.Score(q, c.Name), Fuzzy.Score(q, c.Keywords) * 0.6))).Where(x => x.score > 0).OrderByDescending(x => x.score).Select(x => x.c).Take(18);
                 foreach (var c in shown)
                 {
@@ -430,7 +430,7 @@ namespace Heft.Ui
                     list.Children.Add(chip);
                 }
             }
-            var search = Kit.Field("", "search heft actions and commands", Fill);
+            var search = Kit.Field("", "search elysium actions and commands", Fill);
             wrap.Children.Add(search);
             wrap.Children.Add(list);
             Fill("");
@@ -498,7 +498,7 @@ namespace Heft.Ui
             {
                 if (Same(keys, spec))
                 {
-                    _keyNote = $"heads up, Windows or most apps use {Pretty(spec)} for {what}. heft will take it over";
+                    _keyNote = $"heads up, Windows or most apps use {Pretty(spec)} for {what}. elysium will take it over";
                     return true;
                 }
             }
@@ -651,7 +651,7 @@ namespace Heft.Ui
                 string spec = string.Join("+", parts);
                 if (!Hotkeys.TryParse(spec, out uint checkMods, out uint checkVk))
                 {
-                    _keyNote = $"heft can't use {Pretty(spec)}, try another key";
+                    _keyNote = $"elysium can't use {Pretty(spec)}, try another key";
                     Stop(null);
                     Rebuild();
                     return;

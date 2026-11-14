@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Pin
     {
@@ -24,8 +24,8 @@ namespace Heft
 
         public void Launch()
         {
-            if (Uwp) Heft.Launch.Uwp(Target);
-            else Heft.Launch.Run(Target);
+            if (Uwp) Elysium.Launch.Uwp(Target);
+            else Elysium.Launch.Run(Target);
         }
     }
 
@@ -37,7 +37,7 @@ namespace Heft
 
     internal sealed class StartData
     {
-        static readonly string Cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "startlayout.xml");
+        static readonly string Cache = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "startlayout.xml");
 
         readonly AppIndex _apps;
         bool _loading;
@@ -187,7 +187,7 @@ namespace Heft
             try
             {
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(6) };
-                http.DefaultRequestHeaders.UserAgent.ParseAdd("heft");
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("elysium");
                 var json = await http.GetStringAsync("https://wttr.in/?format=j1");
                 using var doc = JsonDocument.Parse(json);
                 var cur = doc.RootElement.GetProperty("current_condition")[0];

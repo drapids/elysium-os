@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using Windows.Media.Control;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class NowPlaying
     {

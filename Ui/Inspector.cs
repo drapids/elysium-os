@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class Inspector : Window
     {
@@ -44,7 +44,7 @@ namespace Heft.Ui
             _cat = cat;
             _actions = actions;
             Glass.Attach(this, 0);
-            Title = "heft inspector";
+            Title = "elysium inspector";
 
             _scrim.SetResourceReference(Border.BackgroundProperty, "Scrim");
             _scrim.MouseLeftButtonDown += (_, _) => Close();
@@ -380,7 +380,7 @@ namespace Heft.Ui
                 Fact(g, "Modified", $"{fi.LastWriteTime:MMM d yyyy, h:mm tt}  ({Kit.Ago(fi.LastWriteTime)})");
                 Fact(g, "Created", $"{fi.CreationTime:MMM d yyyy, h:mm tt}");
                 Fact(g, "Last opened", $"{fi.LastAccessTime:MMM d yyyy, h:mm tt}");
-                if (_s.FileOpens.TryGetValue(p, out double n) && n > 0) Fact(g, "Opened via heft", $"{n:0} time{(n == 1 ? "" : "s")}");
+                if (_s.FileOpens.TryGetValue(p, out double n) && n > 0) Fact(g, "Opened via elysium", $"{n:0} time{(n == 1 ? "" : "s")}");
                 if (_s.Bookmarks.TryGetValue(p, out int tag) && tag > 0) Fact(g, "Tag", new[] { "red", "orange", "yellow", "green", "blue", "purple" }[Math.Clamp(tag - 1, 0, 5)]);
 
                 if (!isDir)

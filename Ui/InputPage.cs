@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {

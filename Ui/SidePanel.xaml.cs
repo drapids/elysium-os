@@ -10,7 +10,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     public partial class SidePanel : Window
     {

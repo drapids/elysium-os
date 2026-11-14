@@ -13,9 +13,9 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class PhoneDrop : IDisposable
     {
@@ -240,7 +240,7 @@ namespace Heft
                         string dir = Folder;
                         Directory.CreateDirectory(dir);
                         string file = Unique(dir, SafeName(rawName));
-                        string part = file + ".heftpart";
+                        string part = file + ".elysiumpart";
                         long got = 0;
                         try
                         {
@@ -279,7 +279,7 @@ namespace Heft
                         int count = Interlocked.Increment(ref _got);
                         Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            _notes.Post(new Note { App = "heft", Title = "From your phone", Body = Path.GetFileName(file), Glyph = "\uE8EA", Open = file });
+                            _notes.Post(new Note { App = "elysium", Title = "From your phone", Body = Path.GetFileName(file), Glyph = "\uE8EA", Open = file });
                             _win?.Got(count, Path.GetFileName(file));
                             Received?.Invoke(file);
                         }));
@@ -304,7 +304,7 @@ namespace Heft
                    + "label{display:block;margin-top:22px;padding:15px;border-radius:14px;background:#0a84ff;color:#fff;font-weight:600;cursor:pointer}"
                    + "input{display:none}#l{margin-top:16px;text-align:left;font-size:13px}.r{display:flex;justify-content:space-between;gap:10px;padding:8px 2px;border-top:1px solid #2c2d33}"
                    + ".r span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ok{color:#30d158}.bad{color:#ff6b5e}</style></head><body><div class=\"c\">"
-                   + "<div class=\"s\">heft on your pc</div><div class=\"t\">send stuff over</div><div class=\"s\">photos, videos, anything. it lands in Downloads</div>"
+                   + "<div class=\"s\">elysium on your pc</div><div class=\"t\">send stuff over</div><div class=\"s\">photos, videos, anything. it lands in Downloads</div>"
                    + "<label>pick files<input id=\"f\" type=\"file\" multiple></label><div id=\"l\"></div></div>"
                    + "<script>const up='" + up + "';const l=document.getElementById('l');"
                    + "function row(n){const d=document.createElement('div');d.className='r';const a=document.createElement('span');a.textContent=n;const b=document.createElement('span');b.textContent='0%';d.append(a,b);l.prepend(d);return b}"
@@ -329,7 +329,7 @@ namespace Heft
         {
             _url = url;
             Glass.Attach(this, 20);
-            Title = "heft phone drop";
+            Title = "elysium phone drop";
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(20);
 

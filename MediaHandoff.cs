@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Windows.Media.Control;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class MediaHandoff
     {

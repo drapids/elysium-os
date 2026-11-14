@@ -7,7 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using Shapes = System.Windows.Shapes;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal static class Overlay
     {
@@ -49,7 +49,7 @@ namespace Heft.Ui
         public FocusRing()
         {
             Overlay.ClickThrough(this);
-            Title = "heft focus ring";
+            Title = "elysium focus ring";
             _ring = new Border { BorderThickness = new Thickness(2), Margin = new Thickness(6) };
             Content = _ring;
             Theme.Applied += Paint;
@@ -134,7 +134,7 @@ namespace Heft.Ui
             On = true;
             foreach (var d in Displays.All())
             {
-                var w = new Window { Title = "heft spotlight" };
+                var w = new Window { Title = "elysium spotlight" };
                 Overlay.ClickThrough(w);
                 var path = new Shapes.Path { Fill = new SolidColorBrush(Color.FromArgb((byte)(_dim * 255), 0, 0, 0)), IsHitTestVisible = false };
                 w.Content = path;

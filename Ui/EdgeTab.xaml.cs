@@ -4,7 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     public partial class EdgeTab : Window
     {

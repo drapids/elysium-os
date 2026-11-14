@@ -5,7 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class ClosedApp
     {
@@ -22,7 +22,7 @@ namespace Heft
 
         static readonly HashSet<string> Skip = new(StringComparer.OrdinalIgnoreCase)
         {
-            "explorer", "heft", "ShellExperienceHost", "StartMenuExperienceHost", "SearchHost", "SearchApp", "TextInputHost",
+            "explorer", "elysium", "ShellExperienceHost", "StartMenuExperienceHost", "SearchHost", "SearchApp", "TextInputHost",
             "LockApp", "ApplicationFrameHost", "SystemSettings", "rundll32", "dllhost", "conhost", "taskmgr", "SnippingTool", "ScreenClippingHost"
         };
 

@@ -11,7 +11,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class Shelf : Window
     {
@@ -68,7 +68,7 @@ namespace Heft.Ui
             _pocket = pocket;
             _notes = notes;
             Glass.Attach(this, 16);
-            Title = "heft shelf";
+            Title = "elysium shelf";
             AllowDrop = true;
             Width = 1100;
             Height = 460;

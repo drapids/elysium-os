@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace Heft
+namespace Elysium
 {
     internal static class SystemStats
     {
@@ -184,7 +184,7 @@ namespace Heft
 
         public Brightness()
         {
-            _thread = new Thread(Work) { IsBackground = true, Name = "heft-brightness" };
+            _thread = new Thread(Work) { IsBackground = true, Name = "elysium-brightness" };
             _thread.Start();
         }
 

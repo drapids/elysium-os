@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -34,7 +34,7 @@ namespace Heft.Ui
             var actions = new WrapPanel { Margin = new Thickness(14, 6, 14, 4) };
             var install = Kit.Push("Install a theme...", () => _dialog(() =>
             {
-                var dlg = new OpenFileDialog { Title = "Install a heft theme", Filter = "heft theme|*.hefttheme;*.zip" };
+                var dlg = new OpenFileDialog { Title = "Install an elysium theme", Filter = "elysium theme|*.elysiumtheme;*.hefttheme;*.zip" };
                 if (dlg.ShowDialog() != true) return;
                 string? err = Themes.Install(dlg.FileName);
                 _themeNote = err == null ? "installed. pick it below" : "couldn't install it: " + err;
@@ -53,7 +53,7 @@ namespace Heft.Ui
             {
                 var share = Kit.Push("Share this one", () =>
                 {
-                    string dest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), Themes.Slug(active.Name) + ".hefttheme");
+                    string dest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), Themes.Slug(active.Name) + ".elysiumtheme");
                     string? err = Themes.Export(active, dest);
                     _themeNote = err == null ? "saved " + Path.GetFileName(dest) + " to your desktop. send it to whoever" : "couldn't export it: " + err;
                     Rebuild();
@@ -124,7 +124,7 @@ namespace Heft.Ui
             dots.Children.Add(dockTile);
             preview.Children.Add(dots);
             box.Children.Add(preview);
-            var title = Kit.Text(p?.Name ?? "heft", 12.5, true);
+            var title = Kit.Text(p?.Name ?? "elysium", 12.5, true);
             title.Margin = new Thickness(2, 7, 0, 0);
             box.Children.Add(title);
             var sub = Kit.Text(p == null ? "the default look" : p.Description.Length > 0 ? p.Description : p.Author, 11, false, "SubText");
@@ -140,7 +140,7 @@ namespace Heft.Ui
                 CornerRadius = Kit.Round(12),
                 BorderThickness = new Thickness(on ? 2 : 1),
                 Cursor = Cursors.Hand,
-                ToolTip = p == null ? "back to heft's own look" : "click to use it"
+                ToolTip = p == null ? "back to elysium's own look" : "click to use it"
             };
             card.SetResourceReference(Border.BackgroundProperty, "GroupBg");
             card.SetResourceReference(Border.BorderBrushProperty, on ? "AccentFill" : "GroupStroke");

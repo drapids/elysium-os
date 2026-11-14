@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 using Microsoft.Win32;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
 
-namespace Heft
+namespace Elysium
 {
     public partial class App : Application
     {
@@ -89,12 +89,14 @@ namespace Heft
             base.OnStartup(e);
             Frames.Boost();
 
-            _single = new Mutex(true, "heft.single.instance", out bool fresh);
+            _single = new Mutex(true, "elysium.single.instance", out bool fresh);
             if (!fresh)
             {
                 Shutdown();
                 return;
             }
+            Legacy.StopOld();
+            Legacy.Migrate();
 
             DispatcherUnhandledException += (_, ex) =>
             {
@@ -120,7 +122,7 @@ namespace Heft
             {
                 if (HoldToast(n)) return;
                 _toasts.Show(n);
-                Sfx.Play(n.App == "heft" && (n.Title == "Reminder" || n.Title == "Timer done") ? "chime" : "notify");
+                Sfx.Play(n.App == "elysium" && (n.Title == "Reminder" || n.Title == "Timer done") ? "chime" : "notify");
             };
             _toasts.Clicked += Toasts.OpenTarget;
 
@@ -316,7 +318,7 @@ namespace Heft
             };
             SystemEvents.DisplaySettingsChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() => _layoutDelay.Start()));
 
-            var hp = new HwndSourceParameters("heft-shell") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
+            var hp = new HwndSourceParameters("elysium-shell") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
             _shellMsgs = new HwndSource(hp);
             _taskbarCreated = Native.RegisterWindowMessage("TaskbarCreated");
             _shellMsgs.AddHook(ShellHook);
@@ -389,7 +391,7 @@ namespace Heft
             _rules?.Saw(Native.GetForegroundWindow(), path);
             _keyHook?.ResetTyped();
             string file = Path.GetFileNameWithoutExtension(path);
-            if (file.Equals("heft", StringComparison.OrdinalIgnoreCase)) return;
+            if (file.Equals("elysium", StringComparison.OrdinalIgnoreCase)) return;
             _appName = file.Equals("explorer", StringComparison.OrdinalIgnoreCase) ? "Desktop" : _catalog.DisplayName(path);
             _ext?.Emit("window", _appName, path);
         }
@@ -727,6 +729,7 @@ namespace Heft
                 string t = k.Target;
                 switch (k.Kind)
                 {
+                    case "elysium":
                     case "heft":
                         if (!_cmds.Run(t)) RunAction(t);
                         break;
@@ -907,11 +910,11 @@ namespace Heft
 
         void HealStartup()
         {
-            if (!_s.StartWithWindows || !Heft.Startup.CanSet) return;
+            if (!_s.StartWithWindows || !Elysium.Startup.CanSet) return;
             string exe = Environment.ProcessPath ?? "";
             if (string.Equals(_s.StartupPath, exe, StringComparison.OrdinalIgnoreCase)) return;
             bool early = _s.StartEarly;
-            Task.Run(() => Heft.Startup.Set(true, early)).ContinueWith(t =>
+            Task.Run(() => Elysium.Startup.Set(true, early)).ContinueWith(t =>
             {
                 if (t.IsFaulted || !t.Result) return;
                 Dispatcher.BeginInvoke(new Action(() =>
@@ -1021,107 +1024,107 @@ namespace Heft
         void RegisterCommands()
         {
             var c = _cmds;
-            c.Add("heft", "launcher", "Launcher", "\uE721", () => _launcher.Open());
-            c.Add("heft", "start", "Start", "\uE782", () => _start.Open(), "start menu home");
-            c.Add("heft", "overview", "Overview (all windows)", "\uE8A9", () => _overview.Open(), "windows switcher mission control expose");
-            c.Add("heft", "shelf", "Open the shelf", "\uE7B8", () => _shelf.OpenShelf(BarDisplay(), BarBottom(), "shelf"), "stash drawer");
-            c.Add("heft", "catalog", "Open the catalog", "\uE82D", () => _shelf.OpenShelf(BarDisplay(), BarBottom(), "catalog"), "bookshelf folders books");
+            c.Add("elysium", "launcher", "Launcher", "\uE721", () => _launcher.Open());
+            c.Add("elysium", "start", "Start", "\uE782", () => _start.Open(), "start menu home");
+            c.Add("elysium", "overview", "Overview (all windows)", "\uE8A9", () => _overview.Open(), "windows switcher mission control expose");
+            c.Add("elysium", "shelf", "Open the shelf", "\uE7B8", () => _shelf.OpenShelf(BarDisplay(), BarBottom(), "shelf"), "stash drawer");
+            c.Add("elysium", "catalog", "Open the catalog", "\uE82D", () => _shelf.OpenShelf(BarDisplay(), BarBottom(), "catalog"), "bookshelf folders books");
             foreach (var (id, label, glyph) in Library.Smart)
             {
                 string tab = id;
-                c.Add("heft", "col-" + id, "Collection: " + label, glyph, () => _shelf.OpenShelf(BarDisplay(), BarBottom(), tab), "collection shelf");
+                c.Add("elysium", "col-" + id, "Collection: " + label, glyph, () => _shelf.OpenShelf(BarDisplay(), BarBottom(), tab), "collection shelf");
             }
-            c.Add("heft", "audioflow", "AudioFlow", "\uE767", () => OpenDrop("audio"), "volume mixer sound devices");
-            c.Add("heft", "notes", "Notifications", "\uEA8F", () => OpenDrop("notes"), "notification center history");
-            c.Add("heft", "center", "Control center", "\uE9E9", () => OpenDrop("center"), "system monitor cpu gpu ram toggles");
-            c.Add("heft", "settings", "heft settings", "\uE713", () => _panel.Open(), "preferences options");
+            c.Add("elysium", "audioflow", "AudioFlow", "\uE767", () => OpenDrop("audio"), "volume mixer sound devices");
+            c.Add("elysium", "notes", "Notifications", "\uEA8F", () => OpenDrop("notes"), "notification center history");
+            c.Add("elysium", "center", "Control center", "\uE9E9", () => OpenDrop("center"), "system monitor cpu gpu ram toggles");
+            c.Add("elysium", "settings", "elysium settings", "\uE713", () => _panel.Open(), "preferences options");
             FeatureCommands(c);
-            c.Add("heft", "phone-drop", "Send files from your phone", "\uE8EA", () => _phoneDrop.Toggle(), "phone upload receive airdrop transfer qr");
-            c.Add("heft", "scratch", "Scratchpad", "\uE70B", () => OpenDrop("scratch"), "notes scratch jot pad text");
-            c.Add("heft", "last-download", "Grab your last download", "\uE896", () => GrabDownload(), "download recent file drag");
-            c.Add("heft", "reopen", "Reopen last closed app", "\uE7A7", ReopenLast, "undo close restore app again");
-            c.Add("heft", "remember-window", "Remember where this window goes", "\uE8A7", RememberWindow, "window rule position monitor place open");
-            c.Add("heft", "dock", "Dock", "\uE8A9", () =>
+            c.Add("elysium", "phone-drop", "Send files from your phone", "\uE8EA", () => _phoneDrop.Toggle(), "phone upload receive airdrop transfer qr");
+            c.Add("elysium", "scratch", "Scratchpad", "\uE70B", () => OpenDrop("scratch"), "notes scratch jot pad text");
+            c.Add("elysium", "last-download", "Grab your last download", "\uE896", () => GrabDownload(), "download recent file drag");
+            c.Add("elysium", "reopen", "Reopen last closed app", "\uE7A7", ReopenLast, "undo close restore app again");
+            c.Add("elysium", "remember-window", "Remember where this window goes", "\uE8A7", RememberWindow, "window rule position monitor place open");
+            c.Add("elysium", "dock", "Dock", "\uE8A9", () =>
             {
                 var (d, side) = Displays.DockForCursor(_s);
                 _dock.ShowDock(false, false, d, side);
             }, "wheel arc apps");
-            c.Add("heft", "focus", "Focus mode", "\uE708", () =>
+            c.Add("elysium", "focus", "Focus mode", "\uE708", () =>
             {
                 _s.FocusActive = !_s.FocusActive;
                 _s.Touch();
             }, "do not disturb dnd quiet", false, () => _s.FocusActive ? "on" : "off");
-            c.Add("heft", "lock", "Cursor lock", "\uE72E", () => _lock.Toggle(), "mouse monitor game trap clip", false, () => _lock.Locked ? "on" : "off");
-            c.Add("heft", "physics", "Window physics", "\uE945", () =>
+            c.Add("elysium", "lock", "Cursor lock", "\uE72E", () => _lock.Toggle(), "mouse monitor game trap clip", false, () => _lock.Locked ? "on" : "off");
+            c.Add("elysium", "physics", "Window physics", "\uE945", () =>
             {
                 _s.Enabled = !_s.Enabled;
                 _s.Touch();
             }, "throw fling", false, () => _s.Enabled ? "on" : "off");
-            c.Add("heft", "desktop", "Desktop icons", "\uE7F4", () =>
+            c.Add("elysium", "desktop", "Desktop icons", "\uE7F4", () =>
             {
                 _s.HideDesktop = !_s.HideDesktop;
                 _s.Touch();
             }, "hide show clean desktop", false, () => _s.HideDesktop ? "hidden" : "showing");
-            c.Add("heft", "taskbar", "Taskbar", "\uE75B", () =>
+            c.Add("elysium", "taskbar", "Taskbar", "\uE75B", () =>
             {
                 _s.TaskbarHide = _s.TaskbarHide == "off" ? "hidden" : "off";
                 _s.Touch();
             }, "hide show", false, () => _s.TaskbarHide == "off" ? "showing" : _s.TaskbarHide);
-            c.Add("heft", "stack", "Paste stack", "\uE77F", () => _clips.ToggleStack(), "clipboard queue", false, () => _clips.Stacking ? "on" : "off");
-            c.Add("heft", "unpocket", "Bring back pocketed windows", "\uE8A7", () =>
+            c.Add("elysium", "stack", "Paste stack", "\uE77F", () => _clips.ToggleStack(), "clipboard queue", false, () => _clips.Stacking ? "on" : "off");
+            c.Add("elysium", "unpocket", "Bring back pocketed windows", "\uE8A7", () =>
             {
                 foreach (var e in _pocket.Items.ToList()) _pocket.Release(e, false);
             }, "pocket restore");
-            c.Add("heft", "timer-cancel", "Cancel timer", "\uE916", () => _notes.CancelTimer(), "stop");
-            c.Add("heft", "theme", "Switch light / dark", "\uE793", () =>
+            c.Add("elysium", "timer-cancel", "Cancel timer", "\uE916", () => _notes.CancelTimer(), "stop");
+            c.Add("elysium", "theme", "Switch light / dark", "\uE793", () =>
             {
                 _s.Theme = Theme.IsDark ? "light" : "dark";
                 Theme.Apply(_s.Theme);
                 _s.Touch();
             }, "dark mode light mode appearance");
-            c.Add("heft", "share", "Share my setup", "\uE72D", () => _panel.OpenTab("share"), "export import heftpack");
-            c.Add("heft", "rescan", "Rescan apps + projects", "\uE72C", () =>
+            c.Add("elysium", "share", "Share my setup", "\uE72D", () => _panel.OpenTab("share"), "export import elysiumpack");
+            c.Add("elysium", "rescan", "Rescan apps + projects", "\uE72C", () =>
             {
                 _catalog.Scan();
                 _apps.Load();
                 _lib.Refresh(true);
             }, "refresh");
-            c.Add("heft", "spaces", "Spaces", "\uE80A", () => _spaces.Open(), "spatial desktop canvas board zoom widgets");
-            c.Add("heft", "pip", "Picture in picture", "\uE8A7", () => _pip.Toggle(), "pip mini floating corner window");
-            c.Add("heft", "sheet", "Every shortcut", "\uE765", () => _sheet.Open(), "keys keyboard cheat sheet help hotkeys");
-            c.Add("heft", "sort-downloads", "Sort Downloads now", "\uE8CB", () => _sorter.Sweep(true), "tidy organize downloads folders");
-            c.Add("heft", "find-dupes", "Find duplicate files", "\uE8C8", () =>
+            c.Add("elysium", "spaces", "Spaces", "\uE80A", () => _spaces.Open(), "spatial desktop canvas board zoom widgets");
+            c.Add("elysium", "pip", "Picture in picture", "\uE8A7", () => _pip.Toggle(), "pip mini floating corner window");
+            c.Add("elysium", "sheet", "Every shortcut", "\uE765", () => _sheet.Open(), "keys keyboard cheat sheet help hotkeys");
+            c.Add("elysium", "sort-downloads", "Sort Downloads now", "\uE8CB", () => _sorter.Sweep(true), "tidy organize downloads folders");
+            c.Add("elysium", "find-dupes", "Find duplicate files", "\uE8C8", () =>
             {
                 _lib.FindDupes(true);
                 _shelf.OpenShelf(BarDisplay(), BarBottom(), "dupes");
             }, "duplicates copies clean space");
-            c.Add("heft", "undo-rename", "Undo rename", "\uE7A7", () =>
+            c.Add("elysium", "undo-rename", "Undo rename", "\uE7A7", () =>
             {
                 int n = BulkRename.Undo();
                 Flash(n > 0 ? $"put back {n} name{(n == 1 ? "" : "s")}" : "nothing to undo");
             }, "undo rename back");
-            c.Add("heft", "sounds", "Sounds", "\uE767", () =>
+            c.Add("elysium", "sounds", "Sounds", "\uE767", () =>
             {
                 _s.SoundsOn = !_s.SoundsOn;
                 _s.Touch();
                 if (_s.SoundsOn) Sfx.Test("chime");
             }, "audio clicks chimes sfx", false, () => _s.SoundsOn ? "on" : "off");
-            c.Add("heft", "lerp", "Window lerp", "\uE945", () =>
+            c.Add("elysium", "lerp", "Window lerp", "\uE945", () =>
             {
                 _s.Lerp = !_s.Lerp;
                 _s.Touch();
             }, "smooth drag lag trail", false, () => _s.Lerp ? "on" : "off");
-            c.Add("heft", "unstack", "Pull this window out of its stack", "\uE8A9", () => _stacks.Take(Native.GetForegroundWindow()), "tabs window stack");
-            c.Add("heft", "share-stop", "Stop sharing", "\uE8EA", () => _share.Stop(), "quick share phone");
-            c.Add("heft", "screenshot", "Screenshot", "\uE722", () => _lens.Open("shot"), "capture snip screen grab print");
-            c.Add("heft", "copy-text", "Copy text from the screen", "\uE8D2", () => _lens.Open("text"), "ocr read text extract");
-            c.Add("heft", "pick-color", "Pick a color", "\uE790", () => _lens.Open("color"), "hex eyedropper picker");
-            c.Add("heft", "grab-palette", "Grab colors from the screen", "\uE771", () => _lens.Open("aesthetic"), "palette aesthetic vibe colors");
-            c.Add("heft", "read-qr", "Read a QR code on screen", "\uED14", () => _lens.Open("qr"), "qr scan barcode");
-            c.Add("heft", "measure", "Measure the screen", "\uED5E", () => _lens.Open("measure"), "ruler pixels distance");
-            c.Add("heft", "record", "Record the screen", "\uE714", () => _lens.Open("gif"), "gif video capture recording");
-            c.Add("heft", "stop-recording", "Stop recording", "\uE71A", () => _ = StopRecording(), "recording gif");
-            c.Add("heft", "quit", "Quit heft", "\uE7E8", Quit, "exit close");
+            c.Add("elysium", "unstack", "Pull this window out of its stack", "\uE8A9", () => _stacks.Take(Native.GetForegroundWindow()), "tabs window stack");
+            c.Add("elysium", "share-stop", "Stop sharing", "\uE8EA", () => _share.Stop(), "quick share phone");
+            c.Add("elysium", "screenshot", "Screenshot", "\uE722", () => _lens.Open("shot"), "capture snip screen grab print");
+            c.Add("elysium", "copy-text", "Copy text from the screen", "\uE8D2", () => _lens.Open("text"), "ocr read text extract");
+            c.Add("elysium", "pick-color", "Pick a color", "\uE790", () => _lens.Open("color"), "hex eyedropper picker");
+            c.Add("elysium", "grab-palette", "Grab colors from the screen", "\uE771", () => _lens.Open("aesthetic"), "palette aesthetic vibe colors");
+            c.Add("elysium", "read-qr", "Read a QR code on screen", "\uED14", () => _lens.Open("qr"), "qr scan barcode");
+            c.Add("elysium", "measure", "Measure the screen", "\uED5E", () => _lens.Open("measure"), "ruler pixels distance");
+            c.Add("elysium", "record", "Record the screen", "\uE714", () => _lens.Open("gif"), "gif video capture recording");
+            c.Add("elysium", "stop-recording", "Stop recording", "\uE71A", () => _ = StopRecording(), "recording gif");
+            c.Add("elysium", "quit", "Quit elysium", "\uE7E8", Quit, "exit close");
 
             c.Add("system", "pclock", "Lock PC", "\uE72E", () => Native.LockWorkStation(), "lock screen away");
             c.Add("system", "sleep", "Sleep", "\uE708", () => Native.SetSuspendState(false, false, false), "suspend");
@@ -1163,7 +1166,7 @@ namespace Heft
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add("quit", null, (_, _) => Quit());
 
-            _tray = new Forms.NotifyIcon { Icon = MakeIcon(), Text = "heft", ContextMenuStrip = menu, Visible = true };
+            _tray = new Forms.NotifyIcon { Icon = MakeIcon(), Text = "elysium", ContextMenuStrip = menu, Visible = true };
             _tray.MouseClick += (_, e) =>
             {
                 if (e.Button == Forms.MouseButtons.Left) _panel.Toggle();

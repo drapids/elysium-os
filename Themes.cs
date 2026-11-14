@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class BarLook
     {
@@ -59,7 +59,7 @@ namespace Heft
 
     internal static class Themes
     {
-        public static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "themes");
+        public static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "themes");
 
         static readonly JsonSerializerOptions Json = new()
         {
@@ -253,7 +253,7 @@ namespace Heft
             yield return ("frutiger-aero", new ThemePack
             {
                 Name = "Frutiger Aero",
-                Author = "heft",
+                Author = "elysium",
                 Description = "glossy sky, bubbles and clean water. 2008 called",
                 Mode = "light",
                 Accent = "#1BA1E2",
@@ -289,7 +289,7 @@ namespace Heft
             yield return ("midnight", new ThemePack
             {
                 Name = "Midnight",
-                Author = "heft",
+                Author = "elysium",
                 Description = "pure black, made for oled and late nights",
                 Mode = "dark",
                 Accent = "#7C5CFF",
@@ -313,7 +313,7 @@ namespace Heft
             yield return ("paper", new ThemePack
             {
                 Name = "Paper",
-                Author = "heft",
+                Author = "elysium",
                 Description = "flat, quiet and warm. like a notebook",
                 Mode = "light",
                 Accent = "#1F1F1F",
@@ -342,7 +342,7 @@ namespace Heft
             yield return ("y2k-chrome", new ThemePack
             {
                 Name = "Y2K Chrome",
-                Author = "heft",
+                Author = "elysium",
                 Description = "brushed metal, bubblegum accent, very millennium",
                 Mode = "light",
                 Accent = "#FF3EA5",
@@ -371,7 +371,7 @@ namespace Heft
             yield return ("terminal", new ThemePack
             {
                 Name = "Terminal",
-                Author = "heft",
+                Author = "elysium",
                 Description = "green on black, everything in mono",
                 Mode = "dark",
                 Accent = "#33FF66",
@@ -401,7 +401,7 @@ namespace Heft
             yield return ("sunset", new ThemePack
             {
                 Name = "Sunset",
-                Author = "heft",
+                Author = "elysium",
                 Description = "warm purple into orange, like 7pm in july",
                 Mode = "dark",
                 Accent = "#FF7A59",

@@ -6,9 +6,9 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class SnapZones : IDisposable
     {
@@ -252,7 +252,7 @@ namespace Heft
             ShowActivated = false;
             ResizeMode = ResizeMode.NoResize;
             IsHitTestVisible = false;
-            Title = "heft zones";
+            Title = "elysium zones";
             Content = _canvas;
             SourceInitialized += (_, _) =>
             {

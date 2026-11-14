@@ -8,7 +8,7 @@ using System.Xml.Linq;
 using Microsoft.Data.Sqlite;
 using Microsoft.Win32;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class WinToasts : IDisposable
     {
@@ -33,7 +33,7 @@ namespace Heft
             _s = s;
             _post = post;
             _enabled = s.TakeOverToasts;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "heft-wintoasts", Priority = ThreadPriority.BelowNormal };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "elysium-wintoasts", Priority = ThreadPriority.BelowNormal };
             _thread.Start();
         }
 

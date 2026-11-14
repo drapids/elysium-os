@@ -1,8 +1,8 @@
-<Window x:Class="Heft.Ui.SidePanel"
+<Window x:Class="Elysium.Ui.SidePanel"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" ResizeMode="NoResize" AllowsTransparency="False" Background="Transparent"
-        Topmost="True" ShowInTaskbar="False" WindowStartupLocation="Manual" Width="420" Title="heft"
+        Topmost="True" ShowInTaskbar="False" WindowStartupLocation="Manual" Width="420" Title="elysium"
         FontFamily="{StaticResource UiFont}" UseLayoutRounding="True">
 
     <WindowChrome.WindowChrome>
@@ -20,7 +20,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="heft" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text}"/>
+                    <TextBlock Text="elysium" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource Text}"/>
                     <TextBlock x:Name="status" Style="{StaticResource Caption}" Text="throw your windows around"/>
                 </StackPanel>
                 <Button x:Name="close" Grid.Column="2" Style="{StaticResource Plain}" ToolTip="close">

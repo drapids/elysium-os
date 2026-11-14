@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class PhysicsEngine : IDisposable
     {
@@ -23,7 +23,7 @@ namespace Heft
             "TopLevelWindowForOverflowXamlIsland", "XamlExplorerHostIslandWindow", "#32768"
         };
 
-        static readonly string LogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "log.txt");
+        static readonly string LogPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "log.txt");
 
         readonly Settings _s;
         readonly Thread _thread;
@@ -66,7 +66,7 @@ namespace Heft
         public PhysicsEngine(Settings settings)
         {
             _s = settings;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "heft-physics", Priority = ThreadPriority.AboveNormal };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "elysium-physics", Priority = ThreadPriority.AboveNormal };
             _thread.Start();
             Log("started");
         }

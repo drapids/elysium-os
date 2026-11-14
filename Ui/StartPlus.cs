@@ -9,7 +9,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class StartPin
     {
@@ -25,13 +25,13 @@ namespace Heft
 
         public void Launch()
         {
-            if (Uwp) Heft.Launch.Uwp(Target);
-            else Heft.Launch.Run(Target);
+            if (Uwp) Elysium.Launch.Uwp(Target);
+            else Elysium.Launch.Run(Target);
         }
     }
 }
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class StartScreen
     {

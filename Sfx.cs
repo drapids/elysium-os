@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace Heft
+namespace Elysium
 {
     internal static class Sfx
     {
@@ -176,7 +176,7 @@ namespace Heft
             }
         }
 
-        public static readonly string CustomRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "sounds");
+        public static readonly string CustomRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "sounds");
 
         public static List<(string id, string label)> AllPacks()
         {
@@ -220,7 +220,7 @@ namespace Heft
                     Raw[key] = null;
                     return Load("glass", id);
                 }
-                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("heft.sound." + key);
+                using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("elysium.sound." + key);
                 if (stream == null && pack != "glass")
                 {
                     Raw[key] = null;

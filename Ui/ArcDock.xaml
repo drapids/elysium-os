@@ -1,9 +1,9 @@
-<Window x:Class="Heft.Ui.ArcDock"
+<Window x:Class="Elysium.Ui.ArcDock"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
-        WindowStartupLocation="Manual" Width="360" Height="760" Title="heft dock"
+        WindowStartupLocation="Manual" Width="360" Height="760" Title="elysium dock"
         FontFamily="{StaticResource UiFont}">
 
     <Grid x:Name="root" Background="#01000000">

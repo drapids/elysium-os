@@ -11,7 +11,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     public partial class ArcDock : Window
     {

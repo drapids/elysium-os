@@ -5,12 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Command
     {
         public string Id = "";
-        public string Group = "heft";
+        public string Group = "elysium";
         public string Name = "";
         public string Glyph = "\uE945";
         public string Keywords = "";
@@ -173,8 +173,8 @@ namespace Heft
 
         public static void Launch(App a)
         {
-            if (a.IsPath && File.Exists(a.Id)) Heft.Launch.Run(a.Id);
-            else Heft.Launch.Uwp(a.Id);
+            if (a.IsPath && File.Exists(a.Id)) Elysium.Launch.Run(a.Id);
+            else Elysium.Launch.Uwp(a.Id);
         }
     }
 }

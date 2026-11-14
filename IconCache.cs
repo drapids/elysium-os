@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class IconCache : IDisposable
     {
@@ -21,7 +21,7 @@ namespace Heft
         public IconCache(Dispatcher ui)
         {
             _ui = ui;
-            _thread = new Thread(Run) { IsBackground = true, Name = "heft-icons", Priority = ThreadPriority.BelowNormal };
+            _thread = new Thread(Run) { IsBackground = true, Name = "elysium-icons", Priority = ThreadPriority.BelowNormal };
             _thread.SetApartmentState(ApartmentState.STA);
             _thread.Start();
         }
@@ -29,8 +29,8 @@ namespace Heft
         static string Key(string path, int size, bool iconOnly) => $"{size}|{(iconOnly ? 1 : 0)}|{path}";
 
         public static string Pack = "";
-        public static readonly string PackRoot = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "icons");
-        static readonly string DiskDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "heft", "iconcache");
+        public static readonly string PackRoot = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "icons");
+        static readonly string DiskDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "elysium", "iconcache");
 
         public void Clear()
         {

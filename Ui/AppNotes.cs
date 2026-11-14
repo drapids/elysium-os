@@ -6,7 +6,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class NoteCard : Window
     {
@@ -22,7 +22,7 @@ namespace Heft.Ui
         public NoteCard()
         {
             Glass.Attach(this, 12, true);
-            Title = "heft note";
+            Title = "elysium note";
             ShowActivated = false;
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(12);
@@ -118,7 +118,7 @@ namespace Heft.Ui
         public NoteEditor()
         {
             Glass.Attach(this, 16);
-            Title = "heft note editor";
+            Title = "elysium note editor";
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(16);
             var root = new StackPanel { Margin = new Thickness(18, 14, 18, 16), Width = 340 };

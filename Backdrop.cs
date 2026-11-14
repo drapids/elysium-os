@@ -5,7 +5,7 @@ using System.Windows.Media.Imaging;
 using D = System.Drawing;
 using DI = System.Drawing.Imaging;
 
-namespace Heft
+namespace Elysium
 {
     internal static class Backdrop
     {

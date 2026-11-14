@@ -5,7 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace Heft
+namespace Elysium
 {
     internal static class ShellImage
     {

@@ -11,7 +11,7 @@ using System.Windows.Media.Imaging;
 using D = System.Drawing;
 using DI = System.Drawing.Imaging;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Shot
     {
@@ -281,7 +281,7 @@ namespace Heft
 
         public static string Save(Settings s, BitmapSource b, string? path = null)
         {
-            path ??= Path.Combine(Folder(s), $"heft {DateTime.Now:yyyy-MM-dd HH.mm.ss}.png");
+            path ??= Path.Combine(Folder(s), $"elysium {DateTime.Now:yyyy-MM-dd HH.mm.ss}.png");
             var enc = new PngBitmapEncoder();
             enc.Frames.Add(BitmapFrame.Create(b));
             using (var fs = File.Create(path)) enc.Save(fs);
@@ -311,10 +311,10 @@ namespace Heft
             if (ff == null) return null;
             int w = r.Width / 2 * 2, h = r.Height / 2 * 2;
             if (w < 16 || h < 16) return null;
-            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "heft");
+            string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "elysium");
             Directory.CreateDirectory(dir);
             string stamp = DateTime.Now.ToString("yyyy-MM-dd HH.mm.ss");
-            string mp4 = Path.Combine(dir, $"heft {stamp}.mp4");
+            string mp4 = Path.Combine(dir, $"elysium {stamp}.mp4");
             string args = $"-y -f gdigrab -framerate 30 -offset_x {r.Left} -offset_y {r.Top} -video_size {w}x{h} -draw_mouse 1 -i desktop -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \"{mp4}\"";
             var psi = new ProcessStartInfo(ff, args) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardError = true };
             try

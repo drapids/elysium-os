@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class AudioProfile
     {

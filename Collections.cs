@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Entry
     {
@@ -100,7 +100,7 @@ namespace Heft
         static string Home => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         public static string DownloadsDir => Path.Combine(Home, "Downloads");
         public static string DesktopDir => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        public static string StashDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "shelf");
+        public static string StashDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "shelf");
 
         public void Refresh(bool force = false)
         {

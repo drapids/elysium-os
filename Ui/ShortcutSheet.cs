@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class ShortcutSheet : Window
     {
@@ -31,7 +31,7 @@ namespace Heft.Ui
             _s = s;
             _run = run;
             Glass.Attach(this, 18);
-            Title = "heft shortcuts";
+            Title = "elysium shortcuts";
             SizeToContent = SizeToContent.Height;
             Width = 940;
 
@@ -163,7 +163,7 @@ namespace Heft.Ui
             list.Add(new Item { Group = "launcher", Label = "Calculator + units", Keys = "=" });
             list.Add(new Item { Group = "launcher", Label = "System stuff", Keys = "!" });
             list.Add(new Item { Group = "launcher", Label = "Clipboard history", Keys = ":" });
-            list.Add(new Item { Group = "launcher", Label = "heft stuff", Keys = "&" });
+            list.Add(new Item { Group = "launcher", Label = "elysium stuff", Keys = "&" });
             list.Add(new Item { Group = "launcher", Label = "Walk folders", Keys = "/" });
             list.Add(new Item { Group = "launcher", Label = "Pipe results into an action", Keys = "results > action" });
             list.Add(new Item { Group = "launcher", Label = "Rename a bunch of files", Keys = "> rename trip-{n}" });

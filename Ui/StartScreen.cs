@@ -10,7 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class StartScreen : Window
     {
@@ -72,7 +72,7 @@ namespace Heft.Ui
             _lib = lib;
             Glass.Attach(this, 0);
             Glass.Opaque(this);
-            Title = "heft start";
+            Title = "elysium start";
 
             RenderOptions.SetBitmapScalingMode(_backdrop, BitmapScalingMode.HighQuality);
             _backdrop.Margin = new Thickness(-8);
@@ -712,7 +712,7 @@ namespace Heft.Ui
             if (ToolsCard() is UIElement tools) _side.Children.Add(tools);
 
             var power = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-            foreach (var (glyph, id, tip) in new[] { ("\uE72E", "pclock", "lock"), ("\uE708", "sleep", "sleep"), ("\uE777", "restart", "restart"), ("\uE7E8", "shutdown", "shut down"), ("\uE771", "", "heft settings") })
+            foreach (var (glyph, id, tip) in new[] { ("\uE72E", "pclock", "lock"), ("\uE708", "sleep", "sleep"), ("\uE777", "restart", "restart"), ("\uE7E8", "shutdown", "shut down"), ("\uE771", "", "elysium settings") })
             {
                 string cid = id;
                 var b = Btn(glyph, () =>

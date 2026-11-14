@@ -10,7 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class Shelf
     {

@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class Grab : Window
     {
@@ -24,7 +24,7 @@ namespace Heft.Ui
         {
             _cat = cat;
             Glass.Attach(this, 14);
-            Title = "heft grab";
+            Title = "elysium grab";
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(14);
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 10, 16, 10), Background = Brushes.Transparent, Cursor = Cursors.Hand };

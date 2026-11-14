@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class Shelf
     {

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class WindowRule
     {
@@ -44,7 +44,7 @@ namespace Heft
         {
             if (hwnd == IntPtr.Zero || string.IsNullOrEmpty(path)) return;
             string exe = Path.GetFileNameWithoutExtension(path);
-            if (exe.Equals("heft", StringComparison.OrdinalIgnoreCase) || exe.Equals("explorer", StringComparison.OrdinalIgnoreCase)) return;
+            if (exe.Equals("elysium", StringComparison.OrdinalIgnoreCase) || exe.Equals("explorer", StringComparison.OrdinalIgnoreCase)) return;
             _last = hwnd;
             _lastPath = path;
         }

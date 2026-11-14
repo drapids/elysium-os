@@ -8,7 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class OverviewHooks
     {
@@ -74,7 +74,7 @@ namespace Heft.Ui
             _s = s;
             Glass.Attach(this, 0);
             Glass.Opaque(this);
-            Title = "heft overview";
+            Title = "elysium overview";
             RenderOptions.SetBitmapScalingMode(_blur, BitmapScalingMode.HighQuality);
             _root.ClipToBounds = true;
             _root.Children.Add(_blur);

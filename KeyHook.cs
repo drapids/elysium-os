@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class KeyHook : IDisposable
     {
@@ -129,7 +129,7 @@ namespace Heft
             _s = s;
             _ui = ui;
             _proc = Callback;
-            _thread = new Thread(Run) { IsBackground = true, Name = "heft-keys" };
+            _thread = new Thread(Run) { IsBackground = true, Name = "elysium-keys" };
             _thread.Start();
         }
 

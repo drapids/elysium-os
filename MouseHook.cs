@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class MouseHook : IDisposable
     {
@@ -98,7 +98,7 @@ namespace Heft
             _ui = ui;
             _brightness = brightness;
             _proc = Callback;
-            _thread = new Thread(Run) { IsBackground = true, Name = "heft-mouse" };
+            _thread = new Thread(Run) { IsBackground = true, Name = "elysium-mouse" };
             _thread.Start();
         }
 

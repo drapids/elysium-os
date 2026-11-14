@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Automation;
 
-namespace Heft
+namespace Elysium
 {
     internal static class DesktopIcons
     {
@@ -53,7 +53,7 @@ namespace Heft
         public TaskbarStyler(Settings settings)
         {
             _s = settings;
-            _thread = new Thread(Loop) { IsBackground = true, Name = "heft-taskbar" };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "elysium-taskbar" };
             _thread.Start();
         }
 

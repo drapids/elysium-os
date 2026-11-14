@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace Heft
+namespace Elysium
 {
     internal static class VirtualDesktops
     {

@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 
-namespace Heft
+namespace Elysium
 {
     public partial class App
     {

@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     public partial class App
     {
@@ -64,7 +64,7 @@ namespace Heft
             {
                 var mode = m;
                 if (mode.Name.Length == 0) continue;
-                _cmds.Add("heft", "mode-" + mode.Id, "Mode: " + mode.Name, "\uE771", () => ApplyMode(mode), "mode profile switch " + mode.Name, false, () => _s.ActiveMode == mode.Name ? "on" : null);
+                _cmds.Add("elysium", "mode-" + mode.Id, "Mode: " + mode.Name, "\uE771", () => ApplyMode(mode), "mode profile switch " + mode.Name, false, () => _s.ActiveMode == mode.Name ? "on" : null);
             }
         }
 

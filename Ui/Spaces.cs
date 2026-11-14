@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class SpaceItem
     {
@@ -57,11 +57,11 @@ namespace Heft
     }
 }
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class Spaces : Window
     {
-        static readonly string FilePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "spaces.json");
+        static readonly string FilePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "spaces.json");
         static readonly HashSet<string> Resizable = new() { "note", "group", "portal", "smart" };
 
         readonly Settings _s;
@@ -141,7 +141,7 @@ namespace Heft.Ui
             _data = data;
             Glass.Attach(this, 0);
             Topmost = false;
-            Title = "heft spaces";
+            Title = "elysium spaces";
 
             var scrim = new Border();
             scrim.Background = new SolidColorBrush(Color.FromArgb(0xB0, 10, 11, 14));

@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -97,7 +97,7 @@ namespace Heft.Ui
             })));
 
             bool hexAccent = m.Accent.StartsWith('#');
-            box.Children.Add(Labeled("Accent", Kit.Segments(new[] { "Keep", "heft", "Windows", "Wallpaper", "Pick" }, new[] { "", "default", "system", "wallpaper", "#" }, hexAccent ? "#" : m.Accent, v =>
+            box.Children.Add(Labeled("Accent", Kit.Segments(new[] { "Keep", "elysium", "Windows", "Wallpaper", "Pick" }, new[] { "", "default", "system", "wallpaper", "#" }, hexAccent ? "#" : m.Accent, v =>
             {
                 m.Accent = v == "#" ? (_s.AccentHex.Length > 0 ? _s.AccentHex : "#0A84FF") : v;
                 Touch();

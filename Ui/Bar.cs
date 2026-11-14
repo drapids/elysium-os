@@ -11,7 +11,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class BarState
     {
@@ -117,7 +117,7 @@ namespace Heft.Ui
             ResizeMode = ResizeMode.NoResize;
             AllowDrop = true;
             UseLayoutRounding = true;
-            Title = "heft bar";
+            Title = "elysium bar";
             SetResourceReference(FontFamilyProperty, "UiFont");
 
             _root.Children.Add(_tint);
@@ -248,7 +248,7 @@ namespace Heft.Ui
             {
                 _hwnd = new WindowInteropHelper(this).Handle;
                 Native.MakeToolWindow(_hwnd, true);
-                _callback = Native.RegisterWindowMessage("heft.appbar");
+                _callback = Native.RegisterWindowMessage("elysium.appbar");
                 HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc);
             };
             Theme.Applied += Paint;

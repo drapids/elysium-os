@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Windows.Input;
 using System.Windows.Interop;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Hotkeys : IDisposable
     {
@@ -55,7 +55,7 @@ namespace Heft
 
         public Hotkeys()
         {
-            var p = new HwndSourceParameters("heft-keys") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
+            var p = new HwndSourceParameters("elysium-keys") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
             _source = new HwndSource(p);
             _source.AddHook(Hook);
         }

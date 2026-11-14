@@ -12,7 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class PinShot : Window
     {
@@ -30,7 +30,7 @@ namespace Heft.Ui
             _img = img;
             Glass.Attach(this, 10, true);
             Glass.NoBlur(this);
-            Title = "heft pin";
+            Title = "elysium pin";
             SizeToContent = SizeToContent.WidthAndHeight;
             var image = new Image { Source = img, Stretch = Stretch.Fill };
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
@@ -177,7 +177,7 @@ namespace Heft.Ui
             _src = src;
             _thick = Math.Max(3, Math.Max(src.PixelWidth, src.PixelHeight) / 260.0);
             Glass.Attach(this, 16);
-            Title = "heft markup";
+            Title = "elysium markup";
 
             var surface = Glass.Surface(16);
             var root = new DockPanel { Margin = new Thickness(14) };
@@ -458,7 +458,7 @@ namespace Heft.Ui
         public RecChip()
         {
             Glass.Attach(this, 14, true);
-            Title = "heft recording";
+            Title = "elysium recording";
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(14);
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(12, 6, 6, 6) };

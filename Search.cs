@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Heft
+namespace Elysium
 {
     internal static class Fuzzy
     {

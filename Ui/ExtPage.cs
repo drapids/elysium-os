@@ -7,7 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -17,20 +17,20 @@ namespace Heft.Ui
 
         static readonly (string call, string what)[] ExtCalls =
         {
-            ("heft.command(id, name, fn)", "adds a launcher command"),
-            ("heft.key('Ctrl+Alt+J', fn)", "adds a shortcut"),
-            ("heft.bar(text, glyph, onClick)", "puts something in the top bar"),
-            ("heft.widget(title, body)", "a card on Start"),
-            ("heft.dropAction(name, paths => {})", "a shelf drop action"),
-            ("heft.on('song' | 'window' | 'download' | 'clipboard' | 'monitor' | 'game' | 'open' | 'desktop' | 'tick', fn)", "react to stuff"),
-            ("heft.every(ms, fn) / heft.after(ms, fn)", "timers"),
-            ("heft.fetch(url, (text, status) => {})", "get something from the web"),
-            ("heft.request(url, headersJson, fn)", "same with headers"),
-            ("heft.notify(title, body)", "a notification"),
-            ("heft.open(target) / heft.copy(text)", "open stuff, copy text"),
-            ("heft.media() / playPause() / next() / previous()", "what's playing"),
-            ("heft.save(key, value) / heft.load(key)", "remember things"),
-            ("heft.file(name) / heft.time(zone, format) / heft.log(msg)", "read your own files, other time zones, log")
+            ("elysium.command(id, name, fn)", "adds a launcher command"),
+            ("elysium.key('Ctrl+Alt+J', fn)", "adds a shortcut"),
+            ("elysium.bar(text, glyph, onClick)", "puts something in the top bar"),
+            ("elysium.widget(title, body)", "a card on Start"),
+            ("elysium.dropAction(name, paths => {})", "a shelf drop action"),
+            ("elysium.on('song' | 'window' | 'download' | 'clipboard' | 'monitor' | 'game' | 'open' | 'desktop' | 'tick', fn)", "react to stuff"),
+            ("elysium.every(ms, fn) / elysium.after(ms, fn)", "timers"),
+            ("elysium.fetch(url, (text, status) => {})", "get something from the web"),
+            ("elysium.request(url, headersJson, fn)", "same with headers"),
+            ("elysium.notify(title, body)", "a notification"),
+            ("elysium.open(target) / elysium.copy(text)", "open stuff, copy text"),
+            ("elysium.media() / playPause() / next() / previous()", "what's playing"),
+            ("elysium.save(key, value) / elysium.load(key)", "remember things"),
+            ("elysium.file(name) / elysium.time(zone, format) / elysium.log(msg)", "read your own files, other time zones, log")
         };
 
         void ExtensionsPage(Panel h)
@@ -56,14 +56,14 @@ namespace Heft.Ui
             var make = Kit.Push("+ New extension", () =>
             {
                 string dir = ext.Create("My extension");
-                _extNote = "made it in " + dir + ". edit main.js and heft reloads it when you save";
+                _extNote = "made it in " + dir + ". edit main.js and elysium reloads it when you save";
                 Files.Open(dir);
                 Rebuild();
             }, true);
             top.Children.Add(make);
             var install = Kit.Push("Install from file...", () => _dialog(() =>
             {
-                var dlg = new OpenFileDialog { Title = "Install a heft extension", Filter = "heft extension|*.heftext;*.zip" };
+                var dlg = new OpenFileDialog { Title = "Install an elysium extension", Filter = "elysium extension|*.elysiumext;*.heftext;*.zip" };
                 if (dlg.ShowDialog() != true) return;
                 string? err = ext.Install(dlg.FileName);
                 _extNote = err == null ? "installed. flip it on below" : "couldn't install it: " + err;
@@ -168,7 +168,7 @@ namespace Heft.Ui
 
             h.Children.Add(Kit.Header("Make your own"));
             var how = new StackPanel { Margin = new Thickness(14, 10, 14, 12) };
-            var intro = Kit.Text("an extension is a folder with a manifest.json and a main.js. it runs inside heft (no node needed) and can only do what its manifest asks for. save the file and heft reloads it. share it by zipping the folder and renaming it to .heftext", 12, false, "SubText");
+            var intro = Kit.Text("an extension is a folder with a manifest.json and a main.js. it runs inside elysium (no node needed) and can only do what its manifest asks for. save the file and elysium reloads it. share it by zipping the folder and renaming it to .elysiumext", 12, false, "SubText");
             intro.TextWrapping = TextWrapping.Wrap;
             intro.Margin = new Thickness(0, 0, 0, 10);
             how.Children.Add(intro);

@@ -11,7 +11,7 @@ using System.Windows.Threading;
 using Jint;
 using Jint.Native;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class ExtManifest
     {
@@ -59,7 +59,7 @@ namespace Heft
 
     internal sealed class ExtHost : IDisposable
     {
-        public static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "extensions");
+        public static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "extensions");
 
         public static readonly (string id, string label)[] PermissionNames =
         {
@@ -103,7 +103,7 @@ namespace Heft
 
         static ExtHost()
         {
-            Http.DefaultRequestHeaders.UserAgent.ParseAdd("heft/1.0 (+https://github.com/drapids)");
+            Http.DefaultRequestHeaders.UserAgent.ParseAdd("elysium/1.0 (+https://github.com/drapids)");
         }
 
         public ExtHost(Settings s, Commands cmds, Notifier notes, NowPlaying np)
@@ -281,7 +281,9 @@ namespace Heft
                 });
                 ext.Engine = engine;
                 ext.Running = true;
-                engine.SetValue("heft", new ExtApi(this, ext));
+                var api = new ExtApi(this, ext);
+                engine.SetValue("elysium", api);
+                engine.SetValue("heft", api);
                 engine.Execute(File.ReadAllText(main), main);
                 PhysicsEngine.Log("extension started " + ext.Id);
             }
@@ -450,7 +452,7 @@ namespace Heft
 
         public string? Install(string file)
         {
-            string tmp = Path.Combine(Path.GetTempPath(), "heftext-" + Guid.NewGuid().ToString("N")[..8]);
+            string tmp = Path.Combine(Path.GetTempPath(), "elysiumext-" + Guid.NewGuid().ToString("N")[..8]);
             try
             {
                 ZipFile.ExtractToDirectory(file, tmp);

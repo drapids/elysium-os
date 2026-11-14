@@ -10,7 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class Panels : Window
     {
@@ -54,7 +54,7 @@ namespace Heft.Ui
             _cmds = cmds;
             _np = np;
             Glass.Attach(this, 16);
-            Title = "heft panel";
+            Title = "elysium panel";
             Width = 400;
             SizeToContent = SizeToContent.Height;
 

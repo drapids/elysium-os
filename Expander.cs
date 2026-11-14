@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class Snippet
     {

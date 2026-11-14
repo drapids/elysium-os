@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Heft
+namespace Elysium
 {
     internal static partial class Native
     {

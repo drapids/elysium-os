@@ -10,14 +10,14 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class AppCatalog : IDisposable
     {
         static readonly HashSet<string> Boring = new(StringComparer.OrdinalIgnoreCase)
         {
             "explorer", "applicationframehost", "searchhost", "searchapp", "startmenuexperiencehost",
-            "shellexperiencehost", "lockapp", "textinputhost", "heft", "dwm", "systemsettings",
+            "shellexperiencehost", "lockapp", "textinputhost", "elysium", "dwm", "systemsettings",
             "shellhost", "widgets", "consent", "openwith", "pickerhost", "rundll32", "dllhost"
         };
 

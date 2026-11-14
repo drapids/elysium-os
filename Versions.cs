@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class VersionInfo
     {
@@ -20,7 +20,7 @@ namespace Heft
 
     internal sealed class VersionShelf : IDisposable
     {
-        static readonly string Root = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "versions");
+        static readonly string Root = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "versions");
         static readonly HashSet<string> SkipExt = new(StringComparer.OrdinalIgnoreCase) { ".tmp", ".temp", ".crdownload", ".part", ".lock", ".lnk", ".ini", ".log", ".db-journal", ".swp", ".~lock" };
         const long MaxFile = 50L * 1024 * 1024;
         const long MaxTotal = 2L * 1024 * 1024 * 1024;
@@ -268,7 +268,7 @@ namespace Heft
         {
             try
             {
-                string tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "heft-versions");
+                string tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "elysium-versions");
                 Directory.CreateDirectory(tmp);
                 string stem = System.IO.Path.GetFileNameWithoutExtension(v.Original);
                 string ext = System.IO.Path.GetExtension(v.Original);

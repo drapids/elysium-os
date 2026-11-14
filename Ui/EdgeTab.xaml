@@ -1,10 +1,10 @@
-<Window x:Class="Heft.Ui.EdgeTab"
+<Window x:Class="Elysium.Ui.EdgeTab"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize" ShowActivated="False"
-        WindowStartupLocation="Manual" Width="10" Height="160" Title="heft handle">
-    <Grid x:Name="hit" Background="#01000000" ToolTip="heft (right-click for settings)">
+        WindowStartupLocation="Manual" Width="10" Height="160" Title="elysium handle">
+    <Grid x:Name="hit" Background="#01000000" ToolTip="elysium (right-click for settings)">
         <Border x:Name="pill" CornerRadius="2" Background="{DynamicResource Text}" Opacity="0.22"/>
     </Grid>
 </Window>

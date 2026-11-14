@@ -7,7 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class Slit : Window
     {
@@ -31,7 +31,7 @@ namespace Heft.Ui
             IsHitTestVisible = false;
             Width = W;
             Height = H;
-            Title = "heft slit";
+            Title = "elysium slit";
             _cards.Clip = new RectangleGeometry(new Rect(0, 1, W, H - 1));
             Content = _cards;
             SourceInitialized += (_, _) =>

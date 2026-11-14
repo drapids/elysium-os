@@ -11,7 +11,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed class Lens : Window
     {
@@ -66,7 +66,7 @@ namespace Heft.Ui
             _s = s;
             Glass.Attach(this, 0);
             Glass.NoBlur(this);
-            Title = "heft lens";
+            Title = "elysium lens";
             Cursor = Cursors.Cross;
 
             RenderOptions.SetBitmapScalingMode(_img, BitmapScalingMode.NearestNeighbor);

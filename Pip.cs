@@ -7,9 +7,9 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Pip
     {
@@ -233,7 +233,7 @@ namespace Heft
         public PipChip()
         {
             Glass.Attach(this, 10, true);
-            Title = "heft pip";
+            Title = "elysium pip";
             ShowActivated = false;
             SizeToContent = SizeToContent.WidthAndHeight;
             _surface = Glass.Surface(10);

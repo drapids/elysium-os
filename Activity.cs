@@ -9,7 +9,7 @@ using System.Threading;
 using System.Windows.Automation;
 using System.Windows.Interop;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Transfer
     {
@@ -55,14 +55,14 @@ namespace Heft
         public Activity(Settings settings)
         {
             _s = settings;
-            var p = new HwndSourceParameters("heft-shellhook") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
+            var p = new HwndSourceParameters("elysium-shellhook") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
             _shell = new HwndSource(p);
             _shellMsg = Native.RegisterWindowMessage("SHELLHOOK");
             _shell.AddHook(ShellHook);
             Native.RegisterShellHookWindow(_shell.Handle);
 
             StartDownloads();
-            _thread = new Thread(Loop) { IsBackground = true, Name = "heft-activity", Priority = ThreadPriority.BelowNormal };
+            _thread = new Thread(Loop) { IsBackground = true, Name = "elysium-activity", Priority = ThreadPriority.BelowNormal };
             _thread.Start();
         }
 

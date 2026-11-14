@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     internal static class Projects
     {
@@ -339,7 +339,7 @@ namespace Heft
             {
                 bool exists = File.Exists(to) || Directory.Exists(to);
                 if (exists && !sources.Contains(to) && !to.Equals(from, StringComparison.OrdinalIgnoreCase)) continue;
-                string tmp = Path.Combine(Path.GetDirectoryName(from.TrimEnd('\\')) ?? "", ".heft-" + Guid.NewGuid().ToString("N")[..10]);
+                string tmp = Path.Combine(Path.GetDirectoryName(from.TrimEnd('\\')) ?? "", ".elysium-" + Guid.NewGuid().ToString("N")[..10]);
                 try
                 {
                     if (Directory.Exists(from)) Directory.Move(from, tmp);

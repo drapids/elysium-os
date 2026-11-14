@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal sealed partial class SettingsPages
     {
@@ -123,11 +123,11 @@ namespace Heft.Ui
                 ApplyStartup(v, _s.StartEarly);
             });
             string startCaption = Startup.CanSet
-                ? "heft opens on its own when you sign in, in the background"
-                : "works once you run the built heft.exe (not dotnet run)";
+                ? "elysium opens on its own when you sign in, in the background"
+                : "works once you run the built elysium.exe (not dotnet run)";
             h.Children.Add(Kit.Group(
                 Kit.Row("Start with Windows", startCaption, start),
-                Kit.Row("Start before other apps", "opens the second you sign in, ahead of the normal startup list. off puts heft in the regular startup list instead", early)));
+                Kit.Row("Start before other apps", "opens the second you sign in, ahead of the normal startup list. off puts elysium in the regular startup list instead", early)));
 
             h.Children.Add(Kit.Header("Game mode"));
             var skip = Kit.Field(string.Join(", ", _s.GameSkip), "vlc, obs64", v =>
@@ -137,7 +137,7 @@ namespace Heft.Ui
             });
             skip.Width = 170;
             h.Children.Add(Kit.Group(
-                Kit.Row("Game mode", "when something goes fullscreen heft gets quiet: no sounds, slower polling, nothing refreshing in the background", Sw(_s.GameMode, v => _s.GameMode = v)),
+                Kit.Row("Game mode", "when something goes fullscreen elysium gets quiet: no sounds, slower polling, nothing refreshing in the background", Sw(_s.GameMode, v => _s.GameMode = v)),
                 Kit.Row("Hold notifications", "they wait in the bell and you get one summary when you're out", Sw(_s.GameHoldToasts, v => _s.GameHoldToasts = v)),
                 Kit.Row("Ignore the Windows key", "so tapping it mid game doesn't pop Start", Sw(_s.GameBlockWin, v => _s.GameBlockWin = v)),
                 Kit.Row("Not games", "apps that go fullscreen but shouldn't count", skip)));
@@ -157,7 +157,7 @@ namespace Heft.Ui
                 events.Children.Add(Kit.Row(label, null, right));
             }
             h.Children.Add(Kit.Group(
-                Kit.Row("Sounds", "off by default. soft little clicks and chimes for heft stuff", Sw(_s.SoundsOn, v =>
+                Kit.Row("Sounds", "off by default. soft little clicks and chimes for elysium stuff", Sw(_s.SoundsOn, v =>
                 {
                     _s.SoundsOn = v;
                     if (v) Sfx.Test("chime");
@@ -178,7 +178,7 @@ namespace Heft.Ui
             h.Children.Add(Kit.Group(events));
 
             h.Children.Add(Kit.Header("Shortcuts"));
-            var cap = Kit.Caption("ctrl + alt + y shows every shortcut heft has. click one to do it");
+            var cap = Kit.Caption("ctrl + alt + y shows every shortcut elysium has. click one to do it");
             cap.Margin = new Thickness(14, 4, 14, 0);
             h.Children.Add(cap);
         }
@@ -275,7 +275,7 @@ namespace Heft.Ui
             h.Children.Add(Kit.Header("Version shelf"));
             string folders = _s.VersionFolders.Count > 0 ? string.Join(", ", _s.VersionFolders) : VersionShelf.DefaultFolders();
             h.Children.Add(Kit.Group(
-                Kit.Row("Keep older versions", "every time a file changes heft keeps a copy, so you can go back from inspect. off by default", Sw(_s.VersionsOn, v => _s.VersionsOn = v)),
+                Kit.Row("Keep older versions", "every time a file changes elysium keeps a copy, so you can go back from inspect. off by default", Sw(_s.VersionsOn, v => _s.VersionsOn = v)),
                 Kit.Block("Folders it watches", "comma separated", Kit.Field(folders, "Documents, Desktop", v =>
                 {
                     var list = v.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Where(System.IO.Directory.Exists).ToList();
@@ -357,7 +357,7 @@ namespace Heft.Ui
                     _s.TaskbarHide = v;
                     Touch();
                 })),
-                Kit.Row("Windows key opens heft Start", "fullscreen glass start with your real Start pins, taskbar apps, widgets and every app. ctrl + esc still opens the old one", Sw(_s.WinKeyLauncher, v => _s.WinKeyLauncher = v)),
+                Kit.Row("Windows key opens elysium Start", "fullscreen glass start with your real Start pins, taskbar apps, widgets and every app. ctrl + esc still opens the old one", Sw(_s.WinKeyLauncher, v => _s.WinKeyLauncher = v)),
                 Kit.Row("Center the icons", null, Sw(_s.TaskbarCenter, v => _s.TaskbarCenter = v)),
                 Kit.Row("Hide the Start button", "the windows key still works", Sw(_s.HideStart, v => _s.HideStart = v)),
                 Kit.Row("Hide the tray", "clock and tray icons. the top bar covers it", Sw(_s.HideTray, v => _s.HideTray = v))));
@@ -512,7 +512,7 @@ namespace Heft.Ui
 
             h.Children.Add(Kit.Header("Notifications"));
             h.Children.Add(Kit.Group(
-                Kit.Row("heft-style Windows notifications", "hides Windows' own popups and shows them the heft way. " + _toastStatus(), Sw(_s.TakeOverToasts, v => _s.TakeOverToasts = v)),
+                Kit.Row("elysium-style Windows notifications", "hides Windows' own popups and shows them the elysium way. " + _toastStatus(), Sw(_s.TakeOverToasts, v => _s.TakeOverToasts = v)),
                 Kit.SliderRow("Stay up for", 2, 20, _s.ToastSeconds, v => $"{v:0}s", v =>
                 {
                     _s.ToastSeconds = Math.Round(v);
@@ -628,13 +628,13 @@ namespace Heft.Ui
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(14, 10, 14, 12) };
             row.Children.Add(Kit.Push("Export...", () => _dialog(() =>
             {
-                var dlg = new SaveFileDialog { Title = "Share your heft setup", Filter = "heft setup|*.heftpack", FileName = "my setup.heftpack" };
+                var dlg = new SaveFileDialog { Title = "Share your elysium setup", Filter = "elysium setup|*.elysiumpack", FileName = "my setup.elysiumpack" };
                 if (dlg.ShowDialog() != true) return;
                 SharePack.Export(_s, dlg.FileName);
             }), true));
             var imp = Kit.Push("Import...", () => _dialog(() =>
             {
-                var dlg = new OpenFileDialog { Title = "Load a heft setup", Filter = "heft setup|*.heftpack;*.json" };
+                var dlg = new OpenFileDialog { Title = "Load an elysium setup", Filter = "elysium setup|*.elysiumpack;*.heftpack;*.json" };
                 if (dlg.ShowDialog() != true) return;
                 try
                 {
@@ -642,7 +642,7 @@ namespace Heft.Ui
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "heft");
+                    MessageBox.Show(ex.Message, "elysium");
                 }
             }));
             imp.Margin = new Thickness(8, 0, 0, 0);

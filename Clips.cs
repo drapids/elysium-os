@@ -7,7 +7,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 
-namespace Heft
+namespace Elysium
 {
     internal sealed class Clip
     {
@@ -43,7 +43,7 @@ namespace Heft
         public Clips(Settings settings)
         {
             _s = settings;
-            var p = new HwndSourceParameters("heft-clip") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
+            var p = new HwndSourceParameters("elysium-clip") { Width = 0, Height = 0, WindowStyle = 0, ParentWindow = new IntPtr(-3) };
             _source = new HwndSource(p);
             _source.AddHook(Hook);
             Native.AddClipboardFormatListener(_source.Handle);

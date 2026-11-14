@@ -5,17 +5,17 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows.Threading;
 
-namespace Heft
+namespace Elysium
 {
     public sealed class Note
     {
         public long Id { get; set; }
-        public string App { get; set; } = "heft";
+        public string App { get; set; } = "elysium";
         public string AppId { get; set; } = "";
         public string Title { get; set; } = "";
         public string Body { get; set; } = "";
         public DateTime Time { get; set; } = DateTime.Now;
-        public string Source { get; set; } = "heft";
+        public string Source { get; set; } = "elysium";
         public string? Open { get; set; }
         public string Glyph { get; set; } = "\uE7E7";
         public bool Seen { get; set; }
@@ -30,7 +30,7 @@ namespace Heft
 
     internal sealed class Notifier
     {
-        static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "heft", "notes.json");
+        static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "elysium", "notes.json");
 
         readonly Settings _s;
         readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -88,7 +88,7 @@ namespace Heft
 
         bool Allowed(string app)
         {
-            if (app == "heft") return true;
+            if (app == "elysium") return true;
             foreach (var a in _s.FocusAllow.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                 if (app.Contains(a, StringComparison.OrdinalIgnoreCase)) return true;
             return false;

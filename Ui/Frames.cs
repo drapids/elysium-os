@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace Heft.Ui
+namespace Elysium.Ui
 {
     internal static class Frames
     {

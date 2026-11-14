@@ -5,9 +5,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
-using Heft.Ui;
+using Elysium.Ui;
 
-namespace Heft
+namespace Elysium
 {
     public partial class App
     {
@@ -131,21 +131,21 @@ namespace Heft
 
         void FeatureCommands(Commands c)
         {
-            c.Add("heft", "rescue", "Rescue a stuck window", "\uE7BA", () => WinOps.Rescue(Flash), "fullscreen game stuck other monitor move unfullscreen borderless");
-            c.Add("heft", "bring-back", "Bring back off-screen windows", "\uE7F4", () =>
+            c.Add("elysium", "rescue", "Rescue a stuck window", "\uE7BA", () => WinOps.Rescue(Flash), "fullscreen game stuck other monitor move unfullscreen borderless");
+            c.Add("elysium", "bring-back", "Bring back off-screen windows", "\uE7F4", () =>
             {
                 int n = WinOps.BringBack();
                 Flash(n == 0 ? "everything's on screen" : $"brought back {n} window{(n == 1 ? "" : "s")}");
             }, "offscreen lost window monitor unplugged");
-            c.Add("heft", "unstick", "Free the mouse", "\uE7C9", Unstick, "cursor stuck locked clip mouse trapped");
-            c.Add("heft", "mic", "Mute / unmute your mic", "\uE720", () => SetMic(!_audio.MicMuted(), true), "microphone mute unmute talk", false, () => _audio.MicMuted() ? "on" : "off");
-            c.Add("heft", "spotlight", "Spotlight", "\uE7B3", () =>
+            c.Add("elysium", "unstick", "Free the mouse", "\uE7C9", Unstick, "cursor stuck locked clip mouse trapped");
+            c.Add("elysium", "mic", "Mute / unmute your mic", "\uE720", () => SetMic(!_audio.MicMuted(), true), "microphone mute unmute talk", false, () => _audio.MicMuted() ? "on" : "off");
+            c.Add("elysium", "spotlight", "Spotlight", "\uE7B3", () =>
             {
                 _spot.Toggle(_s.SpotlightDim);
                 Flash(_spot.On ? "spotlight on" : "spotlight off");
             }, "focus dim everything else reading", false, () => _spot.On ? "on" : "off");
-            c.Add("heft", "app-note", "Note on this app", "\uE70B", () => EditNote(_rules?.LastHwnd ?? Native.GetForegroundWindow()), "sticky note remember app reminder");
-            c.Add("heft", "borderless", "Make this window borderless fullscreen", "\uE740", () =>
+            c.Add("elysium", "app-note", "Note on this app", "\uE70B", () => EditNote(_rules?.LastHwnd ?? Native.GetForegroundWindow()), "sticky note remember app reminder");
+            c.Add("elysium", "borderless", "Make this window borderless fullscreen", "\uE740", () =>
             {
                 var h = _rules?.LastHwnd ?? IntPtr.Zero;
                 if (h == IntPtr.Zero || !Native.IsWindow(h))
@@ -346,7 +346,7 @@ namespace Heft
             var path = Native.ProcessPath(fg);
             if (string.IsNullOrEmpty(path)) return;
             string exe = Path.GetFileNameWithoutExtension(path);
-            if (exe.Equals("explorer", StringComparison.OrdinalIgnoreCase) || exe.Equals("heft", StringComparison.OrdinalIgnoreCase) || exe.Equals("LockApp", StringComparison.OrdinalIgnoreCase)) return;
+            if (exe.Equals("explorer", StringComparison.OrdinalIgnoreCase) || exe.Equals("elysium", StringComparison.OrdinalIgnoreCase) || exe.Equals("LockApp", StringComparison.OrdinalIgnoreCase)) return;
             RollDay();
             if (!_exeNames.ContainsKey(exe)) _exeNames[exe] = _catalog.DisplayName(path);
             _s.ScreenTimeToday[exe] = _s.ScreenTimeToday.TryGetValue(exe, out var t) ? t + seconds : seconds;
@@ -388,7 +388,7 @@ namespace Heft
                 return;
             }
             string exe = Path.GetFileNameWithoutExtension(path);
-            if (exe.Equals("heft", StringComparison.OrdinalIgnoreCase))
+            if (exe.Equals("elysium", StringComparison.OrdinalIgnoreCase))
             {
                 Flash("click on an app first");
                 return;
