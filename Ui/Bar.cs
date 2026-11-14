@@ -15,6 +15,7 @@ namespace Heft.Ui
 {
     internal sealed class BarState
     {
+        public bool MicMuted;
         public string App = "";
         public string MediaTitle = "";
         public string MediaArtist = "";
@@ -46,6 +47,7 @@ namespace Heft.Ui
         readonly Settings _s;
         readonly Grid _root = new() { Background = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)) };
         readonly Border _tint = new();
+        readonly Border _gloss = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
         readonly TextBlock _app;
         readonly Border _pill;
         readonly Grid _pillContent = new();
@@ -117,8 +119,9 @@ namespace Heft.Ui
             SetResourceReference(FontFamilyProperty, "UiFont");
 
             _root.Children.Add(_tint);
+            _root.Children.Add(_gloss);
             var line = new Border { Height = 1, VerticalAlignment = VerticalAlignment.Bottom };
-            line.SetResourceReference(Border.BackgroundProperty, "GroupStroke");
+            line.SetResourceReference(Border.BackgroundProperty, "BarLine");
             _root.Children.Add(line);
 
             var grid = new Grid { Margin = new Thickness(14, 0, 8, 0) };
@@ -628,9 +631,42 @@ namespace Heft.Ui
                 {
                 }
             }
-            var brush = new SolidColorBrush(color);
+            Brush brush = new SolidColorBrush(color);
             brush.Freeze();
+            var look = Themes.Active?.Bar;
+            bool custom = _s.MonitorTints.TryGetValue(Display.Key, out var tintHex) && tintHex.Length > 0;
+            if (!custom && Theme.Paint(look?.Fill) is Brush fill)
+            {
+                brush = fill.Clone();
+                brush.Opacity = Math.Clamp(0.35 + _s.BarTint * 0.65, 0.35, 1);
+                brush.Freeze();
+            }
             _tint.Background = brush;
+            if (look != null && look.Gloss)
+            {
+                var g = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+                g.GradientStops.Add(new GradientStop(Color.FromArgb(0xB0, 255, 255, 255), 0));
+                g.GradientStops.Add(new GradientStop(Color.FromArgb(0x40, 255, 255, 255), 0.48));
+                g.GradientStops.Add(new GradientStop(Color.FromArgb(0x00, 255, 255, 255), 0.52));
+                g.GradientStops.Add(new GradientStop(Color.FromArgb(0x18, 255, 255, 255), 1));
+                g.Freeze();
+                _gloss.Background = g;
+                _gloss.Visibility = Visibility.Visible;
+            }
+            else _gloss.Visibility = Visibility.Collapsed;
+            if (Theme.Paint(look?.Text) is Brush ink)
+            {
+                _root.Resources["Text"] = ink;
+                var sub = ink.Clone();
+                sub.Opacity = 0.7;
+                sub.Freeze();
+                _root.Resources["SubText"] = sub;
+            }
+            else
+            {
+                _root.Resources.Remove("Text");
+                _root.Resources.Remove("SubText");
+            }
             if (_hwnd != IntPtr.Zero) Native.SetAccent(_hwnd, _s.BarBlur ? 3 : 0, 0);
         }
 
@@ -653,6 +689,7 @@ namespace Heft.Ui
         public void Refresh(BarState st)
         {
             if (!IsVisible) return;
+            SetMic(st.MicMuted);
             _app.Visibility = _s.BarApp ? Visibility.Visible : Visibility.Collapsed;
             if (_app.Text != st.App) _app.Text = st.App;
 
@@ -931,17 +968,17 @@ namespace Heft.Ui
             int px = (int)Math.Round(Height * d.Scale);
             int from = show ? d.Bounds.Top - px + 2 : d.Bounds.Top;
             int to = show ? d.Bounds.Top : d.Bounds.Top - px + 2;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            var anim = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(8) };
-            anim.Tick += (_, _) =>
+            Native.GetWindowRect(_hwnd, out var now);
+            if (now.Top != from && now.Top >= Math.Min(from, to) && now.Top <= Math.Max(from, to)) from = now.Top;
+            int lastY = int.MinValue;
+            Frames.Run(Math.Max(60, (show ? 220 : 180) * Theme.Speed), t =>
             {
-                double t = Math.Min(1, sw.Elapsed.TotalMilliseconds / 170);
-                double e = 1 - Math.Pow(1 - t, 3);
+                double e = show ? Frames.Quint(t) : Frames.Out(t);
                 int y = (int)Math.Round(from + (to - from) * e);
-                Native.SetWindowPos(_hwnd, IntPtr.Zero, d.Bounds.Left, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
-                if (t >= 1) anim.Stop();
-            };
-            anim.Start();
+                if (y == lastY) return;
+                lastY = y;
+                Native.SetWindowPos(_hwnd, IntPtr.Zero, d.Bounds.Left, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_ASYNCWINDOWPOS);
+            }, null, this);
         }
     }
 }

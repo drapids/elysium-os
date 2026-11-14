@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -211,7 +212,58 @@ namespace Heft.Ui
             sheen.Freeze();
             res["Sheen"] = sheen;
 
+            foreach (var n in new[] { 6, 7, 8, 9, 10, 12 }) res["R" + n] = new CornerRadius(n * Corner);
+            res["R2"] = new CornerRadius(2);
+            res["R11"] = new CornerRadius(11);
+            Set(res, "Danger", "#FFFF6B5E");
+            res["DockTile"] = res["PillBg"];
+            res["DockStroke"] = res["PillStroke"];
+            res["BarLine"] = res["GroupStroke"];
+
+            var pack = Themes.Active;
+            if (pack != null)
+            {
+                foreach (var kv in pack.Colors)
+                {
+                    var b = Paint(new[] { kv.Value });
+                    if (b != null) res[kv.Key] = b;
+                }
+                foreach (var kv in pack.Gradients)
+                {
+                    var b = Paint(kv.Value);
+                    if (b != null) res[kv.Key] = b;
+                }
+                if (Paint(pack.Dock?.Tile) is Brush tile) res["DockTile"] = tile;
+                if (Paint(pack.Dock?.Stroke) is Brush stroke) res["DockStroke"] = stroke;
+                if (Paint(pack.Bar?.Line) is Brush line) res["BarLine"] = line;
+            }
+
             Applied?.Invoke();
+        }
+
+        public static Brush? Paint(string? hex) => hex == null ? null : Paint(new[] { hex });
+
+        public static Brush? Paint(string[]? stops)
+        {
+            if (stops == null || stops.Length == 0) return null;
+            try
+            {
+                var colors = stops.Select(x => (Color)ColorConverter.ConvertFromString(x.Trim())).ToList();
+                if (colors.Count == 1)
+                {
+                    var solid = new SolidColorBrush(colors[0]);
+                    solid.Freeze();
+                    return solid;
+                }
+                var g = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+                for (int i = 0; i < colors.Count; i++) g.GradientStops.Add(new GradientStop(colors[i], i / (double)(colors.Count - 1)));
+                g.Freeze();
+                return g;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public static void Glass(Window w)

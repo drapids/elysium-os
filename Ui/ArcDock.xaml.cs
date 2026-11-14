@@ -299,6 +299,24 @@ namespace Heft.Ui
                 tile.Child = new TextBlock { Text = "\uE713", FontSize = _size * 0.4, Style = (Style)FindResource("Icon") };
                 rootGrid.Children.Add(tile);
             }
+            else if (Themes.Active?.Dock is { Tile: not null } look)
+            {
+                double inset = _size * 0.04;
+                var plate = new Border { CornerRadius = new CornerRadius(_size * Math.Clamp(look.Round, 0, 0.5)), BorderThickness = new Thickness(1), Margin = new Thickness(inset), ClipToBounds = true };
+                plate.SetResourceReference(Border.BackgroundProperty, "DockTile");
+                plate.SetResourceReference(Border.BorderBrushProperty, "DockStroke");
+                if (look.Gloss)
+                    plate.Child = new Border
+                    {
+                        Height = _size * 0.42,
+                        VerticalAlignment = VerticalAlignment.Top,
+                        CornerRadius = new CornerRadius(_size * Math.Clamp(look.Round, 0, 0.5), _size * Math.Clamp(look.Round, 0, 0.5), _size * 0.2, _size * 0.2),
+                        Background = new LinearGradientBrush(Color.FromArgb(0x8C, 255, 255, 255), Color.FromArgb(0x10, 255, 255, 255), 90),
+                        IsHitTestVisible = false
+                    };
+                rootGrid.Children.Add(plate);
+                img.Margin = new Thickness(_size * 0.17);
+            }
             rootGrid.Children.Add(img);
             int badge = item.Kind == "settings" ? 0 : Badge?.Invoke(item) ?? 0;
             if (badge > 0)
