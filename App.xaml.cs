@@ -87,6 +87,7 @@ namespace Heft
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            Frames.Boost();
 
             _single = new Mutex(true, "heft.single.instance", out bool fresh);
             if (!fresh)
@@ -105,7 +106,10 @@ namespace Heft
             Sfx.Init(_s, () => _np != null && _np.Playing);
             Theme.Configure(_s);
             IconCache.Pack = _s.IconPack;
+            Themes.Seed(_s);
+            Themes.Use(_s);
             Theme.Apply(_s.Theme);
+            _lookSig = LookSig();
             Task.Run(IconCache.TrimDisk);
             HealStartup();
             SystemEvents.UserPreferenceChanged += (_, _) => Dispatcher.BeginInvoke(new Action(() => Theme.Apply(_s.Theme)));
@@ -114,7 +118,7 @@ namespace Heft
             _toasts = new Toasts(_s, d => BarBottom(d));
             _notes.Toast += n =>
             {
-                if (HoldToast()) return;
+                if (HoldToast(n)) return;
                 _toasts.Show(n);
                 Sfx.Play(n.App == "heft" && (n.Title == "Reminder" || n.Title == "Timer done") ? "chime" : "notify");
             };
@@ -179,7 +183,7 @@ namespace Heft
             _panel = new SidePanel(_s, _catalog);
             _startData = new StartData(_apps);
             _start = new StartScreen(_s, _catalog, _apps, _startData, _cmds, _notes, _np, _activity, _lib);
-            _overview = new Overview(_catalog);
+            _overview = new Overview(_catalog, _s);
             var warm = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
             warm.Tick += (_, _) =>
             {
@@ -326,6 +330,7 @@ namespace Heft
 
             SetupTray();
             Layout(true);
+            InitFeatures();
             Sync();
 
             _state.Tick += (_, _) => Tick();
@@ -513,7 +518,9 @@ namespace Heft
         {
             _tick++;
             CheckGame();
+            TrackTime();
             if (_game) return;
+            FeatureTick();
             if (_tick % 2 == 0) DeskTick();
             if (_tick % 20 == 0) ModeTick();
             if (_tick % 2 == 0 && (_s.BarMedia || _drop.Shown || (_ext != null && _ext.WantsMedia))) _ = _np.Refresh();
@@ -581,7 +588,8 @@ namespace Heft
                 Focus = _s.FocusActive,
                 Locked = _lock.Locked,
                 Stack = _clips.Stacking ? _clips.Stack.Count : -1,
-                Profile = _s.ActiveProfile
+                Profile = _s.ActiveProfile,
+                MicMuted = MicState()
             };
             foreach (var b in _bars) b.Refresh(st);
 
@@ -599,6 +607,8 @@ namespace Heft
         {
             Layout(false);
             SyncBarLayout();
+            SyncLook();
+            SyncFeatures();
             RegisterModes();
             SyncSnippets();
             if (!_s.Enabled) _physics.StopAll();
@@ -623,7 +633,8 @@ namespace Heft
             string sig = string.Join("|", Hotkeys.Defaults.Select(d => Hotkeys.Spec(_s, d.id))) + "|" + string.Join("|", _s.AudioProfiles.Select(p => p.Name + "=" + p.Hotkey))
                          + "|" + string.Join("|", _s.CustomKeys.Select(k => k.Keys + "=" + k.Kind + ":" + k.Target))
                          + "|" + string.Join("|", _s.Remaps.Select(kv => kv.Key + ">" + kv.Value))
-                         + "|" + string.Join("|", _s.Modes.Select(m => m.Id + "=" + m.Hotkey));
+                         + "|" + string.Join("|", _s.Modes.Select(m => m.Id + "=" + m.Hotkey))
+                         + "|" + _s.PastePlain + "|" + _s.PttKey + "|" + _s.PttMode;
             if (sig != _keySig)
             {
                 _keySig = sig;
@@ -678,6 +689,7 @@ namespace Heft
                 ["phonedrop"] = () => _phoneDrop.Toggle(),
                 ["remember"] = RememberWindow
             };
+            ExtraKeys(map);
             _keyActions.Clear();
             foreach (var kv in map) _keyActions[kv.Key] = kv.Value;
             foreach (var d in Hotkeys.Defaults)
@@ -704,6 +716,7 @@ namespace Heft
                 if (k.Keys.Length > 0) _keys.Add(k.Keys, () => RunCustom(k), k.Label.Length > 0 ? k.Label : k.Target);
             }
             _keyHook.SetRemaps(_s.Remaps);
+            SetupHold();
             if (_keys.Failed.Count > 0) PhysicsEngine.Log("hotkeys: " + string.Join("; ", _keys.Failed));
         }
 
@@ -1022,6 +1035,7 @@ namespace Heft
             c.Add("heft", "notes", "Notifications", "\uEA8F", () => OpenDrop("notes"), "notification center history");
             c.Add("heft", "center", "Control center", "\uE9E9", () => OpenDrop("center"), "system monitor cpu gpu ram toggles");
             c.Add("heft", "settings", "heft settings", "\uE713", () => _panel.Open(), "preferences options");
+            FeatureCommands(c);
             c.Add("heft", "phone-drop", "Send files from your phone", "\uE8EA", () => _phoneDrop.Toggle(), "phone upload receive airdrop transfer qr");
             c.Add("heft", "scratch", "Scratchpad", "\uE70B", () => OpenDrop("scratch"), "notes scratch jot pad text");
             c.Add("heft", "last-download", "Grab your last download", "\uE896", () => GrabDownload(), "download recent file drag");
@@ -1197,6 +1211,7 @@ namespace Heft
             Try(() => _stacks?.ReleaseAll());
             Try(() => _snap?.Dispose());
             Try(() => _watch?.Dispose());
+            Try(DisposeFeatures);
             Try(() => _grab?.Close());
             Try(() => _pip?.ReleaseAll());
             Try(() => _share?.Dispose());

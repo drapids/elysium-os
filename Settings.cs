@@ -172,6 +172,26 @@ namespace Heft
         public string Scratch { get; set; } = "";
         public bool SpacePerDesktop { get; set; } = true;
         public bool SpaceGrid { get; set; } = false;
+        public string ThemePack { get; set; } = "";
+        public bool ThemesSeeded { get; set; } = false;
+        public List<StartPin> StartPins { get; set; } = new();
+        public bool StartPinsSeeded { get; set; } = false;
+        public bool OverviewGroup { get; set; } = false;
+        public Dictionary<string, int> StackPairs { get; set; } = new();
+        public bool MonitorMemory { get; set; } = false;
+        public bool FocusBorder { get; set; } = false;
+        public double SpotlightDim { get; set; } = 0.6;
+        public bool MediaHandoff { get; set; } = false;
+        public bool HeadphonePause { get; set; } = false;
+        public bool MicSounds { get; set; } = true;
+        public string PttKey { get; set; } = "";
+        public string PttMode { get; set; } = "off";
+        public bool PttSwallow { get; set; } = true;
+        public bool PastePlain { get; set; } = false;
+        public bool ScreenTimeCard { get; set; } = false;
+        public string ScreenTimeDay { get; set; } = "";
+        public Dictionary<string, double> ScreenTimeToday { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, string> AppNotes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public bool SnippetsOn { get; set; } = true;
         public List<Snippet> Snippets { get; set; } = new()
         {
@@ -268,6 +288,11 @@ namespace Heft
                         s.Palette ??= new List<string>();
                         s.MonitorTints = new Dictionary<string, string>(s.MonitorTints ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         s.SnapLayouts = new Dictionary<string, string>(s.SnapLayouts ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+                        s.AppNotes = new Dictionary<string, string>(s.AppNotes ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+                        s.ScreenTimeToday = new Dictionary<string, double>(s.ScreenTimeToday ?? new Dictionary<string, double>(), StringComparer.OrdinalIgnoreCase);
+                        s.StackPairs ??= new Dictionary<string, int>();
+                        s.StartPins ??= new List<StartPin>();
+                        foreach (var pinned in s.StartPins) pinned.Kids ??= new List<StartPin>();
                         s.ExtEnabled = new Dictionary<string, bool>(s.ExtEnabled ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         return s;

@@ -134,7 +134,7 @@ namespace Heft
             nameof(Settings.Collections), nameof(Settings.Bookmarks), nameof(Settings.DevicePriority), nameof(Settings.AppRoutes),
             nameof(Settings.HangarPinned), nameof(Settings.StartWithWindows), nameof(Settings.ActiveProfile), nameof(Settings.FocusActive),
             nameof(Settings.PinnedCommands), nameof(Settings.StartupPath), nameof(Settings.StackedAway), nameof(Settings.VersionFolders),
-            nameof(Settings.StartEarly), nameof(Settings.ShelfPinned), nameof(Settings.CustomKeys), nameof(Settings.CaptureFolder), nameof(Settings.ExtSeeded), nameof(Settings.RecentlyClosed), nameof(Settings.ActiveMode)
+            nameof(Settings.StartEarly), nameof(Settings.ShelfPinned), nameof(Settings.CustomKeys), nameof(Settings.CaptureFolder), nameof(Settings.ExtSeeded), nameof(Settings.RecentlyClosed), nameof(Settings.ActiveMode), nameof(Settings.ScreenTimeDay), nameof(Settings.ScreenTimeToday), nameof(Settings.ThemesSeeded), nameof(Settings.StackPairs)
         };
 
         static IEnumerable<PropertyInfo> Shared() => typeof(Settings).GetProperties(BindingFlags.Public | BindingFlags.Instance)
