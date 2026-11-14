@@ -15,14 +15,11 @@ namespace Heft.Ui
 
         static readonly string[] AccentPresets = { "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF375F", "#FF9F0A", "#FFD60A", "#30D158", "#64D2FF", "#AC8E68", "#8E8E93" };
 
-        void ReTheme()
-        {
-            Touch();
-            Theme.Apply(_s.Theme);
-        }
+        void ReTheme() => Touch();
 
         void LookPage(Panel h)
         {
+            ThemeGallery(h);
             h.Children.Add(Kit.Header("Look"));
             h.Children.Add(Kit.Group(
                 Kit.Block("Light or dark", null, Kit.Segments(new[] { "Auto", "Dark", "Light" }, new[] { "system", "dark", "light" }, _s.Theme is "dark" or "light" ? _s.Theme : "system", v =>
@@ -105,9 +102,6 @@ namespace Heft.Ui
                     ReTheme();
                 }),
                 Kit.Row("Font", "any font you have installed. empty uses the default", font)));
-            var note = Kit.Caption("corner changes show up as panels reopen");
-            note.Margin = new Thickness(14, 6, 14, 0);
-            h.Children.Add(note);
 
             h.Children.Add(Kit.Header("Top bar color per monitor"));
             var tints = new List<UIElement>();

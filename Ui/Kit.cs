@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -36,6 +37,8 @@ namespace Heft.Ui
     {
         sealed class State
         {
+            public double Base;
+            public Native.RECT? Want;
             public double Radius;
             public bool Blur;
             public bool NoBlur;
@@ -56,7 +59,14 @@ namespace Heft.Ui
             w.ResizeMode = ResizeMode.NoResize;
             w.UseLayoutRounding = true;
             w.SetResourceReference(Control.FontFamilyProperty, "UiFont");
+            Of(w).Base = radius;
             Of(w).Radius = radius * Theme.Corner;
+            w.DpiChanged += (_, _) =>
+            {
+                if (Of(w).Want is not Native.RECT) return;
+                w.Dispatcher.BeginInvoke(new Action(() => Refit(w)), System.Windows.Threading.DispatcherPriority.Background);
+                w.Dispatcher.BeginInvoke(new Action(() => Refit(w)), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            };
 
             w.SourceInitialized += (_, _) =>
             {
@@ -71,8 +81,31 @@ namespace Heft.Ui
             };
             Theme.Applied += () =>
             {
-                if (Of(w).Blur) SetBlur(w, true);
+                var st = Of(w);
+                st.Radius = st.Base * Theme.Corner;
+                if (w.IsVisible) Region(w, st.Radius);
+                if (st.Blur) SetBlur(w, true);
             };
+        }
+
+        public static void Fill(Window w, Native.RECT r, bool topmost = true)
+        {
+            var st = Of(w);
+            st.Want = r;
+            var h = new WindowInteropHelper(w).EnsureHandle();
+            w.Width = double.NaN;
+            w.Height = double.NaN;
+            Native.SetWindowPos(h, topmost ? Native.HWND_TOPMOST : IntPtr.Zero, r.Left, r.Top, r.Width, r.Height, Native.SWP_NOACTIVATE | (topmost ? 0 : Native.SWP_NOZORDER));
+        }
+
+        static void Refit(Window w)
+        {
+            if (Of(w).Want is not Native.RECT r) return;
+            var h = new WindowInteropHelper(w).Handle;
+            if (h == IntPtr.Zero) return;
+            Native.GetWindowRect(h, out var now);
+            if (now.Left == r.Left && now.Top == r.Top && now.Width == r.Width && now.Height == r.Height) return;
+            Native.SetWindowPos(h, IntPtr.Zero, r.Left, r.Top, r.Width, r.Height, Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
         }
 
         public static void NoBlur(Window w) => Of(w).NoBlur = true;
@@ -186,12 +219,26 @@ namespace Heft.Ui
             Native.SetWindowRgn(h, rgn, true);
         }
 
+        static readonly List<(WeakReference<Border> b, double r)> Surfaces = new();
+        static bool _surfaceHook;
+
         public static Border Surface(double radius)
         {
-            radius *= Theme.Corner;
-            var b = new Border { CornerRadius = new CornerRadius(radius), BorderThickness = new Thickness(1), ClipToBounds = true };
+            var b = new Border { CornerRadius = new CornerRadius(radius * Theme.Corner), BorderThickness = new Thickness(1), ClipToBounds = true };
             b.SetResourceReference(Border.BackgroundProperty, "GlassTint");
             b.SetResourceReference(Border.BorderBrushProperty, "PillStroke");
+            if (Surfaces.Count > 400) Surfaces.RemoveAll(x => !x.b.TryGetTarget(out _));
+            Surfaces.Add((new WeakReference<Border>(b), radius));
+            if (!_surfaceHook)
+            {
+                _surfaceHook = true;
+                Theme.Applied += () =>
+                {
+                    Surfaces.RemoveAll(x => !x.b.TryGetTarget(out _));
+                    foreach (var (wr, r) in Surfaces)
+                        if (wr.TryGetTarget(out var sb)) sb.CornerRadius = new CornerRadius(r * Theme.Corner);
+                };
+            }
             return b;
         }
 
@@ -216,6 +263,10 @@ namespace Heft.Ui
     internal static class Kit
     {
         static Style S(string key) => (Style)Application.Current.FindResource(key);
+
+        public static CornerRadius Round(double r) => new(r * Theme.Corner);
+
+        public static CornerRadius Round(double tl, double tr, double br, double bl) => new(tl * Theme.Corner, tr * Theme.Corner, br * Theme.Corner, bl * Theme.Corner);
 
         public static TextBlock Text(string text, double size = 13, bool bold = false, string brush = "Text")
         {
