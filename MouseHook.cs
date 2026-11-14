@@ -41,6 +41,10 @@ namespace Elysium
         bool _xHeld;
         public event Action<string, Native.POINT>? Gesture;
         public event Action? ReplayRight;
+        public event Action<Native.POINT>? LeftDown;
+        public event Action<Native.POINT>? DesktopRight;
+        public volatile bool DesktopMenu;
+        bool _deskRight;
         bool _gesturing;
         Native.POINT _gStart;
         readonly List<Native.POINT> _gPath = new();
@@ -154,6 +158,11 @@ namespace Elysium
                     }
 
                 case 0x0204:
+                    if (DesktopMenu && OnDesktop(m.pt))
+                    {
+                        _deskRight = true;
+                        return true;
+                    }
                     if (!GestureAllowed(m.pt)) return false;
                     _gesturing = true;
                     _gStart = m.pt;
@@ -163,6 +172,13 @@ namespace Elysium
 
                 case 0x0205:
                     {
+                        if (_deskRight)
+                        {
+                            _deskRight = false;
+                            var at = m.pt;
+                            Post(() => DesktopRight?.Invoke(at));
+                            return true;
+                        }
                         if (!_gesturing) return false;
                         _gesturing = false;
                         string dirs = Recognize(_gPath);
@@ -226,6 +242,11 @@ namespace Elysium
                                && Math.Abs(m.pt.X - _lastDown.X) < 5 && Math.Abs(m.pt.Y - _lastDown.Y) < 5;
                     _lastDownTime = dbl ? 0 : m.time;
                     _lastDown = m.pt;
+                    if (LeftDown != null)
+                    {
+                        var at = m.pt;
+                        Post(() => LeftDown?.Invoke(at));
+                    }
                     if (dbl && _s.HideDesktop && OnDesktop(m.pt)) Post(() => DesktopDoubleClick?.Invoke());
                     return false;
             }
