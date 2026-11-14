@@ -234,9 +234,36 @@ namespace Elysium.Ui
             Tick(null, EventArgs.Empty);
         }
 
+        Tile? _lastHover;
+
+        public event Action<string?, Rect, string>? HoverTile;
+
+        void RaiseHover()
+        {
+            var t = _lastHover;
+            if (HoverTile == null) return;
+            if (t == null || t.Root == null || !t.Root.IsVisible || string.IsNullOrEmpty(t.Item.Path) || IsContainer(t.Item))
+            {
+                HoverTile(null, Rect.Empty, _side);
+                return;
+            }
+            try
+            {
+                var tl = t.Root.PointToScreen(new Point(0, 0));
+                var br = t.Root.PointToScreen(new Point(t.Root.ActualWidth, t.Root.ActualHeight));
+                HoverTile(t.Item.Path, new Rect(tl, br), _side);
+            }
+            catch
+            {
+                HoverTile(null, Rect.Empty, _side);
+            }
+        }
+
         public void HideDock()
         {
             if (!IsVisible || _closing) return;
+            _lastHover = null;
+            HoverTile?.Invoke(null, Rect.Empty, _side);
             _closing = true;
             _revealTarget = 0;
             _dragging = false;
@@ -614,9 +641,23 @@ namespace Elysium.Ui
                 Enter(item.Path);
                 return;
             }
+            try
+            {
+                if (t.Root != null && t.Root.IsVisible && item.Path.Length > 0)
+                {
+                    var tl = t.Root.PointToScreen(new Point(0, 0));
+                    var br = t.Root.PointToScreen(new Point(t.Root.ActualWidth, t.Root.ActualHeight));
+                    Launching?.Invoke(item.Path, new Rect(tl, br));
+                }
+            }
+            catch
+            {
+            }
             HideDock();
             _cat.Launch(item);
         }
+
+        public event Action<string, Rect>? Launching;
 
         static void Reveal(string path, bool select)
         {
@@ -827,6 +868,11 @@ namespace Elysium.Ui
 
             if (mouse != null || _hover == null || Now - _keyAt > 1.5) _hover = hover;
             if (_hover != null) _focus = _hover.Index;
+            if (!ReferenceEquals(_hover, _lastHover))
+            {
+                _lastHover = _hover;
+                RaiseHover();
+            }
         }
 
         void Chrome()
