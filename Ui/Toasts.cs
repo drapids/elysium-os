@@ -37,7 +37,9 @@ namespace Heft.Ui
         readonly Settings _s;
         readonly Func<Display, double> _top;
         readonly List<ToastWindow> _open = new();
-        readonly DispatcherTimer _move = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(8) };
+        readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
+        double _lastFrame;
+        bool _hooked;
         Display? _display;
 
         public event Action<Note>? Clicked;
@@ -46,7 +48,6 @@ namespace Heft.Ui
         {
             _s = settings;
             _top = topPx;
-            _move.Tick += (_, _) => Step();
         }
 
         public void Show(Note n)
@@ -124,7 +125,7 @@ namespace Heft.Ui
             w.UpdateLayout();
             _open.Add(w);
             Layout();
-            Step();
+            Step(1);
             w.Life.Start();
 
             var slide = new TranslateTransform(40, 0);
@@ -163,10 +164,23 @@ namespace Heft.Ui
                 }
                 y += height + 8 * d.Scale;
             }
-            _move.Start();
+            if (_hooked) return;
+            _hooked = true;
+            _lastFrame = _clock.Elapsed.TotalSeconds;
+            CompositionTarget.Rendering += OnFrame;
         }
 
-        void Step()
+        void OnFrame(object? sender, EventArgs e)
+        {
+            double now = _clock.Elapsed.TotalSeconds;
+            double dt = Math.Clamp(now - _lastFrame, 0, 0.05);
+            _lastFrame = now;
+            if (Step(1 - Math.Exp(-dt * 17))) return;
+            _hooked = false;
+            CompositionTarget.Rendering -= OnFrame;
+        }
+
+        bool Step(double k)
         {
             bool moving = false;
             foreach (var w in _open)
@@ -177,8 +191,8 @@ namespace Heft.Ui
                 double dx = w.TargetX - w.CurX, dy = w.TargetY - w.CurY;
                 if (Math.Abs(dx) > 0.5 || Math.Abs(dy) > 0.5)
                 {
-                    w.CurX += dx * 0.28;
-                    w.CurY += dy * 0.28;
+                    w.CurX += dx * k;
+                    w.CurY += dy * k;
                     moving = true;
                 }
                 else
@@ -192,7 +206,7 @@ namespace Heft.Ui
                 w.LastY = y;
                 Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
             }
-            if (!moving) _move.Stop();
+            return moving;
         }
 
         void Close(ToastWindow w)
