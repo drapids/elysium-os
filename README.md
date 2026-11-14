@@ -24,7 +24,7 @@ a whole new layer on top of windows. glass top bar, an arc dock on the screen ed
 - drag something onto the bar and you get drop actions: shelf, zip, to png, to jpg, copy path, collection, inspect
 - once it gets busy the same kind of stuff stacks into piles. click a pile to spread it out, drag it to take the whole thing
 
-**inspect anything.** space or right-click on anything in the dock, shelf or launcher and it zooms into a card with a preview, info, related files and what you can do with it. in File Explorer just select a file and hit space. project folders show their readme and latest commits, and there's open in vs code. if version shelf is on, older versions of the file show up there too.
+**quick look.** select a file in File Explorer and hit space (or space on anything in the dock, shelf or launcher). it opens right away with a big preview and a toolbar: open, show in folder, copy, rename, send to phone, delete, and ⋯ for everything else. arrows flip through the rest of the folder, delete sends it to the recycle bin, f2 renames, i shows the info panel (size, dates, related files, project commits, older versions). right-click anything on the shelf for open / quick look / copy / rename / delete, or just hit delete.
 
 **spaces** (ctrl + alt + g) is a zoomable desktop. drag files in, double-click for a note, right-click for widgets (clock, now playing, weather, smart folders, a live portal to any window), make groups and drag them around with everything inside. scroll to zoom, drag empty space to pan, t tidies up, f fits everything, g snaps to the grid (hold alt to place freely). pictures show up as actual previews, right-click something to draw an arrow to something else, and the minimap in the corner gets you around big spaces. you can have a bunch of spaces and each one can remember which windows were open and where. with more than one virtual desktop, each desktop gets its own space.
 
@@ -126,7 +126,9 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 
 **workspaces.** drag a window onto another one's title bar and they become tabs. the tabs sit right above the window so they never cover anything. + adds a tab (stuff you have open, apps you usually pair with this one, or your favorites), double-click the name to rename it, and the ⋯ menu can minimize the whole thing into a floating pill you can drag around, keep it on top of everything or under everything, ungroup it or close every tab. scroll the tabs to flip through them.
 
-**themes.** settings > look has theme packs that restyle the bar, the dock, start, the glass, the accent and the corners all at once. it comes with frutiger aero, midnight, paper, y2k chrome, terminal and sunset. you can save your current look as a theme, share it as a `.elysiumtheme` file, and install other people's. a theme is just a folder with a `theme.json` in `%AppData%\elysium\themes`, so you can go wild with gradients in there.
+**themes.** settings > look has theme packs that restyle the bar, the dock, start, the glass, the accent and the corners all at once. it comes with frutiger aero, midnight, paper, y2k chrome, terminal and sunset. they can change your wallpaper and cursor too (turn that off right there, and picking the elysium look puts your old ones back). you can save your current look as a theme, share it as a `.elysiumtheme` file, install other people's, or grab them from the gallery. a theme is just a folder with a `theme.json` in `%AppData%\elysium\themes`, so you can go wild with gradients in there. drop a `cursors` folder with `arrow.cur`, `hand.cur` and so on in it and the theme uses those.
+
+**gallery.** settings > look and settings > extensions can browse themes and extensions from a github repo (`drapids/elysium-gallery` by default, `gallery/` in here has the format). free, no account.
 
 **stuck windows.** ctrl + alt + r rescues the window you're in: first press sends it to the other screen, second flips fullscreen, third forces it borderless. windows that end up off-screen come back on their own when a monitor goes away (or run "bring back off-screen windows"). ctrl + alt + shift + m frees the mouse if a game crashed and left it trapped.
 
@@ -150,6 +152,32 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 - the launcher finds your open windows too ("switch to ..."), shift + enter closes one
 - game mode still lets urgent stuff through, like defender finding something
 - animations run at your monitor's full refresh rate now, and look settings apply the second you change them
+
+**the island.** the pill in the bar morphs between whatever's going on: music, downloads, copies, timers, recording (click to stop), and quick pops for volume, brightness and caps lock if you pick "in the bar" for popups. or pick glass popups instead.
+
+**calendar.** click the clock (or the pill when nothing's playing) for a month view with your reminders, timers and calendars. add google, apple or outlook calendars in settings > calendar with their ical link. read-only, stays on your pc.
+
+**moments.** a boot screen when elysium starts (or only when the pc starts), a glass shutting down / restarting screen, a lock animation, the bar sliding back in when the pc wakes, and a "match the lock screen" button that puts a themed version of your wallpaper on windows' lock screen. (nothing can draw over the real lock screen, that part's windows.)
+
+**standby.** after a few minutes away the screen turns into a big clock with your music, weather, notifications and what's next on your calendar. pick the clock, background, dim, which screens, what shows. move the mouse and it's gone. it won't kick in over a fullscreen game or a video.
+
+**more optional stuff** (also off until you turn it on)
+- minimize into the dock: windows shrink into the dock edge and grow back out
+- open and close animations for every app, zooming out of the dock icon if you launched it there
+- themed window borders: the window you're in gets an accent border, title bars match light / dark
+- accent from the app you're in (settings > look > accent)
+- roll a window up into its title bar, a little tab hangs off it to drop it back down (give "roll a window up / down" a key)
+- auto-tiling: new windows get arranged, big one on the left, the rest stacked on the right
+- dock previews: hover an open app in the dock to see its windows
+- bounce when an app wants you: its icon pops out at the dock edge and the bar glows
+- background apps in the bar: the stuff in your tray in a menu (open it, quit it, end task). turn on the slot in the bar editor
+- glass desktop menu: right-click empty desktop for elysium's menu, icons still get windows' one
+- desktop piles: desktop files stacked by type on the right, click a pile to fan it out, drag stuff out of it
+- start greeting with your name and the weather, and live pins with unread counts and what spotify's playing
+- notifications can show on the mouse's screen, the main one, a specific one, or all of them
+- settings > about has your specs and the version, and what's new pops up after updates
+
+**coming from heft?** elysium moves your settings, themes and shelf over the first time it opens and closes the old heft if it's still running.
 
 **optional stuff** (all off until you turn it on)
 - focus border: a soft glow around the window you're typing in
@@ -193,6 +221,7 @@ your own commands can chain steps: `study = &focus ; spotify: ; wait 2 ; https:/
 | ctrl + alt + shift + s | spotlight |
 | ctrl + alt + shift + m | free the mouse |
 | ctrl + shift + v | paste plain (when it's on) |
+| (pick one) | roll a window up / down, standby, tile windows now |
 | shift while dragging a window | snap zones |
 | space (in File Explorer) | inspect |
 | windows key | start |
