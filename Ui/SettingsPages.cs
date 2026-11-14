@@ -224,6 +224,7 @@ namespace Heft.Ui
             }
             h.Children.Add(Kit.Group(snapRows.ToArray()));
             RulesSection(h);
+            WindowExtras(h);
 
             h.Children.Add(Kit.Header("Window lerp"));
             h.Children.Add(Kit.Group(
@@ -337,6 +338,7 @@ namespace Heft.Ui
                 Kit.Row("Battery", null, Sw(_s.BarBattery, v => _s.BarBattery = v))));
 
             BarEditor(h);
+            ShellExtras(h);
 
             h.Children.Add(Kit.Header("Taskbar"));
             h.Children.Add(Kit.Group(
@@ -418,6 +420,7 @@ namespace Heft.Ui
 
         void AudioPage(Panel h)
         {
+            AudioExtras(h);
             h.Children.Add(Kit.Header("Switching"));
             h.Children.Add(Kit.Group(
                 Kit.Row("Switch automatically", "when a device higher on your list plugs in, it takes over", Sw(_s.AudioAutoSwitch, v => _s.AudioAutoSwitch = v))));

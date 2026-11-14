@@ -37,6 +37,12 @@ namespace Heft
             ("scratch", "Scratchpad", "Ctrl+Alt+Q"),
             ("lastdl", "Grab your last download", "Ctrl+Alt+J"),
             ("phonedrop", "Send files from your phone", ""),
+            ("rescue", "Rescue a stuck window", "Ctrl+Alt+R"),
+            ("unstick", "Free the mouse", "Ctrl+Alt+Shift+M"),
+            ("micmute", "Mute / unmute your mic", "Ctrl+Alt+M"),
+            ("spotlight", "Spotlight", "Ctrl+Alt+Shift+S"),
+            ("pasteplain", "Paste as plain text", "Ctrl+Shift+V"),
+            ("appnote", "Note on this app", ""),
             ("start", "Start", "")
         };
 

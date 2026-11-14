@@ -18,7 +18,8 @@ namespace Heft.Ui
             h.Children.Add(Kit.Header("Text shortcuts"));
             var rows = new List<UIElement>
             {
-                Kit.Row("Expand as you type", "type a trigger anywhere and it turns into the full text. {date} {time} {day} {iso} {clipboard} fill themselves in", Sw(_s.SnippetsOn, v => _s.SnippetsOn = v))
+                Kit.Row("Expand as you type", "type a trigger anywhere and it turns into the full text. {date} {time} {day} {iso} {clipboard} fill themselves in", Sw(_s.SnippetsOn, v => _s.SnippetsOn = v)),
+                Kit.Row("Paste plain text", KeyHint("pasteplain") + " pastes without the fonts and colors, in any app", Sw(_s.PastePlain, v => _s.PastePlain = v))
             };
             foreach (var sn in _s.Snippets.ToList())
             {
