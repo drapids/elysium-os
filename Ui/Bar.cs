@@ -73,6 +73,8 @@ namespace Heft.Ui
         IntPtr _hwnd;
         uint _callback;
         bool _registered, _revealed = true, _pressed, _dragged, _busy, _fullscreen;
+        int _px = 32;
+        Native.RECT _want;
         Point _down;
         string _mode = "";
         double _outside;
@@ -250,6 +252,12 @@ namespace Heft.Ui
                 HwndSource.FromHwnd(_hwnd)?.AddHook(WndProc);
             };
             Theme.Applied += Paint;
+            DpiChanged += (_, _) =>
+            {
+                Dispatcher.BeginInvoke(new Action(Refit), DispatcherPriority.Background);
+                Dispatcher.BeginInvoke(new Action(Refit), DispatcherPriority.ContextIdle);
+            };
+            SizeChanged += (_, _) => FitPill();
 
             _flashTimer.Tick += (_, _) =>
             {
@@ -509,7 +517,7 @@ namespace Heft.Ui
             {
                 if (!IsVisible || _hwnd == IntPtr.Zero) return Display.Work.Top;
                 Native.GetWindowRect(_hwnd, out var r);
-                return Math.Max(r.Bottom, Display.Bounds.Top + (int)(Height * Display.Scale));
+                return Math.Max(r.Bottom, Display.Bounds.Top + _px);
             }
         }
 
@@ -527,23 +535,20 @@ namespace Heft.Ui
             try
             {
                 Display = d;
-                if (!IsVisible)
-                {
-                    Left = -20000;
-                    Show();
-                }
+                if (_hwnd == IntPtr.Zero) new WindowInteropHelper(this).EnsureHandle();
                 if (_hwnd == IntPtr.Zero) return;
 
                 double height = Math.Clamp(_s.BarHeight, 22, 48);
                 int px = (int)Math.Round(height * d.Scale);
-                Height = height;
-                Width = d.Bounds.Width / d.Scale;
+                _px = px;
+                Width = double.NaN;
+                Height = double.NaN;
 
                 if (_s.BarAutoHide)
                 {
                     Unregister();
                     int y = _revealed ? d.Bounds.Top : d.Bounds.Top - px + 2;
-                    Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, d.Bounds.Left, y, d.Bounds.Width, px, Native.SWP_NOACTIVATE);
+                    Place(d.Bounds.Left, y, d.Bounds.Width, px);
                     _edge.Start();
                 }
                 else
@@ -552,6 +557,12 @@ namespace Heft.Ui
                     _revealed = true;
                     Register(d, px);
                 }
+                if (!IsVisible)
+                {
+                    Show();
+                    Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, _want.Left, _want.Top, _want.Width, _want.Height, Native.SWP_NOACTIVATE);
+                }
+                FitPill();
                 _lastApply = Environment.TickCount64;
                 Paint();
             }
@@ -574,7 +585,30 @@ namespace Heft.Ui
             Native.SHAppBarMessage(Native.ABM_QUERYPOS, ref abd);
             abd.rc.Bottom = abd.rc.Top + px;
             Native.SHAppBarMessage(Native.ABM_SETPOS, ref abd);
-            Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, abd.rc.Left, abd.rc.Top, abd.rc.Right - abd.rc.Left, px, Native.SWP_NOACTIVATE);
+            Place(abd.rc.Left, abd.rc.Top, abd.rc.Right - abd.rc.Left, px);
+        }
+
+        void Place(int x, int y, int w, int h)
+        {
+            _want = new Native.RECT { Left = x, Top = y, Right = x + w, Bottom = y + h };
+            Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, x, y, w, h, Native.SWP_NOACTIVATE);
+        }
+
+        void Refit()
+        {
+            if (_hwnd == IntPtr.Zero || _want.Width <= 0) return;
+            Native.GetWindowRect(_hwnd, out var now);
+            int top = _s.BarAutoHide ? now.Top : _want.Top;
+            if (now.Left == _want.Left && now.Top == top && now.Width == _want.Width && now.Height == _want.Height) return;
+            Native.SetWindowPos(_hwnd, IntPtr.Zero, _want.Left, top, _want.Width, _want.Height, Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
+        }
+
+        void FitPill()
+        {
+            double h = Math.Max(14, (ActualHeight > 0 ? ActualHeight : Math.Clamp(_s.BarHeight, 22, 48)) - 8);
+            if (Math.Abs(_pill.Height - h) < 0.5) return;
+            _pill.Height = h;
+            _pill.CornerRadius = new CornerRadius(h / 2);
         }
 
         void Unregister()
@@ -760,7 +794,7 @@ namespace Heft.Ui
             _fillTarget = -2;
             var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             _pillContent.Children.Add(row);
-            double h = Math.Clamp(_s.BarHeight, 22, 48) - 8;
+            double h = Math.Max(14, (ActualHeight > 0 ? ActualHeight : Math.Clamp(_s.BarHeight, 22, 48)) - 8);
             _pill.Height = h;
             _pill.CornerRadius = new CornerRadius(h / 2);
 
@@ -947,7 +981,7 @@ namespace Heft.Ui
             Native.GetCursorPos(out var p);
             bool inX = p.X >= d.Bounds.Left && p.X < d.Bounds.Right;
             bool atTop = inX && p.Y <= d.Bounds.Top + 1 && p.Y >= d.Bounds.Top - 1;
-            bool inside = inX && p.Y >= d.Bounds.Top && p.Y <= d.Bounds.Top + Height * d.Scale + 6;
+            bool inside = inX && p.Y >= d.Bounds.Top && p.Y <= d.Bounds.Top + _px + 6;
             bool keep = inside || _pressed || (KeepOpen?.Invoke() ?? false);
 
             if (atTop && !_revealed) Reveal(true);
@@ -965,7 +999,7 @@ namespace Heft.Ui
             _revealed = show;
             _outside = 0;
             var d = Display;
-            int px = (int)Math.Round(Height * d.Scale);
+            int px = _px;
             int from = show ? d.Bounds.Top - px + 2 : d.Bounds.Top;
             int to = show ? d.Bounds.Top : d.Bounds.Top - px + 2;
             Native.GetWindowRect(_hwnd, out var now);
