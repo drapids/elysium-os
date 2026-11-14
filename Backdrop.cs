@@ -26,6 +26,32 @@ namespace Elysium
             }
         }
 
+        public static BitmapSource? Shot(Native.RECT r)
+        {
+            if (r.Width <= 0 || r.Height <= 0) return null;
+            try
+            {
+                using var full = new D.Bitmap(r.Width, r.Height, DI.PixelFormat.Format32bppRgb);
+                using (var g = D.Graphics.FromImage(full))
+                    g.CopyFromScreen(r.Left, r.Top, 0, 0, new D.Size(r.Width, r.Height), D.CopyPixelOperation.SourceCopy);
+                var data = full.LockBits(new D.Rectangle(0, 0, r.Width, r.Height), DI.ImageLockMode.ReadOnly, DI.PixelFormat.Format32bppRgb);
+                try
+                {
+                    var shot = BitmapSource.Create(r.Width, r.Height, 96, 96, PixelFormats.Bgr32, null, data.Scan0, data.Stride * r.Height, data.Stride);
+                    shot.Freeze();
+                    return shot;
+                }
+                finally
+                {
+                    full.UnlockBits(data);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static (BitmapSource? sharp, BitmapSource? soft) Grab(Native.RECT r, int down = 9, int passes = 3)
         {
             if (r.Width <= 0 || r.Height <= 0) return (null, null);

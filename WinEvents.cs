@@ -9,6 +9,27 @@ namespace Elysium
         const uint EVENT_SYSTEM_MINIMIZESTART = 0x0016;
         const uint EVENT_SYSTEM_MINIMIZEEND = 0x0017;
         const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+        const uint EVENT_OBJECT_DESTROY = 0x8001;
+        const uint EVENT_OBJECT_SHOW = 0x8002;
+        const uint EVENT_OBJECT_HIDE = 0x8003;
+        static IntPtr _lifeHook;
+        static int _lifeWatchers;
+
+        public static event Action<IntPtr, uint>? Shown;
+        public static event Action<IntPtr>? Gone;
+
+        public static void Lifecycle(bool on)
+        {
+            Ensure();
+            _lifeWatchers = Math.Max(0, _lifeWatchers + (on ? 1 : -1));
+            if (_lifeWatchers > 0 && _lifeHook == IntPtr.Zero && _proc != null)
+                _lifeHook = Native.SetWinEventHook(EVENT_OBJECT_DESTROY, EVENT_OBJECT_HIDE, IntPtr.Zero, _proc, 0, 0, Native.WINEVENT_OUTOFCONTEXT | Native.WINEVENT_SKIPOWNPROCESS);
+            else if (_lifeWatchers == 0 && _lifeHook != IntPtr.Zero)
+            {
+                Native.UnhookWinEvent(_lifeHook);
+                _lifeHook = IntPtr.Zero;
+            }
+        }
 
         static readonly Dictionary<IntPtr, int> Watched = new();
         static Native.WinEventProc? _proc;
@@ -75,6 +96,13 @@ namespace Elysium
                     case EVENT_SYSTEM_MINIMIZEEND:
                         Minimized?.Invoke(hwnd, false);
                         break;
+                    case EVENT_OBJECT_SHOW:
+                        if (Native.GetParent(hwnd) == IntPtr.Zero) Shown?.Invoke(hwnd, time);
+                        break;
+                    case EVENT_OBJECT_HIDE:
+                    case EVENT_OBJECT_DESTROY:
+                        if (Native.GetParent(hwnd) == IntPtr.Zero || evt == EVENT_OBJECT_DESTROY) Gone?.Invoke(hwnd);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -85,9 +113,9 @@ namespace Elysium
 
         public static void Dispose()
         {
-            foreach (var h in new[] { _moveHook, _fgHook, _minHook })
+            foreach (var h in new[] { _moveHook, _fgHook, _minHook, _lifeHook })
                 if (h != IntPtr.Zero) Native.UnhookWinEvent(h);
-            _moveHook = _fgHook = _minHook = IntPtr.Zero;
+            _moveHook = _fgHook = _minHook = _lifeHook = IntPtr.Zero;
             _proc = null;
         }
     }
