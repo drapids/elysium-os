@@ -20,6 +20,7 @@ namespace Elysium.Ui
         readonly AppCatalog _cat;
         readonly AppIndex _apps;
         readonly StartData _data;
+        public StartData Data => _data;
         readonly Commands _cmds;
         readonly Notifier _notes;
         readonly NowPlaying _np;
@@ -328,12 +329,21 @@ namespace Elysium.Ui
             Glass.Dismiss(this, _root, () => CloseFolder(), 150);
         }
 
+        public Func<string, string, string?>? LiveText;
+        public Func<string, string, int>? Unread;
+
         void Clock()
         {
             var now = DateTime.Now;
             _clock.Text = now.ToString(_s.Bar24h ? "HH:mm" : "h:mm");
             string part = now.Hour < 5 ? "up late" : now.Hour < 12 ? "good morning" : now.Hour < 17 ? "good afternoon" : now.Hour < 22 ? "good evening" : "late night";
-            _date.Text = $"{now:dddd, MMMM d}   ·   {part}";
+            if (_s.StartGreeting)
+            {
+                string name = _s.UserName.Trim().Length > 0 ? _s.UserName.Trim() : Environment.UserName;
+                string weather = _data.Weather.Length > 0 ? "   ·   " + _data.Weather : "";
+                _date.Text = $"{part}, {name.ToLowerInvariant()}   ·   {now:dddd, MMMM d}{weather}";
+            }
+            else _date.Text = $"{now:dddd, MMMM d}   ·   {part}";
         }
 
         void Build()

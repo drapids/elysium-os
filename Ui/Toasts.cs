@@ -50,9 +50,11 @@ namespace Elysium.Ui
             _top = topPx;
         }
 
+        public Func<Display>? Where;
+
         public void Show(Note n)
         {
-            var here = Displays.AtCursor();
+            var here = Where?.Invoke() ?? Displays.AtCursor();
             if (_display == null || _display.Index != here.Index || _display.Key != here.Key)
             {
                 _display = here;

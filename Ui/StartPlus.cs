@@ -163,6 +163,23 @@ namespace Elysium.Ui
             var label = new TextBlock { Text = pin.Name, FontSize = 11.5, Foreground = Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center, Margin = new Thickness(6, 0, 6, 9), HorizontalAlignment = HorizontalAlignment.Center, MaxWidth = PinW - 12 };
             Grid.SetRow(label, 1);
             g.Children.Add(label);
+            if (_s.LivePins && !pin.Folder)
+            {
+                string? live = LiveText?.Invoke(pin.Target, pin.Name);
+                if (!string.IsNullOrEmpty(live))
+                {
+                    label.Text = live;
+                    label.Foreground = new SolidColorBrush(Color.FromArgb(0xE0, 255, 255, 255));
+                    label.ToolTip = pin.Name + "\n" + live;
+                }
+                int unread = Unread?.Invoke(pin.Target, pin.Name) ?? 0;
+                if (unread > 0)
+                {
+                    var badge = new Border { MinWidth = 18, Height = 18, CornerRadius = new CornerRadius(9), Padding = new Thickness(5, 0, 5, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 6, 12, 0), Child = new TextBlock { Text = unread > 99 ? "99+" : unread.ToString(), FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center } };
+                    badge.SetResourceReference(Border.BackgroundProperty, "AccentFill");
+                    g.Children.Add(badge);
+                }
+            }
 
             var tile = new Border
             {
