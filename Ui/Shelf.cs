@@ -285,6 +285,21 @@ namespace Elysium.Ui
                 case Key.Space:
                     if (_hovered != null && _hoveredEntry != null) InspectEl(_hovered, _hoveredEntry);
                     break;
+                case Key.Delete:
+                    {
+                        var target = _selected.Count > 0 ? _selected.ToList() : _hoveredEntry != null ? new List<string> { _hoveredEntry.Path } : new List<string>();
+                        if (target.Count == 0) return;
+                        int gone = 0;
+                        foreach (var p in target)
+                            if (Files.Recycle(p)) gone++;
+                        foreach (var p in target)
+                            if (!File.Exists(p) && !Directory.Exists(p)) _s.ShelfItems.RemoveAll(x => x.Equals(p, StringComparison.OrdinalIgnoreCase));
+                        _selected.ExceptWith(target);
+                        _s.Touch();
+                        Render();
+                        if (gone > 0) _notes.Post(new Note { Title = "Moved to the recycle bin", Body = gone == 1 ? Path.GetFileName(target[0].TrimEnd('\\')) : gone + " things", Glyph = "\uE74D" });
+                    }
+                    break;
                 default:
                     if (e.Key >= Key.A && e.Key <= Key.Z && Keyboard.Modifiers == ModifierKeys.None)
                     {
@@ -1080,8 +1095,51 @@ namespace Elysium.Ui
             el.MouseRightButtonUp += (_, ev) =>
             {
                 ev.Handled = true;
-                InspectEl(el, e);
+                ItemMenu(el, e);
             };
+        }
+
+        void ItemMenu(FrameworkElement el, Entry e)
+        {
+            var paths = _selected.Contains(e.Path) && _selected.Count > 1
+                ? _items.Where(i => _selected.Contains(i.E.Path)).Select(i => i.E.Path).ToList()
+                : new List<string> { e.Path };
+            bool many = paths.Count > 1;
+            bool real = File.Exists(e.Path) || Directory.Exists(e.Path);
+            bool onShelf = _tab == "shelf" && _trail.Count == 0;
+            var list = new List<MenuEntry>();
+            if (many) list.Add(MenuEntry.Title(paths.Count + " things"));
+            else
+            {
+                list.Add(MenuEntry.Item("\uE8A7", "open", () => Files.Open(e.Path, _s)));
+                list.Add(MenuEntry.Item("\uE946", "quick look", () => InspectEl(el, e)));
+                if (real) list.Add(MenuEntry.Item("\uE838", "show in folder", () => Files.Reveal(e.Path)));
+            }
+            list.Add(MenuEntry.Item("\uE8C8", "copy", () => Files.CopyFiles(paths)));
+            if (!many) list.Add(MenuEntry.Item("\uE71B", "copy path", () => Files.CopyText(e.Path)));
+            if (!many && real && _actions.Rename != null) list.Add(MenuEntry.Item("\uE8AC", "rename", () => _actions.Rename?.Invoke(e.Path)));
+            if (_actions.Share != null) list.Add(MenuEntry.Item("\uE8EA", "send to phone", () => _actions.Share?.Invoke(paths)));
+            if (onShelf) list.Add(MenuEntry.Item("\uE711", "take off the shelf", () =>
+            {
+                foreach (var p in paths) _s.ShelfItems.RemoveAll(x => x.Equals(p, StringComparison.OrdinalIgnoreCase));
+                _selected.ExceptWith(paths);
+                _s.Touch();
+                Render();
+            }));
+            list.Add(MenuEntry.Sep());
+            list.Add(MenuEntry.Item("\uE74D", many ? "delete all " + paths.Count : "delete", () =>
+            {
+                int gone = 0;
+                foreach (var p in paths)
+                    if (Files.Recycle(p)) gone++;
+                foreach (var p in paths)
+                    if (!File.Exists(p) && !Directory.Exists(p)) _s.ShelfItems.RemoveAll(x => x.Equals(p, StringComparison.OrdinalIgnoreCase));
+                _selected.ExceptWith(paths);
+                _s.Touch();
+                Render();
+                if (gone > 0) _notes.Post(new Note { Title = "Moved to the recycle bin", Body = gone == 1 ? Path.GetFileName(paths[0].TrimEnd('\\')) : gone + " things", Glyph = "\uE74D" });
+            }, true));
+            GlassMenu.Show(el, list);
         }
 
         void DragOut(Entry e)

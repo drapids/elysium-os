@@ -177,6 +177,7 @@ namespace Elysium
 
             _actions = new ObjectActions(_s, _notes);
             _inspector = new Inspector(_s, _catalog, _actions);
+            _inspector.Say = Flash;
             _shelf = new Shelf(_s, _catalog, _lib, _actions, _pocket, _notes);
             _phoneDrop.Received += path => _shelf.AddToShelf(new[] { path });
             _launcher = new Launcher(_s, _catalog, _apps, _cmds, _clips, _notes, _lib);
@@ -334,6 +335,7 @@ namespace Elysium
             SetupTray();
             Layout(true);
             InitFeatures();
+            System.Threading.Tasks.Task.Delay(4000).ContinueWith(_ => WarmExplorer());
             Sync();
 
             _state.Tick += (_, _) => Tick();
@@ -926,17 +928,43 @@ namespace Elysium
             });
         }
 
-        void PreviewExplorer()
+        async void PreviewExplorer()
         {
-            var paths = ExplorerSelection(true);
+            if (_inspector.IsShowing)
+            {
+                _inspector.Close();
+                return;
+            }
+            var paths = await SelectionAsync(true);
             if (paths.Count == 0)
             {
                 Native.Tap(0x20);
                 return;
             }
-            if (_inspector.IsShowing) _inspector.Close();
             InspectObj(Obj.From(paths[0]), null, null);
         }
+
+        static System.Threading.Tasks.Task<List<string>> SelectionAsync(bool selectionOnly)
+        {
+            IntPtr fg = Native.GetForegroundWindow();
+            var done = new System.Threading.Tasks.TaskCompletionSource<List<string>>();
+            var t = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    done.TrySetResult(ExplorerSelection(selectionOnly, fg));
+                }
+                catch
+                {
+                    done.TrySetResult(new List<string>());
+                }
+            }) { IsBackground = true };
+            t.SetApartmentState(System.Threading.ApartmentState.STA);
+            t.Start();
+            return done.Task;
+        }
+
+        static void WarmExplorer() => SelectionAsync(true);
 
         void ShareExplorer()
         {
@@ -977,9 +1005,9 @@ namespace Elysium
             _inspector.Show(o, src, icon);
         }
 
-        void InspectExplorer()
+        async void InspectExplorer()
         {
-            var paths = ExplorerSelection(false);
+            var paths = await SelectionAsync(false);
             if (paths.Count == 0)
             {
                 Flash("select something in File Explorer first");
@@ -988,12 +1016,13 @@ namespace Elysium
             InspectObj(Obj.From(paths[0]), null, null);
         }
 
-        static List<string> ExplorerSelection(bool selectionOnly)
+        static List<string> ExplorerSelection(bool selectionOnly) => ExplorerSelection(selectionOnly, Native.GetForegroundWindow());
+
+        static List<string> ExplorerSelection(bool selectionOnly, IntPtr fg)
         {
             var list = new List<string>();
             try
             {
-                IntPtr fg = Native.GetForegroundWindow();
                 var type = Type.GetTypeFromProgID("Shell.Application");
                 if (type == null) return list;
                 dynamic shell = Activator.CreateInstance(type)!;
