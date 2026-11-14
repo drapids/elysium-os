@@ -49,6 +49,8 @@ namespace Heft
             _lastPath = path;
         }
 
+        public IntPtr LastHwnd => _last != IntPtr.Zero && Native.IsWindow(_last) ? _last : IntPtr.Zero;
+
         public string LastExe => _lastPath.Length == 0 ? "" : Path.GetFileNameWithoutExtension(_lastPath);
 
         public WindowRule? Capture()
