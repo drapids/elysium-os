@@ -85,6 +85,10 @@ namespace Elysium.Ui
             save.Children.Add(keep);
             save.Children.Add(name);
             h.Children.Add(save);
+            h.Children.Add(Kit.Group(
+                Kit.Row("Themes change my wallpaper", "picking the elysium look puts your old one back", Sw(_s.ThemeWallpaper, v => _s.ThemeWallpaper = v)),
+                Kit.Row("Themes change my cursor", "uses the theme's cursor set, or a windows one", Sw(_s.ThemeCursor, v => _s.ThemeCursor = v))));
+            GallerySection(h, "theme");
         }
 
         static string[]? Grad(ThemePack? p, string key)

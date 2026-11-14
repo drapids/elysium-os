@@ -49,6 +49,9 @@ namespace Elysium
         public BarLook? Bar { get; set; }
         public DockLook? Dock { get; set; }
         public StartLook? Start { get; set; }
+        public string Cursor { get; set; } = "";
+        public string Wallpaper { get; set; } = "";
+        public string[]? WallpaperColors { get; set; }
 
         [JsonIgnore]
         public string Id { get; set; } = "";
@@ -75,17 +78,19 @@ namespace Elysium
 
         public static void Seed(Settings s)
         {
-            if (s.ThemesSeeded) return;
+            if (s.ThemesSeeded && s.ThemesSeedVersion >= 2) return;
             try
             {
                 Directory.CreateDirectory(Root);
                 foreach (var (id, pack) in Starters())
                 {
                     string dir = Path.Combine(Root, id);
+                    if (s.ThemesSeeded && !Directory.Exists(dir)) continue;
                     Directory.CreateDirectory(dir);
                     File.WriteAllText(Path.Combine(dir, "theme.json"), JsonSerializer.Serialize(pack, Json));
                 }
                 s.ThemesSeeded = true;
+                s.ThemesSeedVersion = 2;
                 s.Touch();
             }
             catch (Exception ex)
@@ -147,6 +152,7 @@ namespace Elysium
             Active = p;
             if (p == null)
             {
+                Extras(s, null);
                 s.Touch();
                 return;
             }
@@ -161,7 +167,45 @@ namespace Elysium
             if (p.Glass is double g) s.GlassAlpha = Math.Clamp(g, 0.4, 1.25);
             if (p.Speed is double sp) s.AnimScale = Math.Clamp(sp, 0.4, 2.5);
             if (p.Sounds.Length > 0) s.SoundPack = p.Sounds;
+            Extras(s, p);
             s.Touch();
+        }
+
+        static void Extras(Settings s, ThemePack? p)
+        {
+            if (s.ThemeWallpaper)
+            {
+                string? wall = null;
+                if (p != null)
+                {
+                    if (p.Wallpaper.Length > 0 && File.Exists(Path.Combine(p.Dir, p.Wallpaper))) wall = Path.Combine(p.Dir, p.Wallpaper);
+                    else if (p.WallpaperColors is { Length: > 0 }) wall = Elysium.Wallpaper.Render(p.Id, p.WallpaperColors, p.Dir.Length > 0 ? p.Dir : Path.Combine(Root, p.Id));
+                }
+                if (wall != null)
+                {
+                    if (s.WallpaperBefore.Length == 0) s.WallpaperBefore = Elysium.Wallpaper.Current();
+                    Elysium.Wallpaper.Set(wall);
+                }
+                else if (s.WallpaperBefore.Length > 0)
+                {
+                    Elysium.Wallpaper.Set(s.WallpaperBefore);
+                    s.WallpaperBefore = "";
+                }
+            }
+            if (s.ThemeCursor)
+            {
+                var scheme = p != null && p.Cursor.Length > 0 ? CursorScheme.Scheme(p.Cursor, p.Dir) : null;
+                if (scheme != null)
+                {
+                    if (s.CursorsBefore.Count == 0) s.CursorsBefore = CursorScheme.Read();
+                    CursorScheme.Write(scheme);
+                }
+                else if (s.CursorsBefore.Count > 0)
+                {
+                    CursorScheme.Write(s.CursorsBefore);
+                    s.CursorsBefore = new Dictionary<string, string>();
+                }
+            }
         }
 
         public static string? Install(string file)
@@ -252,6 +296,8 @@ namespace Elysium
         {
             yield return ("frutiger-aero", new ThemePack
             {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#8FDBFF", "#38A8EC", "#1E7FC8", "#8ED36B" },
                 Name = "Frutiger Aero",
                 Author = "elysium",
                 Description = "glossy sky, bubbles and clean water. 2008 called",
@@ -288,6 +334,8 @@ namespace Elysium
             });
             yield return ("midnight", new ThemePack
             {
+                Cursor = "Windows Black",
+                WallpaperColors = new[] { "#141A3D", "#0B0F26", "#04050C" },
                 Name = "Midnight",
                 Author = "elysium",
                 Description = "pure black, made for oled and late nights",
@@ -312,6 +360,8 @@ namespace Elysium
             });
             yield return ("paper", new ThemePack
             {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#FBF8F1", "#EFE8D8" },
                 Name = "Paper",
                 Author = "elysium",
                 Description = "flat, quiet and warm. like a notebook",
@@ -341,6 +391,8 @@ namespace Elysium
             });
             yield return ("y2k-chrome", new ThemePack
             {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#F2F5FA", "#B7C1D1", "#E6EBF2", "#8C99AE" },
                 Name = "Y2K Chrome",
                 Author = "elysium",
                 Description = "brushed metal, bubblegum accent, very millennium",
@@ -370,6 +422,8 @@ namespace Elysium
             });
             yield return ("terminal", new ThemePack
             {
+                Cursor = "Windows Black",
+                WallpaperColors = new[] { "#060A06", "#0A160A" },
                 Name = "Terminal",
                 Author = "elysium",
                 Description = "green on black, everything in mono",
@@ -400,6 +454,8 @@ namespace Elysium
             });
             yield return ("sunset", new ThemePack
             {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#FFB36B", "#FF6F7D", "#B04A9A", "#3E1F6B" },
                 Name = "Sunset",
                 Author = "elysium",
                 Description = "warm purple into orange, like 7pm in july",

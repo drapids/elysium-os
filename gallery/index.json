@@ -1,0 +1,10 @@
+[
+  {
+    "kind": "theme",
+    "name": "Example",
+    "author": "you",
+    "description": "what it looks like in a few words",
+    "download": "https://github.com/you/your-theme/releases/download/v1/example.elysiumtheme",
+    "colors": ["#8FDBFF", "#1E7FC8"]
+  }
+]

@@ -186,6 +186,7 @@ namespace Elysium.Ui
                 how.Children.Add(row);
             }
             h.Children.Add(Kit.Group(how));
+            GallerySection(h, "extension");
         }
     }
 }
