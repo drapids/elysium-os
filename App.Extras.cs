@@ -19,6 +19,7 @@ namespace Elysium
         {
             b.DeskClicked += index => VirtualDesktops.Go(_deskIndex, index);
             b.MicClicked += () => SetMic(false, true);
+            WireShellBar(b);
             b.ScratchClicked += (bar, x) => _drop.Toggle("scratch", bar.Display, bar.BottomPx, x);
             b.LastDownloadClicked += () =>
             {

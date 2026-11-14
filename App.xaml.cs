@@ -87,6 +87,7 @@ namespace Elysium
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            _atLogin = Array.IndexOf(e.Args, "--startup") >= 0;
             Frames.Boost();
 
             _single = new Mutex(true, "elysium.single.instance", out bool fresh);
@@ -121,7 +122,7 @@ namespace Elysium
             _notes.Toast += n =>
             {
                 if (HoldToast(n)) return;
-                _toasts.Show(n);
+                ShowToast(n);
                 Sfx.Play(n.App == "elysium" && (n.Title == "Reminder" || n.Title == "Timer done") ? "chime" : "notify");
             };
             _toasts.Clicked += Toasts.OpenTarget;
@@ -155,7 +156,7 @@ namespace Elysium
             _lock = new CursorLock(_s);
             _lock.Changed += on => Flash(on ? "cursor locked to this screen" : "cursor free");
             _brightness = new Brightness();
-            _brightness.Changed += v => Dispatcher.BeginInvoke(new Action(() => Flash(v >= 0 ? $"brightness {v}%" : "this screen doesn't do brightness over cable")));
+            _brightness.Changed += v => Dispatcher.BeginInvoke(new Action(() => BrightnessShown(v)));
             _mouse = new MouseHook(_s, Dispatcher, _brightness);
             _mouse.Flash += Flash;
             _mouse.Physics = _physics;
@@ -217,7 +218,7 @@ namespace Elysium
             _start.Search = text => _launcher.Open(text);
             _start.OpenSettings = () => _panel.Open();
             _start.Overview = () => _overview.Open();
-            var pages = new SettingsPages(_s, _audio, () => _keys.Failed, () => _wintoasts.Status, a => _panel.Dialog(a));
+            var pages = _pages = new SettingsPages(_s, _audio, () => _keys.Failed, () => _wintoasts.Status, a => _panel.Dialog(a));
             pages.SortDownloads = () =>
             {
                 _sorter.Sweep(true);
@@ -335,6 +336,7 @@ namespace Elysium
             SetupTray();
             Layout(true);
             InitFeatures();
+            InitShell();
             System.Threading.Tasks.Task.Delay(4000).ContinueWith(_ => WarmExplorer());
             Sync();
 
@@ -594,7 +596,8 @@ namespace Elysium
                 Locked = _lock.Locked,
                 Stack = _clips.Stacking ? _clips.Stack.Count : -1,
                 Profile = _s.ActiveProfile,
-                MicMuted = MicState()
+                MicMuted = MicState(),
+                Rec = _rec?.Started
             };
             foreach (var b in _bars) b.Refresh(st);
 
@@ -1156,11 +1159,11 @@ namespace Elysium
             c.Add("elysium", "stop-recording", "Stop recording", "\uE71A", () => _ = StopRecording(), "recording gif");
             c.Add("elysium", "quit", "Quit elysium", "\uE7E8", Quit, "exit close");
 
-            c.Add("system", "pclock", "Lock PC", "\uE72E", () => Native.LockWorkStation(), "lock screen away");
+            c.Add("system", "pclock", "Lock PC", "\uE72E", LockPc, "lock screen away");
             c.Add("system", "sleep", "Sleep", "\uE708", () => Native.SetSuspendState(false, false, false), "suspend");
-            c.Add("system", "restart", "Restart", "\uE777", () => Launch.Run("shutdown.exe", "/r /t 0"), "reboot", true);
-            c.Add("system", "shutdown", "Shut down", "\uE7E8", () => Launch.Run("shutdown.exe", "/s /t 0"), "power off", true);
-            c.Add("system", "signout", "Sign out", "\uF3B1", () => Launch.Run("shutdown.exe", "/l"), "log off", true);
+            c.Add("system", "restart", "Restart", "\uE777", () => Power("restart", () => Launch.Run("shutdown.exe", "/r /t 0")), "reboot", true);
+            c.Add("system", "shutdown", "Shut down", "\uE7E8", () => Power("shutdown", () => Launch.Run("shutdown.exe", "/s /t 0")), "power off", true);
+            c.Add("system", "signout", "Sign out", "\uF3B1", () => Power("signout", () => Launch.Run("shutdown.exe", "/l")), "log off", true);
             c.Add("system", "recycle", "Empty recycle bin", "\uE74D", () => Native.SHEmptyRecycleBin(IntPtr.Zero, null, 0x1 | 0x2), "trash", true);
             c.Add("system", "taskmgr", "Task Manager", "\uE9D9", () => Launch.Run("taskmgr.exe"), "processes kill");
             c.Add("system", "snip", "Screenshot", "\uE722", () => Launch.Run("ms-screenclip:"), "snip capture");

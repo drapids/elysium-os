@@ -43,6 +43,9 @@ namespace Elysium
             ("spotlight", "Spotlight", "Ctrl+Alt+Shift+S"),
             ("pasteplain", "Paste as plain text", "Ctrl+Shift+V"),
             ("appnote", "Note on this app", ""),
+            ("shade", "Roll a window up / down", ""),
+            ("standby", "Standby mode", ""),
+            ("retile", "Tile windows now", ""),
             ("start", "Start", "")
         };
 

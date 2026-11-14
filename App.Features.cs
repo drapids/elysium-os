@@ -107,6 +107,7 @@ namespace Elysium
         void SyncFeatures()
         {
             if (!_featuresReady) return;
+            SyncShell();
             string sig = $"{_s.FocusBorder}|{_game}";
             if (sig == _featSig) return;
             _featSig = sig;
@@ -127,10 +128,12 @@ namespace Elysium
             };
             map["appnote"] = () => EditNote(Native.GetForegroundWindow());
             if (_s.PastePlain) map["pasteplain"] = () => _ = PastePlain();
+            ShellKeys(map);
         }
 
         void FeatureCommands(Commands c)
         {
+            ShellCommands(c);
             c.Add("elysium", "rescue", "Rescue a stuck window", "\uE7BA", () => WinOps.Rescue(Flash), "fullscreen game stuck other monitor move unfullscreen borderless");
             c.Add("elysium", "bring-back", "Bring back off-screen windows", "\uE7F4", () =>
             {
@@ -412,6 +415,7 @@ namespace Elysium
         void FeatureTick()
         {
             SyncFeatures();
+            ShellTick();
             if (_tick % 4 == 0) Stamp();
             if (_s.MediaHandoff && _tick % 2 == 0) _ = _handoff.Tick(true);
             if (_start.Shown && _tick % 2 == 1) _ = StartSong();
@@ -431,6 +435,7 @@ namespace Elysium
 
         void DisposeFeatures()
         {
+            DisposeShell();
             _spot.Off();
             _ring?.Enable(false);
             WinEvents.Dispose();

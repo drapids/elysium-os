@@ -192,6 +192,47 @@ namespace Elysium
         public string ScreenTimeDay { get; set; } = "";
         public Dictionary<string, double> ScreenTimeToday { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, string> AppNotes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public bool MinimizeToDock { get; set; } = false;
+        public bool WindowAnims { get; set; } = false;
+        public bool ThemedBorders { get; set; } = false;
+        public bool AutoTile { get; set; } = false;
+        public double TileGap { get; set; } = 8;
+        public string OsdStyle { get; set; } = "off";
+        public bool HideWinOsd { get; set; } = false;
+        public bool AttentionBounce { get; set; } = false;
+        public bool DockPreviews { get; set; } = false;
+        public bool DesktopMenu { get; set; } = false;
+        public bool DesktopPiles { get; set; } = false;
+        public List<string> HiddenTrayApps { get; set; } = new();
+        public bool StartGreeting { get; set; } = false;
+        public string UserName { get; set; } = "";
+        public bool LivePins { get; set; } = false;
+        public bool StandbyOn { get; set; } = false;
+        public double StandbyMinutes { get; set; } = 5;
+        public string StandbyClock { get; set; } = "big";
+        public string StandbyBg { get; set; } = "wallpaper";
+        public double StandbyDim { get; set; } = 0.35;
+        public string StandbyScreens { get; set; } = "main";
+        public bool StandbyMusic { get; set; } = true;
+        public bool StandbyWeather { get; set; } = true;
+        public bool StandbyNotes { get; set; } = true;
+        public bool StandbyCalendar { get; set; } = true;
+        public string BootScreen { get; set; } = "off";
+        public bool ShutdownScreen { get; set; } = false;
+        public bool LockLook { get; set; } = false;
+        public bool WakeAnim { get; set; } = false;
+        public bool ShowWhatsNew { get; set; } = true;
+        public string SeenVersion { get; set; } = "";
+        public bool SetupSeen { get; set; } = false;
+        public string NotifyScreen { get; set; } = "mouse";
+        public bool CalendarOn { get; set; } = false;
+        public List<CalFeed> CalendarFeeds { get; set; } = new();
+        public int ThemesSeedVersion { get; set; } = 0;
+        public bool ThemeWallpaper { get; set; } = true;
+        public bool ThemeCursor { get; set; } = true;
+        public string WallpaperBefore { get; set; } = "";
+        public Dictionary<string, string> CursorsBefore { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+        public string GalleryUrl { get; set; } = "https://raw.githubusercontent.com/drapids/elysium-gallery/main/index.json";
         public bool SnippetsOn { get; set; } = true;
         public List<Snippet> Snippets { get; set; } = new()
         {
@@ -264,12 +305,15 @@ namespace Elysium
 
         DispatcherTimer? _saveTimer;
 
+        public static bool Existed { get; private set; }
+
         public static Settings Load()
         {
             try
             {
                 if (File.Exists(FilePath))
                 {
+                    Existed = true;
                     var s = JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath), Json);
                     if (s != null)
                     {
@@ -292,6 +336,9 @@ namespace Elysium
                         s.ScreenTimeToday = new Dictionary<string, double>(s.ScreenTimeToday ?? new Dictionary<string, double>(), StringComparer.OrdinalIgnoreCase);
                         s.StackPairs ??= new Dictionary<string, int>();
                         s.StartPins ??= new List<StartPin>();
+                        s.CalendarFeeds ??= new List<CalFeed>();
+                        s.HiddenTrayApps ??= new List<string>();
+                        s.CursorsBefore = new Dictionary<string, string>(s.CursorsBefore ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                         foreach (var pinned in s.StartPins) pinned.Kids ??= new List<StartPin>();
                         s.ExtEnabled = new Dictionary<string, bool>(s.ExtEnabled ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
