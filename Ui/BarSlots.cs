@@ -20,6 +20,7 @@ namespace Elysium.Ui
             ("focus", "Focus mode", "right"),
             ("lock", "Cursor lock", "right"),
             ("mic", "Mic muted", "right"),
+            ("tray", "Background apps", "off"),
             ("scratch", "Scratchpad", "right"),
             ("download", "Last download", "right"),
             ("volume", "Volume", "right"),
@@ -40,6 +41,7 @@ namespace Elysium.Ui
         public event Action<Bar, double>? ScratchClicked;
         public event Action? LastDownloadClicked;
         public event Action? LastDownloadDrag;
+        public event Action<FrameworkElement>? TrayClicked;
 
         public static List<(string id, string side)> SlotLayout(Settings s)
         {
@@ -79,6 +81,7 @@ namespace Elysium.Ui
             _slots["focus"] = focus;
             _slots["lock"] = lockIcon;
             _slots["mic"] = MicSlot();
+            _slots["tray"] = SlotIcon("\uE70E", "background apps", host => TrayClicked?.Invoke(host));
             _slots["scratch"] = SlotIcon("\uE70B", "scratchpad", host => ScratchClicked?.Invoke(this, CenterX(host)));
             _slots["download"] = DownloadChip();
             _slots["volume"] = volume;
