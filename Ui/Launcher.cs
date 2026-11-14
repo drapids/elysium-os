@@ -1152,6 +1152,7 @@ namespace Heft.Ui
                 if (sc > 0) list.Add(CustomResult(c, sc * 1.2));
             }
             list.AddRange(AppResults(q, 12));
+            list.AddRange(WindowResults(q, 6));
             list.AddRange(CommandResults(q, null, 8).Select(r =>
             {
                 r.Score *= 0.85;
@@ -1173,6 +1174,46 @@ namespace Heft.Ui
             }
             ranked.Add(Web(q));
             return ranked;
+        }
+
+        List<Result> WindowResults(string q, int take)
+        {
+            var list = new List<Result>();
+            if (q.Trim().Length < 2) return list;
+            List<AppWin> wins;
+            try
+            {
+                wins = WinList.All();
+            }
+            catch
+            {
+                return list;
+            }
+            foreach (var w in wins)
+            {
+                string exe = w.Exe;
+                double sc = Math.Max(Fuzzy.Score(q, w.Title) * 0.95, exe.Length > 0 ? Fuzzy.Score(q, exe) * 1.05 : 0);
+                if (sc <= 0) continue;
+                var hwnd = w.Hwnd;
+                string title = w.Title.Length > 0 ? w.Title : exe;
+                list.Add(new Result
+                {
+                    Key = "win:" + exe.ToLowerInvariant(),
+                    Title = "Switch to " + title,
+                    Sub = (exe.Length > 0 ? exe.ToLowerInvariant() + "  \u00b7  " : "") + (w.Min ? "minimized, " : "") + "shift+enter closes it",
+                    Glyph = "\uE8A7",
+                    IconPath = w.Path,
+                    Hint = "open",
+                    Score = sc * 1.1,
+                    Run = () =>
+                    {
+                        Dispatcher.BeginInvoke(() => WinList.Switch(hwnd), DispatcherPriority.Background);
+                        return true;
+                    },
+                    Alt = () => WinList.Close(hwnd)
+                });
+            }
+            return list.OrderByDescending(r => r.Score).Take(take).ToList();
         }
 
         async Task RunFiles()
