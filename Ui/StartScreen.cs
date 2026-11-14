@@ -12,7 +12,7 @@ using System.Windows.Threading;
 
 namespace Heft.Ui
 {
-    internal sealed class StartScreen : Window
+    internal sealed partial class StartScreen : Window
     {
         const double Cell = 58;
 
@@ -28,6 +28,7 @@ namespace Heft.Ui
 
         readonly Grid _root = new();
         readonly Border _scrim = new();
+        readonly Border _wash = new() { IsHitTestVisible = false };
         readonly Grid _stage = new();
         readonly TextBlock _clock;
         readonly TextBlock _date;
@@ -74,8 +75,8 @@ namespace Heft.Ui
             Title = "heft start";
 
             RenderOptions.SetBitmapScalingMode(_backdrop, BitmapScalingMode.HighQuality);
-            _backdrop.RenderTransformOrigin = new Point(0.5, 0.5);
-            _backdrop.RenderTransform = new ScaleTransform(1.04, 1.04);
+            _backdrop.Margin = new Thickness(-8);
+            _root.ClipToBounds = true;
             _root.Children.Add(_backdrop);
             _scrim.Background = new SolidColorBrush(Color.FromArgb(0x78, 8, 8, 12));
             _scrim.MouseLeftButtonDown += (_, _) => Close2();
@@ -147,21 +148,34 @@ namespace Heft.Ui
 
             var dockBar = new Border
             {
-                CornerRadius = new CornerRadius(18),
+                CornerRadius = Kit.Round(18),
                 Padding = new Thickness(10, 8, 10, 8),
-                Margin = new Thickness(0, 22, 0, 0),
+                Margin = new Thickness(0, 0, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Center,
                 Background = new SolidColorBrush(Color.FromArgb(0x1E, 255, 255, 255)),
                 BorderBrush = new SolidColorBrush(Color.FromArgb(0x2A, 255, 255, 255)),
                 BorderThickness = new Thickness(1),
                 Child = _dockRow
             };
-            Grid.SetRow(dockBar, 2);
-            layout.Children.Add(dockBar);
+            var bottom = new StackPanel { Margin = new Thickness(0, 18, 0, 0) };
+            bottom.Children.Add(_openRow);
+            bottom.Children.Add(dockBar);
+            Grid.SetRow(bottom, 2);
+            layout.Children.Add(bottom);
 
             _stage.Children.Add(layout);
             _root.Children.Add(_stage);
+            _root.Children.Add(_folderLayer);
             Content = _root;
+            _scrim.Background = Theme.Paint(Themes.Active?.Start?.Scrim) ?? _scrim.Background;
+            Theme.Applied += () =>
+            {
+                _scrim.Background = Theme.Paint(Themes.Active?.Start?.Scrim) ?? new SolidColorBrush(Color.FromArgb(0x78, 8, 8, 12));
+                _wash.Background = Theme.Paint(Themes.Active?.Start?.Wash);
+                _dirty = true;
+            };
+            _wash.Background = Theme.Paint(Themes.Active?.Start?.Wash);
+            _root.Children.Insert(2, _wash);
 
             PreviewKeyDown += OnKey;
             Deactivated += (_, _) => Close2();
@@ -206,12 +220,9 @@ namespace Heft.Ui
                 BuildMain();
                 BuildSide();
                 var d = Displays.Primary();
-                var h = new WindowInteropHelper(this).EnsureHandle();
-                Width = d.Bounds.Width / d.Scale;
-                Height = d.Bounds.Height / d.Scale;
                 _root.Opacity = 0;
                 ShowActivated = false;
-                Native.SetWindowPos(h, IntPtr.Zero, -32000, -32000, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
+                Glass.Fill(this, new Native.RECT { Left = -32000, Top = -32000, Right = -32000 + d.Bounds.Width, Bottom = -32000 + d.Bounds.Height }, false);
                 Show();
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -231,10 +242,13 @@ namespace Heft.Ui
         {
             if (e.Key == Key.Escape)
             {
-                Close2();
+                if (_folder != null && e.OriginalSource is not TextBox) CloseFolder();
+                else if (_folder != null) Focus();
+                else Close2();
                 e.Handled = true;
                 return;
             }
+            if (e.OriginalSource is TextBox tb && tb != _search) return;
             if (e.OriginalSource != _search && e.Key >= Key.A && e.Key <= Key.Z && Keyboard.Modifiers == ModifierKeys.None) _search.Focus();
         }
 
@@ -257,27 +271,23 @@ namespace Heft.Ui
                 _data.Rename();
                 _dirty = true;
             }
+            CloseFolder();
+            _wins = WinList.All();
             if (_dirty || wasAll || (DateTime.Now - _builtAt).TotalMinutes > 5) BuildMain();
+            _dockRow.Children.Clear();
+            BuildDock();
             _side.Children.Clear();
             BuildSide();
             _search.Text = "";
+            _songSig = "";
             Clock();
             _tick.Start();
+            _stage.RenderTransform = null;
+            _thumbAlpha = 0;
 
-            Glass.Present(this, _root, () =>
-            {
-                var h = new WindowInteropHelper(this).Handle;
-                Width = d.Bounds.Width / d.Scale;
-                Height = d.Bounds.Height / d.Scale;
-                Native.SetWindowPos(h, Native.HWND_TOPMOST, d.Bounds.Left, d.Bounds.Top, d.Bounds.Width, d.Bounds.Height, Native.SWP_NOACTIVATE);
-            }, 0, 1, 200);
-
-            var st = new ScaleTransform(1.035, 1.035);
-            _stage.RenderTransformOrigin = new Point(0.5, 0.45);
-            _stage.RenderTransform = st;
-            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
-            st.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.035, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = ease });
-            st.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.035, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = ease });
+            Glass.Present(this, _root, () => Glass.Fill(this, d.Bounds), 0, 1, 200);
+            BuildOpenRow();
+            Dispatcher.BeginInvoke(new Action(() => FadeThumbs(true)), DispatcherPriority.Loaded);
 
             Activate();
             if (!IsActive) Native.Focus(new WindowInteropHelper(this).Handle);
@@ -291,11 +301,13 @@ namespace Heft.Ui
             var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
             foreach (var el in _main.Children.OfType<UIElement>().Concat(_side.Children.OfType<UIElement>()))
             {
-                var tt = new TranslateTransform(0, 14);
+                var tt = new TranslateTransform(0, 10);
                 el.RenderTransform = tt;
-                var begin = TimeSpan.FromMilliseconds(30 + Math.Min(i, 12) * 26);
-                el.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { BeginTime = begin });
-                tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(340)) { BeginTime = begin, EasingFunction = ease });
+                var begin = TimeSpan.FromMilliseconds((20 + Math.Min(i, 10) * 18) * Theme.Speed);
+                el.BeginAnimation(OpacityProperty, null);
+                el.Opacity = 0;
+                el.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(200 * Theme.Speed)) { BeginTime = begin });
+                tt.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(300 * Theme.Speed)) { BeginTime = begin, EasingFunction = ease });
                 i++;
             }
         }
@@ -309,11 +321,9 @@ namespace Heft.Ui
             {
                 if (!_shown) Prepare();
             }), DispatcherPriority.ApplicationIdle);
-            Glass.Dismiss(this, _root, null, 150);
-            var st = new ScaleTransform(1, 1);
-            _stage.RenderTransform = st;
-            st.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.025, TimeSpan.FromMilliseconds(150)));
-            st.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.025, TimeSpan.FromMilliseconds(150)));
+            GlassMenu.CloseAll();
+            FadeThumbs(false);
+            Glass.Dismiss(this, _root, () => CloseFolder(), 150);
         }
 
         void Clock()
@@ -335,10 +345,8 @@ namespace Heft.Ui
         void BuildMain()
         {
             _main.Children.Clear();
-            _dockRow.Children.Clear();
             if (_allApps) BuildAllApps();
             else BuildPinned();
-            BuildDock();
             _dirty = false;
             _builtAt = DateTime.Now;
         }
@@ -433,51 +441,7 @@ namespace Heft.Ui
 
         void BuildPinned()
         {
-            var groups = _data.Groups;
-            if (groups.Count == 0)
-            {
-                _main.Children.Add(Header("Pinned", "All apps  ›", () =>
-                {
-                    _allApps = true;
-                    Build();
-                }));
-                var hint = new TextBlock { Text = "loading your Start menu pins...", FontSize = 13, Foreground = new SolidColorBrush(Color.FromArgb(0x99, 255, 255, 255)), Margin = new Thickness(6, 0, 0, 18) };
-                _main.Children.Add(hint);
-            }
-            else
-            {
-                _main.Children.Add(Header("Pinned", "All apps  ›", () =>
-                {
-                    _allApps = true;
-                    Build();
-                }));
-                var wrap = new WrapPanel();
-                foreach (var g in groups)
-                {
-                    var col = new StackPanel { Margin = new Thickness(0, 0, 26, 18), VerticalAlignment = VerticalAlignment.Top };
-                    if (g.Name.Length > 0) col.Children.Add(new TextBlock { Text = g.Name, FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(0x99, 255, 255, 255)), Margin = new Thickness(6, 0, 0, 6) });
-                    var canvas = new Canvas();
-                    int maxCol = 0, maxRow = 0;
-                    foreach (var p in g.Pins)
-                    {
-                        var pin = p;
-                        double w = Math.Max(1, p.W) * Cell + (p.W - 1) * 8;
-                        double h = Math.Max(1, p.H) * Cell + (p.H - 1) * 8;
-                        var tile = Tile(p.Name, p.IconPath, true, "\uE71D", w, h, pin.Launch);
-                        tile.Margin = new Thickness(0);
-                        Canvas.SetLeft(tile, p.Col * (Cell + 8));
-                        Canvas.SetTop(tile, p.Row * (Cell + 8));
-                        canvas.Children.Add(tile);
-                        maxCol = Math.Max(maxCol, p.Col + p.W);
-                        maxRow = Math.Max(maxRow, p.Row + p.H);
-                    }
-                    canvas.Width = maxCol * (Cell + 8);
-                    canvas.Height = maxRow * (Cell + 8);
-                    col.Children.Add(canvas);
-                    wrap.Children.Add(col);
-                }
-                _main.Children.Add(wrap);
-            }
+            BuildGrid();
 
             var recent = _s.CommandHistory.Where(hh => hh.Key.StartsWith("app:"))
                 .OrderByDescending(hh => hh.Score * Math.Pow(0.5, (DateTime.Now - hh.Last).TotalDays / 14))
@@ -491,13 +455,13 @@ namespace Heft.Ui
                 foreach (var a in recent)
                 {
                     var app = a!;
-                    row.Children.Add(Tile(app.Name, AppIndex.IconPath(app), true, "\uE71D", Cell * 2 + 8, Cell, () => AppIndex.Launch(app)));
+                    row.Children.Add(Tile(app.Name, AppIndex.IconPath(app), true, "\uE71D", Cell * 2 + 8, Cell, () => AppIndex.Launch(app), () => GlassMenu.Show(this, AppMenu(app.Name, app.Id, !app.IsPath))));
                 }
                 foreach (var path in used)
                 {
                     if (row.Children.Count >= 12) break;
                     string p = path;
-                    row.Children.Add(Tile(_cat.DisplayName(p), p, true, "\uE71D", Cell * 2 + 8, Cell, () => Launch.Run(p)));
+                    row.Children.Add(Tile(_cat.DisplayName(p), p, true, "\uE71D", Cell * 2 + 8, Cell, () => Launch.Run(p), () => GlassMenu.Show(this, AppMenu(_cat.DisplayName(p), p, false))));
                 }
                 _main.Children.Add(row);
             }
@@ -510,11 +474,29 @@ namespace Heft.Ui
                 foreach (var f in files)
                 {
                     string p = f.Path;
-                    row.Children.Add(Tile(f.Name, p, f.Dir, f.Dir ? "\uE8B7" : "\uE8A5", Cell * 2 + 8, Cell * 2 + 8, () => Files.Open(p, _s), () =>
+                    row.Children.Add(Tile(f.Name, p, f.Dir, f.Dir ? "\uE8B7" : "\uE8A5", Cell * 2 + 8, Cell * 2 + 8, () => Files.Open(p, _s), () => GlassMenu.Show(this, new List<MenuEntry>
                     {
-                        Close2();
-                        Files.Reveal(p);
-                    }));
+                        MenuEntry.Item("\uE8E5", "Open", () =>
+                        {
+                            Close2();
+                            Files.Open(p, _s);
+                        }),
+                        MenuEntry.Item("\uE838", "Show in folder", () =>
+                        {
+                            Close2();
+                            Files.Reveal(p);
+                        }),
+                        MenuEntry.Item("\uE8C8", "Copy path", () =>
+                        {
+                            try
+                            {
+                                Clipboard.SetText(p);
+                            }
+                            catch
+                            {
+                            }
+                        })
+                    })));
                 }
                 _main.Children.Add(row);
             }
@@ -541,7 +523,7 @@ namespace Heft.Ui
                 foreach (var a in group)
                 {
                     var app = a;
-                    row.Children.Add(Tile(app.Name, AppIndex.IconPath(app), true, "\uE71D", Cell * 3 + 16, Cell, () => AppIndex.Launch(app)));
+                    row.Children.Add(Tile(app.Name, AppIndex.IconPath(app), true, "\uE71D", Cell * 3 + 16, Cell, () => AppIndex.Launch(app), () => GlassMenu.Show(this, AppMenu(app.Name, app.Id, !app.IsPath))));
                 }
                 _main.Children.Add(row);
             }
@@ -573,6 +555,7 @@ namespace Heft.Ui
 
         void BuildSide()
         {
+            _mediaCard = null;
             if (_data.Weather.Length > 0)
             {
                 var g = new Grid();
@@ -591,23 +574,8 @@ namespace Heft.Ui
 
             if (_np.HasSession && _np.Title.Length > 0)
             {
-                var g = new Grid();
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                g.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                var art = new Image { Width = 58, Height = 58, Source = _np.Art, Stretch = Stretch.UniformToFill, Margin = new Thickness(0, 0, 12, 0) };
-                art.Clip = new RectangleGeometry(new Rect(0, 0, 58, 58), 10, 10);
-                g.Children.Add(art);
-                var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                sp.Children.Add(W(_np.Title, 14, true));
-                sp.Children.Add(W(_np.Artist, 12, false, 0xA8));
-                var ctl = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-6, 4, 0, 0) };
-                ctl.Children.Add(Btn("\uE892", () => _ = _np.Previous()));
-                ctl.Children.Add(Btn(_np.Playing ? "\uE769" : "\uE768", () => _ = _np.Toggle()));
-                ctl.Children.Add(Btn("\uE893", () => _ = _np.Next()));
-                sp.Children.Add(ctl);
-                Grid.SetColumn(sp, 1);
-                g.Children.Add(sp);
-                _side.Children.Add(Card(g));
+                _mediaCard = Card(MediaBody());
+                _side.Children.Add(_mediaCard);
             }
 
             var toggles = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3 };
@@ -679,6 +647,8 @@ namespace Heft.Ui
             }
             _side.Children.Add(Card(sys));
 
+            if (ScreenTimeCard() is UIElement st) _side.Children.Add(st);
+
             if (ExtWidgets != null)
             {
                 foreach (var wdg in ExtWidgets())
@@ -737,8 +707,10 @@ namespace Heft.Ui
                 _side.Children.Add(Card(sp));
             }
 
+            if (ToolsCard() is UIElement tools) _side.Children.Add(tools);
+
             var power = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-            foreach (var (glyph, id, tip) in new[] { ("\uE72E", "pclock", "lock"), ("\uE708", "sleep", "sleep"), ("\uE777", "restart", "restart"), ("\uE7E8", "shutdown", "shut down"), ("\uE713", "", "heft settings") })
+            foreach (var (glyph, id, tip) in new[] { ("\uE72E", "pclock", "lock"), ("\uE708", "sleep", "sleep"), ("\uE777", "restart", "restart"), ("\uE7E8", "shutdown", "shut down"), ("\uE771", "", "heft settings") })
             {
                 string cid = id;
                 var b = Btn(glyph, () =>
@@ -774,9 +746,50 @@ namespace Heft.Ui
             foreach (var p in _data.Taskbar)
             {
                 var pin = p;
-                var t = Tile(p.Name, p.Target, true, "\uE71D", 52, 52, () => Launch.Run(pin.Target));
-                t.Margin = new Thickness(3);
-                t.CornerRadius = new CornerRadius(12);
+                Running(pin, out var mine);
+                var t = Tile(p.Name, p.Target, true, "\uE71D", 52, 52, () =>
+                {
+                    if (mine.Count > 0) WinList.Switch(mine[0].Hwnd);
+                    else Launch.Run(pin.Target);
+                }, () =>
+                {
+                    var items = new List<MenuEntry> { MenuEntry.Item("\uE710", "New window", () =>
+                    {
+                        Close2();
+                        Launch.Run(pin.Target);
+                    }) };
+                    if (mine.Count > 0)
+                    {
+                        items.Add(MenuEntry.Title("open now"));
+                        foreach (var w in mine.Take(8))
+                        {
+                            var win = w;
+                            items.Add(MenuEntry.Item("\uE8A7", win.Title.Length > 48 ? win.Title[..48] + "..." : win.Title, () =>
+                            {
+                                Close2();
+                                WinList.Switch(win.Hwnd);
+                            }));
+                        }
+                        items.Add(MenuEntry.Sep());
+                        items.Add(MenuEntry.Item("\uE8BB", mine.Count == 1 ? "Close window" : "Close all " + mine.Count, () =>
+                        {
+                            foreach (var w in mine) WinList.Close(w.Hwnd);
+                            Dispatcher.BeginInvoke(new Action(Refresh), DispatcherPriority.Background);
+                        }, true));
+                    }
+                    GlassMenu.Show(this, items);
+                });
+                t.Margin = new Thickness(3, 3, 3, 9);
+                t.CornerRadius = Kit.Round(12);
+                if (mine.Count > 0)
+                {
+                    var host = new Grid();
+                    _dockRow.Children.Add(host);
+                    host.Children.Add(t);
+                    var dot = new Border { Width = mine.Count > 1 ? 12 : 5, Height = 4, CornerRadius = new CornerRadius(2), Background = new SolidColorBrush(Color.FromArgb(0xE6, 255, 255, 255)), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 2), IsHitTestVisible = false };
+                    host.Children.Add(dot);
+                    continue;
+                }
                 _dockRow.Children.Add(t);
             }
             var overview = Btn("\uE8A9", () =>
