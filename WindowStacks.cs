@@ -31,13 +31,17 @@ namespace Heft
             [PreserveSig] int SetActiveAlt(IntPtr hwnd);
         }
 
-        sealed class Stack
+        internal sealed class Stack
         {
             public readonly List<IntPtr> Wins = new();
             public IntPtr Active;
             public TabStrip? Strip;
+            public WorkspacePill? Pill;
             public Native.RECT Frame;
-            public bool Max;
+            public bool Fill;
+            public string Name = "";
+            public string Layer = "normal";
+            public bool Collapsed;
             public string Sig = "";
         }
 
@@ -46,8 +50,12 @@ namespace Heft
         readonly Settings _s;
         readonly AppCatalog _cat;
         readonly List<Stack> _stacks = new();
-        readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(120) };
+        readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(400) };
+        readonly List<(string exe, Stack st, long until)> _waiting = new();
         StackHint? _hint;
+        bool _wired;
+
+        public Func<IReadOnlyList<(string name, string path)>>? Favorites;
 
         public WindowStacks(Settings s, AppCatalog cat)
         {
@@ -57,6 +65,15 @@ namespace Heft
         }
 
         public int Count => _stacks.Count;
+
+        void Wire()
+        {
+            if (_wired) return;
+            _wired = true;
+            WinEvents.Moved += OnMoved;
+            WinEvents.Foreground += OnForeground;
+            WinEvents.Minimized += OnMinimized;
+        }
 
         public void RestoreLeftovers()
         {
@@ -91,29 +108,70 @@ namespace Heft
             }
         }
 
+        static string Exe(IntPtr h) => Path.GetFileNameWithoutExtension(Native.ProcessPath(h) ?? "");
+
+        string Nice(IntPtr h)
+        {
+            var p = Native.ProcessPath(h);
+            return p == null ? Native.Title(h) : _cat.DisplayName(p);
+        }
+
         public void Join(IntPtr dragged, IntPtr target)
         {
             _hint?.Fade();
             if (dragged == target || !Native.IsWindow(dragged) || !Native.IsWindow(target)) return;
+            Wire();
             var from = Find(dragged);
             if (from != null) Take(from, dragged, false);
 
             var st = Find(target);
             if (st == null)
             {
-                st = new Stack { Active = target, Frame = Native.FrameBounds(target), Max = Native.IsZoomed(target) };
+                st = new Stack { Active = target, Frame = Native.FrameBounds(target) };
+                if (Native.IsZoomed(target)) MakeFill(st, target);
                 st.Wins.Add(target);
+                st.Name = Nice(target);
                 _stacks.Add(st);
+                WinEvents.Watch(target);
             }
             else if (st.Active != target)
             {
                 Activate(st, target, false);
             }
-            if (!st.Wins.Contains(dragged)) st.Wins.Add(dragged);
+            if (!st.Wins.Contains(dragged))
+            {
+                st.Wins.Add(dragged);
+                WinEvents.Watch(dragged);
+                CountPair(target, dragged);
+                if (st.Wins.Count == 2 && st.Name == Nice(target)) st.Name = Nice(target) + " + " + Nice(dragged);
+            }
             Activate(st, dragged, true);
             Sfx.Play("stack");
             _timer.Start();
             PhysicsEngine.Log($"stacked {st.Wins.Count} windows");
+        }
+
+        void CountPair(IntPtr a, IntPtr b)
+        {
+            string ea = Exe(a).ToLowerInvariant(), eb = Exe(b).ToLowerInvariant();
+            if (ea.Length == 0 || eb.Length == 0 || ea == eb) return;
+            string key = string.CompareOrdinal(ea, eb) < 0 ? ea + "|" + eb : eb + "|" + ea;
+            _s.StackPairs[key] = _s.StackPairs.TryGetValue(key, out int n) ? n + 1 : 1;
+            _s.Touch();
+        }
+
+        List<string> PairsFor(Stack st)
+        {
+            var mine = st.Wins.Select(w => Exe(w).ToLowerInvariant()).Where(x => x.Length > 0).ToHashSet();
+            var scores = new Dictionary<string, int>();
+            foreach (var kv in _s.StackPairs)
+            {
+                var parts = kv.Key.Split('|');
+                if (parts.Length != 2) continue;
+                if (mine.Contains(parts[0]) && !mine.Contains(parts[1])) scores[parts[1]] = scores.GetValueOrDefault(parts[1]) + kv.Value;
+                if (mine.Contains(parts[1]) && !mine.Contains(parts[0])) scores[parts[0]] = scores.GetValueOrDefault(parts[0]) + kv.Value;
+            }
+            return scores.OrderByDescending(kv => kv.Value).Select(kv => kv.Key).Take(5).ToList();
         }
 
         Stack? Find(IntPtr h) => _stacks.FirstOrDefault(s => s.Wins.Contains(h));
@@ -132,30 +190,48 @@ namespace Heft
 
         public void CycleForeground() => Cycle(Native.GetForegroundWindow(), 1);
 
+        int StripPx(Native.RECT f) => (int)Math.Round(TabStrip.Tall * Native.DpiScaleAt(f.Left + 10, f.Top + 10));
+
+        void MakeFill(Stack st, IntPtr h)
+        {
+            var fb = Native.FrameBounds(h);
+            var work = Native.WorkAreaAt(fb.Left + fb.Width / 2, fb.Top + fb.Height / 2);
+            if (Native.IsZoomed(h)) Native.ShowWindow(h, Native.SW_RESTORE);
+            int top = StripPx(fb);
+            st.Fill = true;
+            st.Frame = new Native.RECT { Left = work.Left, Top = work.Top + top, Right = work.Right, Bottom = work.Bottom };
+            SnapZones.Place(h, st.Frame);
+        }
+
         void Activate(Stack st, IntPtr h, bool focus)
         {
             if (!Native.IsWindow(h)) return;
             var old = st.Active;
-            if (old != h && Native.IsWindow(old) && Visible(old))
-            {
-                st.Frame = Native.FrameBounds(old);
-                st.Max = Native.IsZoomed(old);
-            }
+            if (old != h && Native.IsWindow(old) && Visible(old)) st.Frame = Native.FrameBounds(old);
 
             if (Native.IsIconic(h) || Native.IsZoomed(h)) Native.ShowWindow(h, Native.SW_RESTORE);
-            Place(h, st.Frame);
-            if (st.Max) Native.ShowWindow(h, Native.SW_MAXIMIZE);
+            SnapZones.Place(h, st.Frame);
             Tab(h, true);
-
             if (old != h && Native.IsWindow(old))
             {
                 if (Native.IsZoomed(old)) Native.ShowWindow(old, Native.SW_RESTORE);
+                if (st.Layer == "top") Native.SetWindowPos(old, Native.HWND_NOTOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
                 Native.SetWindowPos(old, IntPtr.Zero, Away, Away, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
             }
             st.Active = h;
+            ApplyLayer(st);
             if (focus) Native.ForceForeground(h);
             Strip(st, true);
             Persist();
+        }
+
+        void ApplyLayer(Stack st)
+        {
+            var h = st.Active;
+            if (!Native.IsWindow(h)) return;
+            if (st.Layer == "top") Native.SetWindowPos(h, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            else if (st.Layer == "under") Native.SetWindowPos(h, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            else if ((Native.ExStyle(h) & Native.WS_EX_TOPMOST) != 0) Native.SetWindowPos(h, Native.HWND_NOTOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
         }
 
         static bool Visible(IntPtr h)
@@ -163,16 +239,6 @@ namespace Heft
             if (!Native.IsWindowVisible(h) || Native.IsIconic(h)) return false;
             var r = Native.FrameBounds(h);
             return r.Left > -10000 && r.Width > 0;
-        }
-
-        static void Place(IntPtr h, Native.RECT frame)
-        {
-            if (frame.Width <= 0 || frame.Height <= 0) return;
-            Native.GetWindowRect(h, out var wr);
-            var fb = Native.FrameBounds(h);
-            int padL = Math.Clamp(fb.Left - wr.Left, 0, 40), padT = Math.Clamp(fb.Top - wr.Top, 0, 40);
-            int padR = Math.Clamp(wr.Right - fb.Right, 0, 40), padB = Math.Clamp(wr.Bottom - fb.Bottom, 0, 40);
-            Native.SetWindowPos(h, IntPtr.Zero, frame.Left - padL, frame.Top - padT, frame.Width + padL + padR, frame.Height + padT + padB, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
         }
 
         public void Take(IntPtr h) => Take(Find(h), h, true);
@@ -187,12 +253,14 @@ namespace Heft
                 Activate(st, next, false);
             }
             st.Wins.Remove(h);
+            WinEvents.Unwatch(h);
             if (Native.IsWindow(h))
             {
                 var f = st.Frame;
                 int off = (int)(36 * Native.DpiScaleAt(f.Left + 10, f.Top + 10));
                 var r = new Native.RECT { Left = f.Left + off, Top = f.Top + off, Right = f.Right + off, Bottom = f.Bottom + off };
-                Place(h, r);
+                SnapZones.Place(h, r);
+                if ((Native.ExStyle(h) & Native.WS_EX_TOPMOST) != 0) Native.SetWindowPos(h, Native.HWND_NOTOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
                 Tab(h, true);
                 if (focus) Native.ForceForeground(h);
             }
@@ -205,15 +273,19 @@ namespace Heft
         {
             foreach (var w in st.Wins)
             {
+                WinEvents.Unwatch(w);
                 if (!Native.IsWindow(w)) continue;
                 if (w != st.Active || !Visible(w))
                 {
-                    Place(w, st.Frame);
-                    if (st.Max) Native.ShowWindow(w, Native.SW_MAXIMIZE);
+                    if (Native.IsIconic(w)) Native.ShowWindow(w, Native.SW_RESTORE);
+                    SnapZones.Place(w, st.Frame);
                 }
+                if (st.Fill && w == st.Active) Native.ShowWindow(w, Native.SW_MAXIMIZE);
+                if ((Native.ExStyle(w) & Native.WS_EX_TOPMOST) != 0) Native.SetWindowPos(w, Native.HWND_NOTOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
                 Tab(w, true);
             }
             CloseStrip(st);
+            ClosePill(st);
             _stacks.Remove(st);
             if (_stacks.Count == 0) _timer.Stop();
             Persist();
@@ -226,13 +298,16 @@ namespace Heft
                 int n = 0;
                 foreach (var w in st.Wins)
                 {
-                    if (!Native.IsWindow(w) || w == st.Active) continue;
+                    if (!Native.IsWindow(w)) continue;
+                    if (Native.IsIconic(w)) Native.ShowWindow(w, Native.SW_RESTORE);
+                    if (w == st.Active) continue;
                     n++;
                     int off = (int)(28 * n * Native.DpiScaleAt(st.Frame.Left + 10, st.Frame.Top + 10));
-                    Place(w, new Native.RECT { Left = st.Frame.Left + off, Top = st.Frame.Top + off, Right = st.Frame.Right + off, Bottom = st.Frame.Bottom + off });
+                    SnapZones.Place(w, new Native.RECT { Left = st.Frame.Left + off, Top = st.Frame.Top + off, Right = st.Frame.Right + off, Bottom = st.Frame.Bottom + off });
                     Tab(w, true);
                 }
                 CloseStrip(st);
+                ClosePill(st);
             }
             _stacks.Clear();
             _timer.Stop();
@@ -247,13 +322,64 @@ namespace Heft
             }
         }
 
+        void OnMoved(IntPtr h)
+        {
+            var st = Find(h);
+            if (st == null || st.Active != h || st.Collapsed) return;
+            if (Native.IsZoomed(h))
+            {
+                MakeFill(st, h);
+                Strip(st, false);
+                return;
+            }
+            if (Visible(h))
+            {
+                var f = Native.FrameBounds(h);
+                if (st.Fill && (f.Left != st.Frame.Left || f.Top != st.Frame.Top || f.Width != st.Frame.Width)) st.Fill = false;
+                st.Frame = f;
+            }
+            st.Strip?.Follow(h, Visible(h) && !st.Collapsed);
+        }
+
+        void OnForeground(IntPtr h)
+        {
+            foreach (var st in _stacks)
+            {
+                if (st.Collapsed) continue;
+                if (st.Wins.Contains(h) && h != st.Active)
+                {
+                    Activate(st, h, false);
+                    continue;
+                }
+                if (st.Layer == "under" && h != st.Active && Native.IsWindow(st.Active) && !st.Wins.Contains(h))
+                    Native.SetWindowPos(st.Active, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            }
+        }
+
+        void OnMinimized(IntPtr h, bool min)
+        {
+            var st = Find(h);
+            if (st == null || st.Active != h) return;
+            if (st.Collapsed && !min)
+            {
+                Expand(st);
+                return;
+            }
+            st.Strip?.Follow(h, !min && Visible(h));
+        }
+
         void Tick()
         {
-            IntPtr fg = Native.GetForegroundWindow();
+            long now = Environment.TickCount64;
+            _waiting.RemoveAll(w => w.until < now);
             foreach (var st in _stacks.ToList())
             {
                 int before = st.Wins.Count;
-                st.Wins.RemoveAll(w => !Native.IsWindow(w));
+                foreach (var dead in st.Wins.Where(w => !Native.IsWindow(w)).ToList())
+                {
+                    st.Wins.Remove(dead);
+                    WinEvents.Unwatch(dead);
+                }
                 if (st.Wins.Count < 2)
                 {
                     Dissolve(st);
@@ -264,24 +390,30 @@ namespace Heft
                     st.Active = IntPtr.Zero;
                     Activate(st, st.Wins[0], false);
                 }
-                else if (before != st.Wins.Count)
-                {
-                    Persist();
-                }
-
-                if (fg != st.Active && st.Wins.Contains(fg))
-                {
-                    Activate(st, fg, false);
-                    continue;
-                }
-
-                if (Visible(st.Active))
-                {
-                    st.Frame = Native.FrameBounds(st.Active);
-                    st.Max = Native.IsZoomed(st.Active);
-                }
-                Strip(st, false);
+                else if (before != st.Wins.Count) Persist();
+                if (st.Collapsed) st.Pill?.Update(st.Name, st.Wins.Count);
+                else Strip(st, false);
             }
+        }
+
+        public void Opened(IntPtr h, string path)
+        {
+            string exe = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+            int i = _waiting.FindIndex(w => w.exe == exe);
+            if (i < 0) return;
+            var st = _waiting[i].st;
+            _waiting.RemoveAt(i);
+            if (!_stacks.Contains(st) || !Native.IsWindow(st.Active)) return;
+            Join(h, st.Active);
+        }
+
+        void Launch(Stack st, string path)
+        {
+            string exe = WinList.ExeOf(path).ToLowerInvariant();
+            if (exe.Length == 0) return;
+            _waiting.RemoveAll(w => w.exe == exe);
+            _waiting.Add((exe, st, Environment.TickCount64 + 20000));
+            Heft.Launch.Run(path);
         }
 
         void Strip(Stack st, bool rebuild)
@@ -290,26 +422,47 @@ namespace Heft
             {
                 if (st.Strip == null || st.Strip.Dead)
                 {
-                    st.Strip = new TabStrip(_cat);
-                    st.Strip.Picked += h =>
+                    var strip = new TabStrip(_cat);
+                    st.Strip = strip;
+                    strip.Picked += h =>
                     {
                         var s2 = Find(h);
-                        if (s2 != null)
-                        {
-                            Activate(s2, h, true);
-                            Sfx.Play("tick");
-                        }
+                        if (s2 == null) return;
+                        Activate(s2, h, true);
+                        Sfx.Play("tick");
                     };
-                    st.Strip.Unstack += Take;
-                    st.Strip.Scrolled += (h, dir) => Cycle(h, dir);
+                    strip.Unstack += Take;
+                    strip.CloseTab += h =>
+                    {
+                        Native.PostMessage(h, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                    };
+                    strip.Scrolled += (h, dir) => Cycle(h, dir);
+                    strip.Plus += anchor =>
+                    {
+                        var s2 = _stacks.FirstOrDefault(x => x.Strip == strip);
+                        if (s2 != null) GlassMenu.Show(anchor, PlusMenu(s2));
+                    };
+                    strip.More += anchor =>
+                    {
+                        var s2 = _stacks.FirstOrDefault(x => x.Strip == strip);
+                        if (s2 != null) GlassMenu.Show(anchor, MoreMenu(s2));
+                    };
+                    strip.Renamed += name =>
+                    {
+                        var s2 = _stacks.FirstOrDefault(x => x.Strip == strip);
+                        if (s2 == null || name.Trim().Length == 0) return;
+                        s2.Name = name.Trim();
+                        s2.Sig = "";
+                        Strip(s2, true);
+                    };
                     rebuild = true;
                 }
-                bool show = Native.IsWindow(st.Active) && Visible(st.Active);
-                string sig = string.Join(",", st.Wins.Select(w => w.ToInt64() + ":" + Native.Title(w))) + "|" + st.Active.ToInt64();
+                bool show = Native.IsWindow(st.Active) && Visible(st.Active) && !st.Collapsed;
+                string sig = string.Join(",", st.Wins.Select(w => w.ToInt64() + ":" + Native.Title(w))) + "|" + st.Active.ToInt64() + "|" + st.Name + "|" + st.Layer;
                 if (rebuild || sig != st.Sig)
                 {
                     st.Sig = sig;
-                    st.Strip.Build(st.Wins, st.Active);
+                    st.Strip.Build(st.Wins, st.Active, st.Name, st.Layer);
                 }
                 st.Strip.Follow(st.Active, show);
             }
@@ -318,6 +471,125 @@ namespace Heft
                 PhysicsEngine.Log("tab strip failed " + ex.Message);
                 st.Strip = null;
             }
+        }
+
+        List<MenuEntry> PlusMenu(Stack st)
+        {
+            var items = new List<MenuEntry>();
+            var open = WinList.All().Where(w => !st.Wins.Contains(w.Hwnd) && Find(w.Hwnd) == null).Take(10).ToList();
+            if (open.Count > 0)
+            {
+                items.Add(MenuEntry.Title("open right now"));
+                foreach (var w in open)
+                {
+                    var win = w;
+                    string t = win.Title.Length > 46 ? win.Title[..46] + "..." : win.Title;
+                    items.Add(MenuEntry.Item("\uE8A7", t, () => Join(win.Hwnd, st.Active)));
+                }
+            }
+            var pairs = PairsFor(st);
+            var favs = Favorites?.Invoke() ?? Array.Empty<(string name, string path)>();
+            var usual = new List<(string name, string path)>();
+            foreach (var exe in pairs)
+            {
+                var hit = favs.FirstOrDefault(f => WinList.ExeOf(f.path).Equals(exe, StringComparison.OrdinalIgnoreCase));
+                if (hit.path != null) usual.Add(hit);
+            }
+            if (usual.Count > 0)
+            {
+                items.Add(MenuEntry.Title("usually with this"));
+                foreach (var (name, path) in usual)
+                {
+                    string p = path;
+                    items.Add(MenuEntry.Item("\uE710", name, () => Launch(st, p)));
+                }
+            }
+            var more = favs.Where(f => !usual.Any(u => u.path == f.path)).Take(6).ToList();
+            if (more.Count > 0)
+            {
+                items.Add(MenuEntry.Title("open an app in here"));
+                foreach (var (name, path) in more)
+                {
+                    string p = path;
+                    items.Add(MenuEntry.Item("\uE710", name, () => Launch(st, p)));
+                }
+            }
+            if (items.Count == 0) items.Add(MenuEntry.Title("nothing else open"));
+            return items;
+        }
+
+        List<MenuEntry> MoreMenu(Stack st)
+        {
+            return new List<MenuEntry>
+            {
+                MenuEntry.Item("\uE8AC", "Rename", () => st.Strip?.StartRename()),
+                MenuEntry.Item("\uE921", "Minimize to a pill", () => Collapse(st)),
+                MenuEntry.Toggle("\uE718", "Keep on top of everything", st.Layer == "top", () =>
+                {
+                    st.Layer = st.Layer == "top" ? "normal" : "top";
+                    ApplyLayer(st);
+                    Strip(st, true);
+                }),
+                MenuEntry.Toggle("\uE8A1", "Keep under everything", st.Layer == "under", () =>
+                {
+                    st.Layer = st.Layer == "under" ? "normal" : "under";
+                    ApplyLayer(st);
+                    Strip(st, true);
+                }),
+                MenuEntry.Sep(),
+                MenuEntry.Item("\uE8C6", "Ungroup", () => Dissolve(st)),
+                MenuEntry.Item("\uE8BB", "Close every tab", () =>
+                {
+                    foreach (var w in st.Wins.ToList()) Native.PostMessage(w, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                }, true)
+            };
+        }
+
+        void Collapse(Stack st)
+        {
+            if (st.Collapsed) return;
+            st.Collapsed = true;
+            st.Strip?.Follow(st.Active, false);
+            if (Native.IsWindow(st.Active)) Native.ShowWindow(st.Active, Native.SW_MINIMIZE);
+            var pill = st.Pill;
+            if (pill == null || pill.Dead)
+            {
+                pill = new WorkspacePill(_cat);
+                st.Pill = pill;
+                pill.Restore += () => Expand(st);
+                pill.Menu += anchor => GlassMenu.Show(anchor, new List<MenuEntry>
+                {
+                    MenuEntry.Item("\uE740", "Bring it back", () => Expand(st)),
+                    MenuEntry.Item("\uE8C6", "Ungroup", () =>
+                    {
+                        Expand(st);
+                        Dissolve(st);
+                    }),
+                    MenuEntry.Item("\uE8BB", "Close every tab", () =>
+                    {
+                        foreach (var w in st.Wins.ToList()) Native.PostMessage(w, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                    }, true)
+                });
+            }
+            int index = _stacks.Where(x => x.Collapsed).ToList().IndexOf(st);
+            pill.Show(st.Name, st.Wins.Count, st.Wins.Select(w => Native.ProcessPath(w)).Where(p => p != null).Select(p => p!).Distinct().Take(3).ToList(), st.Frame, Math.Max(0, index));
+            Sfx.Play("close");
+        }
+
+        void Expand(Stack st)
+        {
+            if (!st.Collapsed) return;
+            st.Collapsed = false;
+            ClosePill(st);
+            if (Native.IsWindow(st.Active))
+            {
+                Native.ShowWindow(st.Active, Native.SW_RESTORE);
+                SnapZones.Place(st.Active, st.Frame);
+                ApplyLayer(st);
+                Native.ForceForeground(st.Active);
+            }
+            Strip(st, true);
+            Sfx.Play("open");
         }
 
         static void CloseStrip(Stack st)
@@ -332,6 +604,18 @@ namespace Heft
             st.Strip = null;
         }
 
+        static void ClosePill(Stack st)
+        {
+            try
+            {
+                st.Pill?.Kill();
+            }
+            catch
+            {
+            }
+            st.Pill = null;
+        }
+
         void Persist()
         {
             var list = new List<PocketEntry>();
@@ -340,7 +624,7 @@ namespace Heft
                 foreach (var w in st.Wins)
                 {
                     if (w == st.Active) continue;
-                    list.Add(new PocketEntry { Hwnd = w.ToInt64(), X = st.Frame.Left, Y = st.Frame.Top, Max = st.Max, Title = Native.Title(w) });
+                    list.Add(new PocketEntry { Hwnd = w.ToInt64(), X = st.Frame.Left, Y = st.Frame.Top, Max = st.Fill, Title = Native.Title(w) });
                 }
             }
             _s.StackedAway = list;
@@ -378,18 +662,28 @@ namespace Heft
 
     internal sealed class TabStrip : Window
     {
+        public const double Tall = 36;
+
         readonly AppCatalog _cat;
-        readonly StackPanel _row = new() { Orientation = Orientation.Horizontal, Margin = new Thickness(4) };
+        readonly StackPanel _row = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         readonly Border _surface;
+        readonly TextBlock _name;
+        readonly TextBox _rename;
+        readonly TextBlock _layer;
         IntPtr _owner;
         IntPtr _active;
         Native.RECT _last;
-        bool _shownOnce;
+        bool _shownOnce, _blurred;
+        int _lastW;
 
         public bool Dead { get; private set; }
         public event Action<IntPtr>? Picked;
         public event Action<IntPtr>? Unstack;
+        public event Action<IntPtr>? CloseTab;
         public event Action<IntPtr, int>? Scrolled;
+        public event Action<UIElement>? Plus;
+        public event Action<UIElement>? More;
+        public event Action<string>? Renamed;
 
         public TabStrip(AppCatalog cat)
         {
@@ -397,10 +691,47 @@ namespace Heft
             Glass.Attach(this, 10, true);
             Topmost = false;
             ShowActivated = false;
-            SizeToContent = SizeToContent.WidthAndHeight;
             Title = "heft tabs";
+            Height = Tall;
             _surface = Glass.Surface(10);
-            _surface.Child = _row;
+            var dock = new DockPanel { Margin = new Thickness(4, 0, 4, 0), LastChildFill = true };
+
+            var more = Kit.Plain("\uE712", () => More?.Invoke(this), "workspace stuff", 11);
+            DockPanel.SetDock(more, Dock.Right);
+            dock.Children.Add(more);
+            _layer = Kit.Icon("", 11, "AccentFill");
+            _layer.Margin = new Thickness(0, 0, 6, 0);
+            DockPanel.SetDock(_layer, Dock.Right);
+            dock.Children.Add(_layer);
+            var nameHost = new Grid { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 8, 0) };
+            _name = Kit.Text("", 12, true, "SubText");
+            _name.Cursor = Cursors.Hand;
+            _name.ToolTip = "double-click to rename";
+            _name.MaxWidth = 200;
+            _name.MouseLeftButtonDown += (_, e) =>
+            {
+                if (e.ClickCount == 2) StartRename();
+            };
+            _rename = new TextBox { Style = (Style)Application.Current.FindResource("Field"), Width = 160, Visibility = Visibility.Collapsed, FontSize = 12 };
+            _rename.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Enter) EndRename(true);
+                else if (e.Key == Key.Escape) EndRename(false);
+            };
+            _rename.LostKeyboardFocus += (_, _) => EndRename(true);
+            nameHost.Children.Add(_name);
+            nameHost.Children.Add(_rename);
+            DockPanel.SetDock(nameHost, Dock.Right);
+            dock.Children.Add(nameHost);
+
+            var plus = Kit.Plain("\uE710", () => Plus?.Invoke(this), "add a tab", 11);
+            plus.Margin = new Thickness(2, 0, 0, 0);
+            var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            left.Children.Add(_row);
+            left.Children.Add(plus);
+            dock.Children.Add(left);
+
+            _surface.Child = dock;
             Content = _surface;
             Closed += (_, _) => Dead = true;
             MouseWheel += (_, e) =>
@@ -410,6 +741,31 @@ namespace Heft
             };
         }
 
+        public void StartRename()
+        {
+            var me = new WindowInteropHelper(this).Handle;
+            if (me != IntPtr.Zero) Native.SetWindowLongPtr(me, Native.GWL_EXSTYLE, new IntPtr(Native.ExStyle(me) & ~(long)Native.WS_EX_NOACTIVATE));
+            ShowActivated = true;
+            _rename.Text = _name.Text;
+            _name.Visibility = Visibility.Collapsed;
+            _rename.Visibility = Visibility.Visible;
+            Activate();
+            _rename.Focus();
+            _rename.SelectAll();
+        }
+
+        void EndRename(bool keep)
+        {
+            if (_rename.Visibility != Visibility.Visible) return;
+            _rename.Visibility = Visibility.Collapsed;
+            _name.Visibility = Visibility.Visible;
+            ShowActivated = false;
+            var me = new WindowInteropHelper(this).Handle;
+            if (me != IntPtr.Zero) Native.SetWindowLongPtr(me, Native.GWL_EXSTYLE, new IntPtr(Native.ExStyle(me) | Native.WS_EX_NOACTIVATE));
+            if (keep && _rename.Text.Trim().Length > 0 && _rename.Text.Trim() != _name.Text) Renamed?.Invoke(_rename.Text.Trim());
+            if (Native.IsWindow(_active)) Native.ForceForeground(_active);
+        }
+
         public void Kill()
         {
             if (Dead) return;
@@ -417,9 +773,12 @@ namespace Heft
             Close();
         }
 
-        public void Build(List<IntPtr> wins, IntPtr active)
+        public void Build(List<IntPtr> wins, IntPtr active, string name, string layer)
         {
             _active = active;
+            _name.Text = name;
+            _layer.Text = layer == "top" ? "\uE718" : layer == "under" ? "\uE8A1" : "";
+            _layer.ToolTip = layer == "top" ? "kept on top" : layer == "under" ? "kept under everything" : null;
             _row.Children.Clear();
             foreach (var w in wins)
             {
@@ -435,15 +794,21 @@ namespace Heft
                 var text = Kit.Text(title, 12, on, on ? "Text" : "SubText");
                 text.MaxWidth = 170;
                 sp.Children.Add(text);
-                var tab = new Border { Child = sp, CornerRadius = new CornerRadius(7), Padding = new Thickness(10, 5, 12, 6), Margin = new Thickness(0, 0, 3, 0), Cursor = Cursors.Hand, ToolTip = title + "\nmiddle-click or right-click to take it out" };
+                var x = Kit.Plain("\uE8BB", () => CloseTab?.Invoke(h), "close this tab", 8);
+                x.Margin = new Thickness(6, 0, -4, 0);
+                x.Visibility = Visibility.Hidden;
+                sp.Children.Add(x);
+                var tab = new Border { Child = sp, CornerRadius = Kit.Round(7), Padding = new Thickness(10, 4, 8, 5), Margin = new Thickness(0, 0, 3, 0), Cursor = Cursors.Hand, ToolTip = title + "\nmiddle-click or right-click to take it out", VerticalAlignment = VerticalAlignment.Center };
                 if (on) tab.SetResourceReference(Border.BackgroundProperty, "RowHover");
                 else tab.Background = Brushes.Transparent;
                 tab.MouseEnter += (_, _) =>
                 {
+                    x.Visibility = Visibility.Visible;
                     if (!on) tab.SetResourceReference(Border.BackgroundProperty, "GroupBg");
                 };
                 tab.MouseLeave += (_, _) =>
                 {
+                    x.Visibility = Visibility.Hidden;
                     if (!on) tab.Background = Brushes.Transparent;
                 };
                 tab.MouseLeftButtonUp += (_, e) =>
@@ -466,7 +831,7 @@ namespace Heft
         {
             if (Dead) return;
             var me = new WindowInteropHelper(this).EnsureHandle();
-            if (!show)
+            if (!show || !Native.IsWindow(active))
             {
                 if (IsVisible) Hide();
                 return;
@@ -480,35 +845,151 @@ namespace Heft
             var f = Native.FrameBounds(active);
             if (f.Left == _last.Left && f.Top == _last.Top && f.Right == _last.Right && IsVisible) return;
             _last = f;
+            double scale = Native.DpiScaleAt(f.Left + 10, f.Top + 10);
+            int h = (int)Math.Round(Tall * scale);
+            int w = Math.Max((int)(300 * scale), f.Width);
+            var work = Native.WorkAreaAt(f.Left + f.Width / 2, f.Top + 4);
+            int x = f.Left;
+            int y = Math.Max(work.Top, f.Top - h);
             if (!IsVisible)
             {
                 if (!_shownOnce) _surface.Opacity = 0;
                 Show();
             }
-            UpdateLayout();
-            Native.GetWindowRect(me, out var mine);
-            int w = mine.Width, hgt = mine.Height;
-            var work = Native.WorkAreaAt(f.Left + f.Width / 2, f.Top + 4);
-            int x = f.Left + (int)(10 * Native.DpiScaleAt(f.Left + 10, f.Top + 10));
-            int y = f.Top - hgt + 1;
-            if (y < work.Top || Native.IsZoomed(active))
+            bool resized = w != _lastW;
+            if (resized)
             {
-                x = f.Left + (f.Width - w) / 2;
-                y = f.Top + 3;
+                _lastW = w;
+                Native.SetWindowPos(me, IntPtr.Zero, x, y, w, h, Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
             }
-            x = Math.Max(f.Left, Math.Min(x, f.Right - w));
-            IntPtr prev = Native.GetWindow(active, 3);
-            if (prev == me || (prev != IntPtr.Zero && (Native.ExStyle(prev) & Native.WS_EX_TOPMOST) != 0))
-                Native.SetWindowPos(me, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
-            else
-                Native.SetWindowPos(me, prev, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            else Native.SetWindowPos(me, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE | Native.SWP_NOZORDER);
             if (!_shownOnce)
             {
                 _shownOnce = true;
                 Glass.FadeIn(_surface, 6, 180);
                 _surface.Opacity = 1;
             }
-            Glass.SetBlur(this, true);
+            if (resized || !_blurred)
+            {
+                _blurred = true;
+                Glass.SetBlur(this, true);
+            }
+        }
+    }
+
+    internal sealed class WorkspacePill : Window
+    {
+        readonly AppCatalog _cat;
+        readonly Border _surface;
+        readonly StackPanel _icons = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        readonly TextBlock _name;
+        readonly TextBlock _count;
+        Point _down;
+        bool _pressed, _moved;
+
+        public bool Dead { get; private set; }
+        public event Action? Restore;
+        public event Action<UIElement>? Menu;
+
+        public WorkspacePill(AppCatalog cat)
+        {
+            _cat = cat;
+            Glass.Attach(this, 18, true);
+            ShowActivated = false;
+            Title = "heft workspace";
+            SizeToContent = SizeToContent.WidthAndHeight;
+            _surface = Glass.Surface(18);
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 7, 14, 7), Background = Brushes.Transparent };
+            row.Children.Add(_icons);
+            _name = Kit.Text("", 12.5, true);
+            _name.Margin = new Thickness(8, 0, 0, 0);
+            _name.MaxWidth = 200;
+            row.Children.Add(_name);
+            _count = Kit.Text("", 11.5, false, "SubText");
+            _count.Margin = new Thickness(7, 0, 0, 0);
+            row.Children.Add(_count);
+            _surface.Child = row;
+            _surface.Cursor = Cursors.Hand;
+            _surface.ToolTip = "click to bring it back, drag to move";
+            Content = _surface;
+            Closed += (_, _) => Dead = true;
+            _surface.PreviewMouseLeftButtonDown += (_, e) =>
+            {
+                _pressed = true;
+                _moved = false;
+                Native.GetCursorPos(out var c);
+                _down = new Point(c.X, c.Y);
+                _surface.CaptureMouse();
+            };
+            _surface.MouseMove += (_, e) =>
+            {
+                if (!_pressed) return;
+                Native.GetCursorPos(out var c);
+                double dx = c.X - _down.X, dy = c.Y - _down.Y;
+                if (!_moved && Math.Abs(dx) < 4 && Math.Abs(dy) < 4) return;
+                _moved = true;
+                var h = new WindowInteropHelper(this).Handle;
+                Native.GetWindowRect(h, out var r);
+                Native.SetWindowPos(h, IntPtr.Zero, r.Left + (int)dx, r.Top + (int)dy, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+                _down = new Point(c.X, c.Y);
+            };
+            _surface.MouseLeftButtonUp += (_, _) =>
+            {
+                if (!_pressed) return;
+                _pressed = false;
+                _surface.ReleaseMouseCapture();
+                if (!_moved) Restore?.Invoke();
+            };
+            _surface.MouseRightButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                Menu?.Invoke(_surface);
+            };
+        }
+
+        public void Update(string name, int count)
+        {
+            _name.Text = name;
+            _count.Text = count + " tabs";
+        }
+
+        public void Show(string name, int count, List<string> paths, Native.RECT near, int index)
+        {
+            Update(name, count);
+            _icons.Children.Clear();
+            for (int i = 0; i < paths.Count; i++)
+            {
+                var img = new Image { Width = 20, Height = 20, Margin = new Thickness(i == 0 ? 0 : -6, 0, 0, 0) };
+                _cat.Icons.Get(paths[i], 32, true, src => img.Source = src);
+                _icons.Children.Add(img);
+            }
+            var work = Native.WorkAreaAt(near.Left + near.Width / 2, near.Top + near.Height / 2);
+            double scale = Native.DpiScaleAt(work.Left + 10, work.Top + 10);
+            Glass.Present(this, _surface, () =>
+            {
+                _surface.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                var size = _surface.DesiredSize;
+                int w = (int)(size.Width * scale), h = (int)(size.Height * scale);
+                int x = work.Left + (work.Width - w) / 2 + (int)(index * 230 * scale);
+                int y = work.Bottom - h - (int)(18 * scale);
+                Native.SetWindowPos(new WindowInteropHelper(this).Handle, Native.HWND_TOPMOST, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            }, 10, 0.94, 240);
+        }
+
+        public void Kill()
+        {
+            if (Dead) return;
+            Dead = true;
+            Glass.Dismiss(this, _surface, () =>
+            {
+                try
+                {
+                    Close();
+                }
+                catch
+                {
+                }
+            });
         }
     }
 
@@ -522,14 +1003,14 @@ namespace Heft
             Title = "heft stack hint";
             ShowActivated = false;
             IsHitTestVisible = false;
-            _box = new Border { CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(2) };
+            _box = new Border { CornerRadius = Kit.Round(12), BorderThickness = new Thickness(2) };
             _box.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
             _box.SetResourceReference(Border.BorderBrushProperty, "AccentFill");
             var sp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             var g = Kit.Icon("\uE8A9", 13, "AccentFill");
             g.Margin = new Thickness(0, 0, 8, 0);
             sp.Children.Add(g);
-            sp.Children.Add(Kit.Text("let go to stack these as tabs", 12.5, true));
+            sp.Children.Add(Kit.Text("let go to make these a workspace", 12.5, true));
             _box.Child = sp;
             Content = _box;
             SourceInitialized += (_, _) =>

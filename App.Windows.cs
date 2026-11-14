@@ -19,6 +19,7 @@ namespace Heft
             {
                 if (!_game) rules.Opened(h, path);
                 ModeForApp(path);
+                _stacks.Opened(h, path);
                 _ext?.Emit("open", Path.GetFileNameWithoutExtension(path), path);
             };
             watch.Closed += Remember;
