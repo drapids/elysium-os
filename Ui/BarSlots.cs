@@ -19,6 +19,7 @@ namespace Heft.Ui
             ("clip", "Clipboard", "right"),
             ("focus", "Focus mode", "right"),
             ("lock", "Cursor lock", "right"),
+            ("mic", "Mic muted", "right"),
             ("scratch", "Scratchpad", "right"),
             ("download", "Last download", "right"),
             ("volume", "Volume", "right"),
@@ -77,6 +78,7 @@ namespace Heft.Ui
             _slots["clip"] = clip;
             _slots["focus"] = focus;
             _slots["lock"] = lockIcon;
+            _slots["mic"] = MicSlot();
             _slots["scratch"] = SlotIcon("\uE70B", "scratchpad", host => ScratchClicked?.Invoke(this, CenterX(host)));
             _slots["download"] = DownloadChip();
             _slots["volume"] = volume;
@@ -130,6 +132,27 @@ namespace Heft.Ui
                 if (double.IsNaN(dot.Width) || grew) dot.Width = to;
                 else dot.BeginAnimation(WidthProperty, new DoubleAnimation(to, TimeSpan.FromMilliseconds(260 * Theme.Speed)) { EasingFunction = new SpringEase() });
             }
+        }
+
+        Border? _mic;
+        public event Action? MicClicked;
+
+        FrameworkElement MicSlot()
+        {
+            var t = Kit.Icon("\uE720", 12.5);
+            t.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x4E));
+            _mic = new Border { Child = t, Background = Brushes.Transparent, Padding = new Thickness(5, 2, 5, 2), Cursor = Cursors.Hand, Visibility = Visibility.Collapsed, ToolTip = "mic is muted. click to unmute" };
+            _mic.MouseLeftButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                MicClicked?.Invoke();
+            };
+            return _mic;
+        }
+
+        public void SetMic(bool muted)
+        {
+            if (_mic != null) _mic.Visibility = muted ? Visibility.Visible : Visibility.Collapsed;
         }
 
         FrameworkElement DownloadChip()

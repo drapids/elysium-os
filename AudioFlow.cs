@@ -37,7 +37,7 @@ namespace Heft
         public bool System;
     }
 
-    internal sealed class AudioFlow : IDisposable
+    internal sealed partial class AudioFlow : IDisposable
     {
         [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
         class MMDeviceEnumerator

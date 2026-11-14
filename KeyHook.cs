@@ -38,6 +38,10 @@ namespace Heft
         public event Action? ExplorerSpace;
 
         public volatile bool Paused;
+        public volatile uint HoldVk;
+        public volatile bool HoldSwallow;
+        public event Action<bool>? Hold;
+        bool _holdDown;
         public event Action<int, string>? Expand;
         volatile (string trigger, string text)[] _snippets = Array.Empty<(string, string)>();
         volatile bool _resetTyped;
@@ -153,6 +157,21 @@ namespace Heft
                     bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
                     bool up = msg == WM_KEYUP || msg == WM_SYSKEYUP;
                     bool win = k.vkCode == 0x5B || k.vkCode == 0x5C;
+
+                    if (!injected && HoldVk != 0 && k.vkCode == HoldVk && !Paused)
+                    {
+                        if (down && !_holdDown)
+                        {
+                            _holdDown = true;
+                            _ui.BeginInvoke(new Action(() => Hold?.Invoke(true)));
+                        }
+                        else if (up && _holdDown)
+                        {
+                            _holdDown = false;
+                            _ui.BeginInvoke(new Action(() => Hold?.Invoke(false)));
+                        }
+                        if (HoldSwallow) return new IntPtr(1);
+                    }
 
                     if (!injected && !Paused && _remaps.TryGetValue(k.vkCode, out var to))
                     {

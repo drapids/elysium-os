@@ -36,6 +36,9 @@ namespace Heft
 
         public PhysicsEngine? Physics;
         public volatile bool Quiet;
+        public volatile int HoldX;
+        public event Action<bool>? Hold;
+        bool _xHeld;
         public event Action<string, Native.POINT>? Gesture;
         public event Action? ReplayRight;
         bool _gesturing;
@@ -137,6 +140,18 @@ namespace Heft
                     if (_gesturing && _gPath.Count < 4000) _gPath.Add(m.pt);
                     CheckCorner(m.pt);
                     return false;
+
+                case 0x020B:
+                case 0x020C:
+                    {
+                        int which = (int)((m.mouseData >> 16) & 0xFFFF);
+                        if (HoldX == 0 || which != HoldX) return false;
+                        bool press = msg == 0x020B;
+                        if (press == _xHeld) return true;
+                        _xHeld = press;
+                        Post(() => Hold?.Invoke(press));
+                        return true;
+                    }
 
                 case 0x0204:
                     if (!GestureAllowed(m.pt)) return false;

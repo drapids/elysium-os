@@ -18,6 +18,7 @@ namespace Heft
         void WireBarExtras(Bar b)
         {
             b.DeskClicked += index => VirtualDesktops.Go(_deskIndex, index);
+            b.MicClicked += () => SetMic(false, true);
             b.ScratchClicked += (bar, x) => _drop.Toggle("scratch", bar.Display, bar.BottomPx, x);
             b.LastDownloadClicked += () =>
             {

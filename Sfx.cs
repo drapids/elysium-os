@@ -102,6 +102,65 @@ namespace Heft
             }
         }
 
+        public static void Blip(bool up)
+        {
+            var s = _s;
+            if (s == null || !s.MicSounds) return;
+            try
+            {
+                double vol = Math.Clamp(Math.Max(s.SoundVolume, 0.45), 0, 1);
+                var wav = Tone(up ? new[] { 660.0, 990.0 } : new[] { 880.0, 520.0 }, 55, vol * vol * 0.55);
+                lock (Gate)
+                {
+                    var next = GCHandle.Alloc(wav, GCHandleType.Pinned);
+                    PlaySound(next.AddrOfPinnedObject(), IntPtr.Zero, SND_ASYNC | SND_MEMORY | SND_NODEFAULT);
+                    if (_pinned.IsAllocated) _pinned.Free();
+                    _pinned = next;
+                }
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("blip failed " + ex.Message);
+            }
+        }
+
+        static byte[] Tone(double[] freqs, int msEach, double gain)
+        {
+            const int rate = 44100;
+            int seg = rate * msEach / 1000;
+            int total = seg * freqs.Length;
+            int fade = rate * 6 / 1000;
+            var pcm = new byte[total * 2];
+            double phase = 0;
+            for (int i = 0; i < total; i++)
+            {
+                double f = freqs[Math.Min(freqs.Length - 1, i / seg)];
+                phase += 2 * Math.PI * f / rate;
+                int inSeg = i % seg;
+                double env = Math.Min(1, Math.Min(inSeg / (double)fade, (seg - inSeg) / (double)fade));
+                short v = (short)Math.Round(Math.Sin(phase) * env * gain * 32767);
+                pcm[i * 2] = (byte)(v & 0xFF);
+                pcm[i * 2 + 1] = (byte)((v >> 8) & 0xFF);
+            }
+            using var ms = new MemoryStream();
+            using var w = new BinaryWriter(ms);
+            w.Write(new[] { (byte)'R', (byte)'I', (byte)'F', (byte)'F' });
+            w.Write(36 + pcm.Length);
+            w.Write(new[] { (byte)'W', (byte)'A', (byte)'V', (byte)'E', (byte)'f', (byte)'m', (byte)'t', (byte)' ' });
+            w.Write(16);
+            w.Write((short)1);
+            w.Write((short)1);
+            w.Write(rate);
+            w.Write(rate * 2);
+            w.Write((short)2);
+            w.Write((short)16);
+            w.Write(new[] { (byte)'d', (byte)'a', (byte)'t', (byte)'a' });
+            w.Write(pcm.Length);
+            w.Write(pcm);
+            w.Flush();
+            return ms.ToArray();
+        }
+
         public static void Stop()
         {
             lock (Gate)
