@@ -5,6 +5,21 @@ namespace Heft
 {
     internal static partial class Native
     {
+        public const int DWMWA_CLOAK = 13;
+
+        public static void Cloak(IntPtr h, bool on)
+        {
+            if (h == IntPtr.Zero) return;
+            int v = on ? 1 : 0;
+            try
+            {
+                DwmSetWindowAttribute(h, DWMWA_CLOAK, ref v, sizeof(int));
+            }
+            catch
+            {
+            }
+        }
+
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct MONITORINFOEX
         {

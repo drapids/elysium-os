@@ -186,9 +186,12 @@ namespace Heft.Ui
             int y = d.Work.Top + gap;
 
             Load();
+            frame.BeginAnimation(OpacityProperty, null);
             frame.Opacity = 0;
-            if (!IsVisible)
+            bool fresh = !IsVisible;
+            if (fresh)
             {
+                Native.Cloak(new WindowInteropHelper(this).EnsureHandle(), true);
                 Left = -20000;
                 Show();
             }
@@ -200,6 +203,7 @@ namespace Heft.Ui
 
             SlideTo(d.Bounds.Right, target, y, wpx, hpx, 280, true, null);
             frame.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)));
+            if (fresh) Glass.Unveil(this);
         }
 
         Display? _display;

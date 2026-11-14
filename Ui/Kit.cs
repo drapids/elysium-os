@@ -140,11 +140,38 @@ namespace Heft.Ui
             Native.SetAccent(h, on ? 3 : 0, 0);
         }
 
+        public static void Unveil(Window w)
+        {
+            var h = new WindowInteropHelper(w).Handle;
+            if (h == IntPtr.Zero) return;
+            int frames = 0;
+            bool done = false;
+            EventHandler? tick = null;
+            var guard = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+            void Finish()
+            {
+                if (done) return;
+                done = true;
+                guard.Stop();
+                CompositionTarget.Rendering -= tick;
+                Native.Cloak(h, false);
+            }
+            tick = (_, _) =>
+            {
+                if (++frames >= 2) Finish();
+            };
+            guard.Tick += (_, _) => Finish();
+            CompositionTarget.Rendering += tick;
+            guard.Start();
+        }
+
         public static void Present(Window w, UIElement surface, Action placePx, double fromY = -10, double fromScale = 0.985, int ms = 220)
         {
             var st = Of(w);
             int token = ++st.Token;
             var h = new WindowInteropHelper(w).EnsureHandle();
+            bool fresh = !w.IsVisible;
+            if (fresh) Native.Cloak(h, true);
             if (!w.IsVisible) Sfx.Play("open");
             if (!w.IsVisible) SetBlur(w, false);
             surface.BeginAnimation(UIElement.OpacityProperty, null);
@@ -173,6 +200,7 @@ namespace Heft.Ui
                 if (st.Token == token && w.IsVisible) SetBlur(w, true);
             };
             surface.BeginAnimation(UIElement.OpacityProperty, fade);
+            if (fresh) Unveil(w);
         }
 
         public static void Prewarm(Window w, UIElement surface)
