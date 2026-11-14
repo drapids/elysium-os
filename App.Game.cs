@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows;
 
 namespace Heft
@@ -67,6 +68,8 @@ namespace Heft
             _gameApp = ExeOf(hwnd);
             Sfx.Quiet = true;
             _mouse.Quiet = true;
+            _spot.Off();
+            SyncFeatures();
             _activity.Slow = true;
             _start.Hold(true);
             _state.Interval = TimeSpan.FromMilliseconds(2000);
@@ -80,6 +83,7 @@ namespace Heft
             _game = false;
             Sfx.Quiet = false;
             _mouse.Quiet = false;
+            SyncFeatures();
             _activity.Slow = false;
             _start.Hold(false);
             _state.Interval = TimeSpan.FromMilliseconds(500);
@@ -99,9 +103,21 @@ namespace Heft
             Tick();
         }
 
-        bool HoldToast()
+        static readonly string[] UrgentApps = { "defender", "security", "securityhealth", "malwarebytes", "norton", "avast", "avg", "bitdefender", "kaspersky", "mcafee", "eset", "sophos", "webroot", "windows update" };
+        static readonly string[] UrgentWords = { "threat", "malware", "virus", "ransomware", "trojan", "quarantin", "blocked a", "battery is low", "low battery", "critical battery", "incoming call", "is calling", "alarm", "unusual sign-in", "sign-in attempt", "security alert", "password changed" };
+
+        static bool Urgent(Note n)
+        {
+            string app = (n.App + " " + n.AppId).ToLowerInvariant();
+            if (UrgentApps.Any(a => app.Contains(a))) return true;
+            string text = (n.Title + " " + n.Body).ToLowerInvariant();
+            return UrgentWords.Any(w => text.Contains(w));
+        }
+
+        bool HoldToast(Note n)
         {
             if (!_game || !_s.GameHoldToasts) return false;
+            if (Urgent(n)) return false;
             _gameHeld++;
             return true;
         }
