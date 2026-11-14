@@ -73,7 +73,7 @@ namespace Heft
 
         double Now => _clock.Elapsed.TotalSeconds;
 
-        readonly Dictionary<IntPtr, (int x, int y, double at)> _sent = new();
+        readonly Dictionary<IntPtr, (int x, int y, double at, int px, int py)> _sent = new();
         double _gap = 1.0 / 60, _gapAt = -10;
 
         void Pace(Native.POINT c, double now)
@@ -94,14 +94,22 @@ namespace Heft
 
         bool Send(IntPtr h, int x, int y, double now, bool force)
         {
+            int px = x, py = y;
             if (_sent.TryGetValue(h, out var last))
             {
                 if (last.x == x && last.y == y) return true;
                 double since = now - last.at;
-                if (!force && since < _gap * 0.85) return false;
-                if (!force && since < 0.05 && Native.GetWindowRect(h, out var r) && (r.Left != last.x || r.Top != last.y)) return false;
+                if (!force && since < _gap - 0.0006) return false;
+                if (!force && since < 0.05 && (last.px != last.x || last.py != last.y) && Native.GetWindowRect(h, out var r) && r.Left == last.px && r.Top == last.py) return false;
+                px = last.x;
+                py = last.y;
             }
-            _sent[h] = (x, y, now);
+            else if (Native.GetWindowRect(h, out var first))
+            {
+                px = first.Left;
+                py = first.Top;
+            }
+            _sent[h] = (x, y, now, px, py);
             Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0,
                 Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER | Native.SWP_ASYNCWINDOWPOS);
             return true;
@@ -157,7 +165,7 @@ namespace Heft
                         _lerpHeld = false;
                     }
                     bool busy = _down || _bodies.Count > 0 || _lerp != IntPtr.Zero;
-                    Thread.Sleep(busy ? 3 : 10);
+                    Thread.Sleep(busy ? 1 : 10);
                 }
             }
             finally
