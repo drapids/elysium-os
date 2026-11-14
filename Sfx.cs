@@ -124,6 +124,27 @@ namespace Elysium
             }
         }
 
+        public static void Chime(double[] freqs, int msEach, double gain)
+        {
+            var s = _s;
+            try
+            {
+                double vol = Math.Clamp(s == null ? 0.6 : Math.Max(s.SoundVolume, 0.35), 0, 1);
+                var wav = Tone(freqs, msEach, gain * vol);
+                lock (Gate)
+                {
+                    var next = GCHandle.Alloc(wav, GCHandleType.Pinned);
+                    PlaySound(next.AddrOfPinnedObject(), IntPtr.Zero, SND_ASYNC | SND_MEMORY | SND_NODEFAULT);
+                    if (_pinned.IsAllocated) _pinned.Free();
+                    _pinned = next;
+                }
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("chime failed " + ex.Message);
+            }
+        }
+
         static byte[] Tone(double[] freqs, int msEach, double gain)
         {
             const int rate = 44100;

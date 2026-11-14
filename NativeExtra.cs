@@ -7,6 +7,24 @@ namespace Elysium
     {
         public const int DWMWA_CLOAK = 13;
 
+        [DllImport("user32.dll")]
+        public static extern short GetKeyState(int vk);
+
+        [DllImport("powrprof.dll")]
+        static extern uint CallNtPowerInformation(int level, IntPtr input, uint inputSize, out uint output, uint outputSize);
+
+        public static bool DisplayWanted()
+        {
+            try
+            {
+                return CallNtPowerInformation(16, IntPtr.Zero, 0, out uint state, 4) == 0 && (state & 0x2) != 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public static void Cloak(IntPtr h, bool on)
         {
             if (h == IntPtr.Zero) return;
