@@ -73,6 +73,40 @@ namespace Heft
 
         double Now => _clock.Elapsed.TotalSeconds;
 
+        readonly Dictionary<IntPtr, (int x, int y, double at)> _sent = new();
+        double _gap = 1.0 / 60, _gapAt = -10;
+
+        void Pace(Native.POINT c, double now)
+        {
+            if (now - _gapAt < 1) return;
+            _gapAt = now;
+            try
+            {
+                int hz = Native.RefreshRate(Displays.At(c.X, c.Y));
+                _gap = 1.0 / Math.Clamp(hz, 30, 500);
+            }
+            catch
+            {
+                _gap = 1.0 / 60;
+            }
+            if (_sent.Count > 64) _sent.Clear();
+        }
+
+        bool Send(IntPtr h, int x, int y, double now, bool force)
+        {
+            if (_sent.TryGetValue(h, out var last))
+            {
+                if (last.x == x && last.y == y) return true;
+                double since = now - last.at;
+                if (!force && since < _gap * 0.85) return false;
+                if (!force && since < 0.05 && Native.GetWindowRect(h, out var r) && (r.Left != last.x || r.Top != last.y)) return false;
+            }
+            _sent[h] = (x, y, now);
+            Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0,
+                Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER | Native.SWP_ASYNCWINDOWPOS);
+            return true;
+        }
+
         public volatile bool Hush;
 
         public event Action<IntPtr>? LerpBegan;
@@ -153,6 +187,7 @@ namespace Heft
             bool enabled = _s.Enabled;
             bool down = (Native.GetAsyncKeyState(_button) & 0x8000) != 0;
             Native.GetCursorPos(out var c);
+            Pace(c, now);
 
             IntPtr startLerp;
             Native.POINT startPt;
@@ -488,12 +523,10 @@ namespace Heft
 
             int x = (int)Math.Round(_lx) - _lfx;
             int y = (int)Math.Round(_ly) - _lfy;
-            if (x != _lLastX || y != _lLastY)
+            if ((x != _lLastX || y != _lLastY) && Send(h, x, y, now, done))
             {
                 _lLastX = x;
                 _lLastY = y;
-                Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0,
-                    Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER | Native.SWP_ASYNCWINDOWPOS);
             }
 
             if (_lerpHeld)
@@ -719,7 +752,7 @@ namespace Heft
                     b.Still = 0;
                 }
 
-                Apply(b);
+                Apply(b, now, dead.Contains(b.Hwnd));
             }
 
             foreach (var h in dead) _bodies.Remove(h);
@@ -804,15 +837,14 @@ namespace Heft
             return grounded;
         }
 
-        void Apply(Body b)
+        void Apply(Body b, double now, bool last)
         {
             int x = (int)Math.Round(b.X) - b.OffX;
             int y = (int)Math.Round(b.Y) - b.OffY;
             if (x == b.LastX && y == b.LastY) return;
+            if (!Send(b.Hwnd, x, y, now, last)) return;
             b.LastX = x;
             b.LastY = y;
-            Native.SetWindowPos(b.Hwnd, IntPtr.Zero, x, y, 0, 0,
-                Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE | Native.SWP_NOOWNERZORDER | Native.SWP_ASYNCWINDOWPOS);
         }
 
         bool Open(int x, int y)
