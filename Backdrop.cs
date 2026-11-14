@@ -26,6 +26,34 @@ namespace Heft
             }
         }
 
+        public static (BitmapSource? sharp, BitmapSource? soft) Grab(Native.RECT r, int down = 9, int passes = 3)
+        {
+            if (r.Width <= 0 || r.Height <= 0) return (null, null);
+            try
+            {
+                using var full = new D.Bitmap(r.Width, r.Height, DI.PixelFormat.Format32bppRgb);
+                using (var g = D.Graphics.FromImage(full))
+                    g.CopyFromScreen(r.Left, r.Top, 0, 0, new D.Size(r.Width, r.Height), D.CopyPixelOperation.SourceCopy);
+                var data = full.LockBits(new D.Rectangle(0, 0, r.Width, r.Height), DI.ImageLockMode.ReadOnly, DI.PixelFormat.Format32bppRgb);
+                BitmapSource sharp;
+                try
+                {
+                    sharp = BitmapSource.Create(r.Width, r.Height, 96, 96, PixelFormats.Bgr32, null, data.Scan0, data.Stride * r.Height, data.Stride);
+                }
+                finally
+                {
+                    full.UnlockBits(data);
+                }
+                sharp.Freeze();
+                return (sharp, Soften(full, down, passes));
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("backdrop failed " + ex.Message);
+                return (null, null);
+            }
+        }
+
         public static BitmapSource? Soften(D.Bitmap src, int down, int passes)
         {
             int w = Math.Max(8, src.Width / Math.Max(1, down));

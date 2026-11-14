@@ -110,6 +110,25 @@ namespace Heft.Ui
 
         public static void NoBlur(Window w) => Of(w).NoBlur = true;
 
+        public static void Opaque(Window w)
+        {
+            w.AllowsTransparency = false;
+            w.Background = Brushes.Black;
+            Of(w).NoBlur = true;
+        }
+
+        public static void Behind(Window w, ImageSource? shot)
+        {
+            if (shot == null)
+            {
+                w.Background = Brushes.Black;
+                return;
+            }
+            var b = new ImageBrush(shot) { Stretch = Stretch.Fill };
+            b.Freeze();
+            w.Background = b;
+        }
+
         public static void SetBlur(Window w, bool on)
         {
             var st = Of(w);

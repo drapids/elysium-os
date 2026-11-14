@@ -48,6 +48,7 @@ namespace Heft.Ui
         readonly TextBlock _filterText;
         readonly StackPanel _screens = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
         readonly StackPanel _closedRow = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 22) };
+        readonly Image _blur = new() { Stretch = Stretch.Fill, IsHitTestVisible = false, Margin = new Thickness(-6) };
         readonly Border _zoom = new() { Visibility = Visibility.Collapsed, Background = new SolidColorBrush(Color.FromArgb(0xB0, 0, 0, 0)) };
         readonly List<Card> _cards = new();
         readonly List<(Border tile, Display d)> _screenTiles = new();
@@ -72,7 +73,11 @@ namespace Heft.Ui
             _cat = cat;
             _s = s;
             Glass.Attach(this, 0);
+            Glass.Opaque(this);
             Title = "heft overview";
+            RenderOptions.SetBitmapScalingMode(_blur, BitmapScalingMode.HighQuality);
+            _root.ClipToBounds = true;
+            _root.Children.Add(_blur);
 
             var scrim = new Border { Background = new SolidColorBrush(Color.FromArgb(0x99, 6, 6, 10)) };
             scrim.MouseLeftButtonDown += (_, _) => Close2();
@@ -146,6 +151,9 @@ namespace Heft.Ui
             _filter = "";
             _sel = 0;
             Collect();
+            var (sharp, soft) = Backdrop.Grab(d.Bounds, 6, 2);
+            _blur.Source = soft;
+            Glass.Behind(this, sharp);
             Glass.Present(this, _root, () => Glass.Fill(this, d.Bounds), 0, 1, 180);
             Activate();
             if (!IsActive) Native.Focus(new WindowInteropHelper(this).Handle);
@@ -371,6 +379,9 @@ namespace Heft.Ui
             foreach (var c in _cards) c.Thumb?.Dispose();
             _cards.Clear();
             _display = d;
+            var (sharp, soft) = Backdrop.Grab(d.Bounds, 6, 2);
+            _blur.Source = soft;
+            Glass.Behind(this, sharp);
             Glass.Fill(this, d.Bounds);
             _filter = "";
             _sel = 0;

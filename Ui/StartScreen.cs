@@ -71,7 +71,7 @@ namespace Heft.Ui
             _act = act;
             _lib = lib;
             Glass.Attach(this, 0);
-            Glass.NoBlur(this);
+            Glass.Opaque(this);
             Title = "heft start";
 
             RenderOptions.SetBitmapScalingMode(_backdrop, BitmapScalingMode.HighQuality);
@@ -261,7 +261,9 @@ namespace Heft.Ui
         public void Open()
         {
             var d = Displays.AtCursor();
-            _backdrop.Source = Backdrop.Capture(d.Bounds);
+            var (sharp, soft) = Backdrop.Grab(d.Bounds);
+            _backdrop.Source = soft;
+            Glass.Behind(this, sharp);
             _shown = true;
             bool wasAll = _allApps;
             _allApps = false;
