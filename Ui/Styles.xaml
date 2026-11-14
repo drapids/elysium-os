@@ -51,7 +51,7 @@
         <Setter Property="Background" Value="{DynamicResource GroupBg}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource GroupStroke}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource R12}"/>
     </Style>
 
     <Style x:Key="Sep" TargetType="Border">
@@ -69,7 +69,7 @@
         <Setter Property="Background" Value="{DynamicResource PillBg}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PillStroke}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource R10}"/>
         <Setter Property="Padding" Value="10,6"/>
     </Style>
 
@@ -87,8 +87,8 @@
                 <ControlTemplate TargetType="Button">
                     <Grid>
                         <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1" CornerRadius="6" Effect="{StaticResource ThumbShadow}"/>
-                        <Border CornerRadius="6" Background="{DynamicResource Sheen}" Opacity="0.5" IsHitTestVisible="False"/>
+                                BorderThickness="1" CornerRadius="{DynamicResource R6}" Effect="{StaticResource ThumbShadow}"/>
+                        <Border CornerRadius="{DynamicResource R6}" Background="{DynamicResource Sheen}" Opacity="0.5" IsHitTestVisible="False"/>
                         <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -119,8 +119,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
-                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6" Effect="{StaticResource ThumbShadow}"/>
-                        <Border CornerRadius="6" Background="{DynamicResource Sheen}" Opacity="0.35" IsHitTestVisible="False"/>
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource R6}" Effect="{StaticResource ThumbShadow}"/>
+                        <Border CornerRadius="{DynamicResource R6}" Background="{DynamicResource Sheen}" Opacity="0.35" IsHitTestVisible="False"/>
                         <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -147,7 +147,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="6">
+                    <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource R6}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -173,7 +173,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <Grid Background="Transparent" Width="38" Height="22">
-                        <Border x:Name="track" CornerRadius="11" Background="{DynamicResource SwitchOff}"/>
+                        <Border x:Name="track" CornerRadius="{DynamicResource R11}" Background="{DynamicResource SwitchOff}"/>
                         <Ellipse x:Name="knob" Width="18" Height="18" HorizontalAlignment="Left" Margin="2,0,0,0"
                                  Fill="{DynamicResource Knob}" Effect="{StaticResource KnobShadow}">
                             <Ellipse.RenderTransform>
@@ -219,7 +219,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RepeatButton">
                     <Grid Background="Transparent">
-                        <Border Height="4" CornerRadius="2" Background="{DynamicResource AccentFill}" VerticalAlignment="Center"/>
+                        <Border Height="4" CornerRadius="{DynamicResource R2}" Background="{DynamicResource AccentFill}" VerticalAlignment="Center"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -233,7 +233,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RepeatButton">
                     <Grid Background="Transparent">
-                        <Border Height="4" CornerRadius="2" Background="{DynamicResource SliderTrack}" VerticalAlignment="Center"/>
+                        <Border Height="4" CornerRadius="{DynamicResource R2}" Background="{DynamicResource SliderTrack}" VerticalAlignment="Center"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -291,7 +291,7 @@
 
     <Style x:Key="SegGroup" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SegTrack}"/>
-        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource R8}"/>
         <Setter Property="Padding" Value="2"/>
     </Style>
 
@@ -304,8 +304,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
                     <Grid>
-                        <Border x:Name="b" CornerRadius="6" Background="Transparent"/>
-                        <Border x:Name="sheen" CornerRadius="6" Background="{DynamicResource Sheen}" Opacity="0" IsHitTestVisible="False"/>
+                        <Border x:Name="b" CornerRadius="{DynamicResource R6}" Background="Transparent"/>
+                        <Border x:Name="sheen" CornerRadius="{DynamicResource R6}" Background="{DynamicResource Sheen}" Opacity="0" IsHitTestVisible="False"/>
                         <ContentPresenter Margin="0,5,0,6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -333,8 +333,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Grid>
-                        <Border x:Name="ring" CornerRadius="9" Margin="-3" BorderThickness="3" BorderBrush="{DynamicResource AccentSoft}" Opacity="0"/>
-                        <Border x:Name="b" Background="{DynamicResource FieldBg}" BorderBrush="{DynamicResource FieldStroke}" BorderThickness="1" CornerRadius="7">
+                        <Border x:Name="ring" CornerRadius="{DynamicResource R9}" Margin="-3" BorderThickness="3" BorderBrush="{DynamicResource AccentSoft}" Opacity="0"/>
+                        <Border x:Name="b" Background="{DynamicResource FieldBg}" BorderBrush="{DynamicResource FieldStroke}" BorderThickness="1" CornerRadius="{DynamicResource R7}">
                             <Grid>
                                 <TextBlock x:Name="ph" Text="{TemplateBinding Tag}" Foreground="{DynamicResource Faint}" FontSize="13"
                                            Margin="10,6" IsHitTestVisible="False" Visibility="Collapsed" TextTrimming="CharacterEllipsis"/>
@@ -345,6 +345,10 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="Text" Value="">
                             <Setter TargetName="ph" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="AcceptsReturn" Value="True">
+                            <Setter TargetName="PART_ContentHost" Property="VerticalAlignment" Value="Stretch"/>
+                            <Setter TargetName="ph" Property="VerticalAlignment" Value="Top"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="ring" Property="Opacity" Value="1"/>
@@ -364,7 +368,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
-                    <Border x:Name="b" Width="28" Height="28" CornerRadius="6" Background="Transparent">
+                    <Border x:Name="b" Width="28" Height="28" CornerRadius="{DynamicResource R6}" Background="Transparent">
                         <TextBlock x:Name="g" Text="&#xE734;" FontFamily="{StaticResource IconFont}" FontSize="13"
                                    Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
