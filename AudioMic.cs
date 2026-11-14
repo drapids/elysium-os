@@ -91,5 +91,76 @@ namespace Elysium
         }
 
         public AudioDevice? DefaultOutput() => Devices(false).FirstOrDefault(d => d.Default);
+
+        IAudioEndpointVolume? Output()
+        {
+            if (_enum == null) return null;
+            foreach (int role in new[] { 1, 0 })
+            {
+                try
+                {
+                    if (_enum.GetDefaultAudioEndpoint(0, role, out var d) != 0 || d == null) continue;
+                    var iid = typeof(IAudioEndpointVolume).GUID;
+                    if (d.Activate(ref iid, 23, IntPtr.Zero, out var obj) != 0) continue;
+                    if (obj is IAudioEndpointVolume vol) return vol;
+                }
+                catch (Exception ex)
+                {
+                    PhysicsEngine.Log("output volume: " + ex.Message);
+                }
+            }
+            return null;
+        }
+
+        public int OutputVolume(out bool muted)
+        {
+            muted = false;
+            var ep = Output();
+            if (ep == null) return -1;
+            try
+            {
+                if (ep.GetMasterVolumeLevelScalar(out float level) != 0) return -1;
+                ep.GetMute(out muted);
+                return (int)Math.Round(level * 100);
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        public int SetOutputVolume(int percent)
+        {
+            var ep = Output();
+            if (ep == null) return -1;
+            try
+            {
+                var ctx = Guid.Empty;
+                float level = Math.Clamp(percent / 100f, 0f, 1f);
+                if (ep.SetMasterVolumeLevelScalar(level, ref ctx) != 0) return -1;
+                if (percent > 0) ep.SetMute(false, ref ctx);
+                return (int)Math.Round(level * 100);
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        public bool ToggleOutputMute()
+        {
+            var ep = Output();
+            if (ep == null) return false;
+            try
+            {
+                ep.GetMute(out bool muted);
+                var ctx = Guid.Empty;
+                return ep.SetMute(!muted, ref ctx) == 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

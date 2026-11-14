@@ -120,9 +120,16 @@ namespace Elysium
             }
         }
 
+        public static AudioFlow? Flow;
+
         public static int Volume(out bool muted)
         {
             muted = false;
+            if (Flow != null)
+            {
+                int v = Flow.OutputVolume(out muted);
+                if (v >= 0) return v;
+            }
             try
             {
                 var ep = Endpoint();
@@ -137,8 +144,30 @@ namespace Elysium
             }
         }
 
-        public static int Nudge(int percent)
+        public static int Set(int percent)
         {
+            if (Flow != null)
+            {
+                int v = Flow.SetOutputVolume(percent);
+                if (v >= 0) return v;
+            }
+            int cur = Volume(out bool ignore);
+            return cur < 0 ? -1 : Nudge(percent - cur, false);
+        }
+
+        public static int Nudge(int percent) => Nudge(percent, true);
+
+        static int Nudge(int percent, bool viaFlow)
+        {
+            if (viaFlow && Flow != null)
+            {
+                int cur = Flow.OutputVolume(out bool ignore);
+                if (cur >= 0)
+                {
+                    int v = Flow.SetOutputVolume(Math.Clamp(cur + percent, 0, 100));
+                    if (v >= 0) return v;
+                }
+            }
             try
             {
                 var ep = Endpoint();
@@ -158,6 +187,7 @@ namespace Elysium
 
         public static void ToggleMute()
         {
+            if (Flow != null && Flow.ToggleOutputMute()) return;
             try
             {
                 var ep = Endpoint();

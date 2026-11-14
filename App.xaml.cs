@@ -137,6 +137,7 @@ namespace Elysium
             _pip = new Pip(_s);
             _pip.Say += text => Flash(text);
             _audio = new AudioFlow(_s);
+            Audio.Flow = _audio;
             _audio.Switched += name => _notes.Post(new Note { Title = "Switched audio", Body = name, Glyph = "\uE767" });
             _activity = new Activity(_s);
             _activity.Downloaded += path => Dispatcher.BeginInvoke(new Action(() =>

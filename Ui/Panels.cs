@@ -446,8 +446,7 @@ namespace Elysium.Ui
             var mval = Kit.Text($"{Math.Max(0, master)}%", 12, false, "SubText");
             mslider.ValueChanged += (_, e) =>
             {
-                int cur = Audio.Volume(out bool ignore);
-                Audio.Nudge((int)Math.Round(e.NewValue) - cur);
+                Audio.Set((int)Math.Round(e.NewValue));
                 mval.Text = $"{(int)e.NewValue}%";
             };
             Grid.SetColumn(mslider, 1);
