@@ -19,10 +19,12 @@ namespace Elysium.Ui
             ("shell", "Bar & desktop"),
             ("audio", "Audio"),
             ("alerts", "Alerts & focus"),
+            ("calendar", "Calendar"),
             ("search", "Search & files"),
             ("extensions", "Extensions"),
             ("keys", "Keys"),
-            ("share", "Share")
+            ("share", "Share"),
+            ("about", "About")
         };
 
         readonly Settings _s;
@@ -73,24 +75,34 @@ namespace Elysium.Ui
             {
                 case "general":
                     General(host);
+                    GeneralMore(host);
                     break;
                 case "look":
                     LookPage(host);
                     break;
                 case "windows":
                     WindowsPage(host);
+                    WindowMore(host);
                     break;
                 case "files":
                     FilesPage(host);
                     break;
                 case "shell":
                     Shell(host);
+                    ShellMore(host);
                     break;
                 case "audio":
                     AudioPage(host);
                     break;
                 case "alerts":
                     Alerts(host);
+                    AlertsMore(host);
+                    break;
+                case "calendar":
+                    CalendarPage(host);
+                    break;
+                case "about":
+                    AboutPage(host);
                     break;
                 case "search":
                     Search(host);
