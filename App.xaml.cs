@@ -154,7 +154,12 @@ namespace Elysium
             _pocket = new Pocket(_s);
             _pocket.RestoreLeftovers();
             _lock = new CursorLock(_s);
-            _lock.Changed += on => Flash(on ? "cursor locked to this screen" : "cursor free");
+            _lock.IsGame = h => _gameWins.Contains(h) || EdgeGuard.CursorHidden();
+            _lock.Changed += on =>
+            {
+                string key = Hotkeys.Spec(_s, "lock").ToLowerInvariant().Replace("+", " + ");
+                Flash(on ? (_lock.Auto ? "cursor locked to this game" : "cursor locked to this screen") + (key.Length > 0 ? ". " + key + " frees it" : "") : "cursor free");
+            };
             _brightness = new Brightness();
             _brightness.Changed += v => Dispatcher.BeginInvoke(new Action(() => BrightnessShown(v)));
             _mouse = new MouseHook(_s, Dispatcher, _brightness);
@@ -783,8 +788,6 @@ namespace Elysium
                 _ => p.X >= b.Right - 2 && p.Y >= b.Bottom - 2
             };
             if (!still || EdgeGuard.Blocked()) return;
-            var fg = Native.GetForegroundWindow();
-            if (fg != IntPtr.Zero && CursorLock.IsFullscreen(fg, out _)) return;
             string action = _s.HotCorners.TryGetValue(corner, out var a) ? a : "none";
             if (action != "none") Sfx.Play("tick");
             FireAction(action);

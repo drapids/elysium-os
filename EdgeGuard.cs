@@ -43,15 +43,8 @@ namespace Elysium
         {
             try
             {
-                if (Gaming?.Invoke() == true) return 2;
-                if (!(OwnClip?.Invoke() ?? false) && Clipped()) return 2;
-                var fg = Native.GetForegroundWindow();
-                if (fg != IntPtr.Zero && !Ours(fg) && !Native.IsZoomed(fg) && CursorLock.IsFullscreen(fg, out _))
-                {
-                    string cls = Native.ClassName(fg);
-                    if (cls != "Progman" && cls != "WorkerW") return 2;
-                }
-                if (CursorHidden()) return 1;
+                if (ForeignClip()) return 2;
+                if (CursorHidden()) return Gaming?.Invoke() == true ? 2 : 1;
             }
             catch
             {
@@ -66,17 +59,13 @@ namespace Elysium
             return (ci.flags & 1) == 0 || ci.hCursor == IntPtr.Zero;
         }
 
+        public static bool ForeignClip() => !(OwnClip?.Invoke() ?? false) && Clipped();
+
         static bool Clipped()
         {
             if (!Native.GetClipCursor(out var c)) return false;
             int x = GetSystemMetrics(76), y = GetSystemMetrics(77), w = GetSystemMetrics(78), h = GetSystemMetrics(79);
             return c.Left > x || c.Top > y || c.Right < x + w || c.Bottom < y + h;
-        }
-
-        static bool Ours(IntPtr hwnd)
-        {
-            Native.GetWindowThreadProcessId(hwnd, out uint pid);
-            return pid == (uint)Environment.ProcessId;
         }
     }
 }
