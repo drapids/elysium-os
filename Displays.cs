@@ -193,22 +193,34 @@ namespace Elysium
             _timer.Start();
         }
 
+        public Func<IntPtr, bool>? IsGame;
+        IntPtr _skip;
+
+        public bool Auto => _auto;
+
         public void Toggle()
         {
             if (Locked) Unlock();
             else Lock(Displays.AtCursor());
         }
 
-        public void Lock(Display d)
+        public void Lock(Display d, bool auto = false)
         {
             _rect = d.Bounds;
             Locked = true;
-            _auto = false;
+            _auto = auto;
             Native.ClipCursor(ref _rect);
             Changed?.Invoke(true);
         }
 
         public void Unlock()
+        {
+            if (!Locked) return;
+            _skip = Native.GetForegroundWindow();
+            Release();
+        }
+
+        void Release()
         {
             if (!Locked) return;
             Locked = false;
@@ -223,20 +235,20 @@ namespace Elysium
             {
                 IntPtr fg = Native.GetForegroundWindow();
                 Native.RECT mon = default;
-                bool full = fg != IntPtr.Zero && IsFullscreen(fg, out mon);
-                if (full && !Locked)
+                if (_skip != IntPtr.Zero && fg != _skip) _skip = IntPtr.Zero;
+                bool full = fg != IntPtr.Zero && !Native.IsZoomed(fg) && IsFullscreen(fg, out mon) && (IsGame?.Invoke(fg) ?? true);
+                if (full && !Locked && fg != _skip)
                 {
-                    Lock(Displays.At(mon.Left + 1, mon.Top + 1));
-                    _auto = true;
+                    Lock(Displays.At(mon.Left + 1, mon.Top + 1), true);
                 }
                 else if (!full && Locked && _auto)
                 {
-                    Unlock();
+                    Release();
                 }
             }
             else if (_auto && Locked)
             {
-                Unlock();
+                Release();
             }
 
             if (!Locked) return;

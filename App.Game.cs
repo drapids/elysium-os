@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
@@ -8,6 +9,12 @@ namespace Elysium
     public partial class App
     {
         bool _game;
+        readonly HashSet<IntPtr> _gameWins = new();
+
+        static readonly HashSet<string> NotGames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "chrome", "msedge", "firefox", "brave", "opera", "opera_gx", "vivaldi", "arc", "zen", "librewolf", "vlc", "mpv", "mpc-hc64", "mpc-be64", "potplayermini64", "wmplayer", "Microsoft.Media.Player", "powerpnt", "obs64", "discord", "spotify", "code", "devenv", "notepad", "winword", "excel", "photoshop", "afterfx", "premiere", "resolve", "TouchDesigner"
+        };
         int _gameVotes;
         int _gameHeld;
         string _gameApp = "";
@@ -43,12 +50,17 @@ namespace Elysium
                 return;
             }
             var fg = Native.GetForegroundWindow();
-            bool full = fg != IntPtr.Zero && !Ours(fg) && CursorLock.IsFullscreen(fg, out _);
-            if (full)
+            bool full = fg != IntPtr.Zero && !Ours(fg) && !Native.IsZoomed(fg) && CursorLock.IsFullscreen(fg, out _);
+            if (full && !_gameWins.Contains(fg))
             {
                 string exe = ExeOf(fg);
-                if (exe.Equals("explorer", StringComparison.OrdinalIgnoreCase)) full = false;
-                else if (_s.GameSkip.Exists(x => x.Equals(exe, StringComparison.OrdinalIgnoreCase))) full = false;
+                bool skip = exe.Equals("explorer", StringComparison.OrdinalIgnoreCase) || NotGames.Contains(exe) || _s.GameSkip.Exists(x => x.Equals(exe, StringComparison.OrdinalIgnoreCase));
+                if (!skip && (EdgeGuard.CursorHidden() || EdgeGuard.ForeignClip()))
+                {
+                    if (_gameWins.Count > 40) _gameWins.RemoveWhere(h => !Native.IsWindow(h));
+                    _gameWins.Add(fg);
+                }
+                else full = false;
             }
             if (full == _game)
             {
