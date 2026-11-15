@@ -1107,6 +1107,8 @@ namespace Elysium.Ui
             };
         }
 
+        public List<Result> Query(string q) => q.TrimStart().StartsWith("?") ? new List<Result> { Web(q.TrimStart()[1..].Trim()) } : Everything(q);
+
         List<Result> Everything(string q)
         {
             var list = new List<Result>();

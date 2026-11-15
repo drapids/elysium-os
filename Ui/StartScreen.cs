@@ -44,6 +44,125 @@ namespace Elysium.Ui
         DateTime _builtAt = DateTime.MinValue;
 
         public Action<string>? Search;
+        public Func<string, List<Result>>? Query;
+        readonly ScrollViewer _hits = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false };
+        readonly Border _hitsBox = new() { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Center, CornerRadius = new CornerRadius(18), Padding = new Thickness(8), Background = new SolidColorBrush(Color.FromArgb(0x1E, 255, 255, 255)), BorderBrush = new SolidColorBrush(Color.FromArgb(0x2A, 255, 255, 255)), BorderThickness = new Thickness(1), VerticalAlignment = VerticalAlignment.Top };
+        readonly StackPanel _hitsList = new() { Width = 740 };
+        Grid? _body;
+        List<Result> _found = new();
+        int _pick = -1;
+
+        void Find(string text)
+        {
+            if (text.Trim().Length == 0 || Query == null)
+            {
+                _found = new List<Result>();
+                _hits.Visibility = Visibility.Collapsed;
+                if (_body != null) _body.Visibility = Visibility.Visible;
+                return;
+            }
+            try
+            {
+                _found = Query(text).Take(12).ToList();
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("start search failed " + ex.Message);
+                _found = new List<Result>();
+            }
+            if (_body != null) _body.Visibility = Visibility.Collapsed;
+            _hits.Visibility = Visibility.Visible;
+            _hitsList.Children.Clear();
+            for (int i = 0; i < _found.Count; i++) _hitsList.Children.Add(Hit(_found[i], i));
+            if (_found.Count == 0)
+            {
+                var none = new TextBlock { Text = "nothing found", FontSize = 14, Foreground = new SolidColorBrush(Color.FromArgb(0x99, 255, 255, 255)), Margin = new Thickness(14, 10, 14, 10) };
+                _hitsList.Children.Add(none);
+            }
+            Pick(_found.FindIndex(r => !r.Header));
+        }
+
+        FrameworkElement Hit(Result r, int index)
+        {
+            if (r.Header)
+                return new TextBlock { Text = r.Title.ToLowerInvariant(), FontSize = 12, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Color.FromArgb(0x99, 255, 255, 255)), Margin = new Thickness(14, 10, 14, 4) };
+            var row = new DockPanel { Margin = new Thickness(0) };
+            var iconBox = new Grid { Width = 32, Height = 32, Margin = new Thickness(0, 0, 14, 0) };
+            var glyph = new TextBlock { Text = r.Glyph, FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 17, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            iconBox.Children.Add(glyph);
+            var img = new Image { Width = 32, Height = 32 };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.HighQuality);
+            iconBox.Children.Add(img);
+            if (r.Thumb != null)
+            {
+                img.Source = r.Thumb;
+                glyph.Visibility = Visibility.Collapsed;
+            }
+            else if (r.IconPath != null)
+                _cat.Icons.Get(r.IconPath, 64, r.IconOnly, src =>
+                {
+                    if (src == null) return;
+                    img.Source = src;
+                    glyph.Visibility = Visibility.Collapsed;
+                });
+            DockPanel.SetDock(iconBox, Dock.Left);
+            row.Children.Add(iconBox);
+            if (r.Hint.Length > 0)
+            {
+                var hint = new TextBlock { Text = r.Hint, FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(0x80, 255, 255, 255)), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) };
+                DockPanel.SetDock(hint, Dock.Right);
+                row.Children.Add(hint);
+            }
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            words.Children.Add(new TextBlock { Text = r.Title, FontSize = 15, Foreground = r.Danger ? new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x5E)) : Brushes.White, TextTrimming = TextTrimming.CharacterEllipsis });
+            if (r.Sub.Length > 0) words.Children.Add(new TextBlock { Text = r.Sub, FontSize = 12, Foreground = new SolidColorBrush(Color.FromArgb(0x99, 255, 255, 255)), TextTrimming = TextTrimming.CharacterEllipsis });
+            row.Children.Add(words);
+            var b = new Border { Child = row, Padding = new Thickness(12, 9, 14, 9), CornerRadius = new CornerRadius(12), Background = Brushes.Transparent, Cursor = Cursors.Hand };
+            b.MouseEnter += (_, _) => Pick(index);
+            b.MouseLeftButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                RunHit(r);
+            };
+            return b;
+        }
+
+        void Pick(int index)
+        {
+            _pick = index;
+            int n = 0;
+            foreach (var child in _hitsList.Children)
+            {
+                if (child is Border b) b.Background = n == index ? new SolidColorBrush(Color.FromArgb(0x2E, 255, 255, 255)) : Brushes.Transparent;
+                if (n == index && child is FrameworkElement fe) fe.BringIntoView();
+                n++;
+            }
+        }
+
+        void RunHit(Result r)
+        {
+            if (r.Header) return;
+            if (r.Run == null)
+            {
+                if (r.Complete != null)
+                {
+                    _search.Text = r.Complete;
+                    _search.CaretIndex = _search.Text.Length;
+                }
+                return;
+            }
+            bool close;
+            try
+            {
+                close = r.Run();
+            }
+            catch (Exception ex)
+            {
+                PhysicsEngine.Log("start result failed " + ex.Message);
+                close = true;
+            }
+            if (close) Close2();
+        }
         public Action? OpenSettings;
         public Action? Overview;
         public Func<IEnumerable<ExtWidget>>? ExtWidgets;
@@ -123,10 +242,7 @@ namespace Elysium.Ui
             _search.TextChanged += (_, _) =>
             {
                 ph.Visibility = _search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-                if (_search.Text.Length == 0) return;
-                string text = _search.Text;
-                Close2();
-                Search?.Invoke(text);
+                Find(_search.Text);
             };
             field.Children.Add(_search);
             Grid.SetColumn(field, 1);
@@ -146,6 +262,12 @@ namespace Elysium.Ui
             body.Children.Add(sideScroll);
             Grid.SetRow(body, 1);
             layout.Children.Add(body);
+            _body = body;
+            _hits.Visibility = Visibility.Collapsed;
+            _hitsBox.Child = _hitsList;
+            _hits.Content = _hitsBox;
+            Grid.SetRow(_hits, 1);
+            layout.Children.Add(_hits);
 
             var dockBar = new Border
             {
@@ -250,6 +372,25 @@ namespace Elysium.Ui
                 return;
             }
             if (e.OriginalSource is TextBox tb && tb != _search) return;
+            if (_found.Count > 0 && _hits.Visibility == Visibility.Visible)
+            {
+                if (e.Key is Key.Down or Key.Up)
+                {
+                    int dir = e.Key == Key.Down ? 1 : -1;
+                    int i = _pick;
+                    do i = Math.Clamp(i + dir, 0, _found.Count - 1);
+                    while (_found[i].Header && i > 0 && i < _found.Count - 1);
+                    if (!_found[i].Header) Pick(i);
+                    e.Handled = true;
+                    return;
+                }
+                if (e.Key == Key.Enter)
+                {
+                    if (_pick >= 0 && _pick < _found.Count) RunHit(_found[_pick]);
+                    e.Handled = true;
+                    return;
+                }
+            }
             if (e.OriginalSource != _search && e.Key >= Key.A && e.Key <= Key.Z && Keyboard.Modifiers == ModifierKeys.None) _search.Focus();
         }
 

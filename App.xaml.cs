@@ -221,6 +221,7 @@ namespace Elysium
             _lens.Markup = OpenMarkup;
             _lens.Record = StartRecording;
             _start.Search = text => _launcher.Open(text);
+            _start.Query = text => _launcher.Query(text);
             _start.OpenSettings = () => _panel.Open();
             _start.Overview = () => _overview.Open();
             var pages = _pages = new SettingsPages(_s, _audio, () => _keys.Failed, () => _wintoasts.Status, a => _panel.Dialog(a));
