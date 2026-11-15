@@ -78,19 +78,19 @@ namespace Elysium
 
         public static void Seed(Settings s)
         {
-            if (s.ThemesSeeded && s.ThemesSeedVersion >= 2) return;
+            if (s.ThemesSeeded && s.ThemesSeedVersion >= 3) return;
             try
             {
                 Directory.CreateDirectory(Root);
                 foreach (var (id, pack) in Starters())
                 {
                     string dir = Path.Combine(Root, id);
-                    if (s.ThemesSeeded && !Directory.Exists(dir)) continue;
+                    if (s.ThemesSeeded && !Directory.Exists(dir) && !(s.ThemesSeedVersion < 3 && NewInThree.Contains(id))) continue;
                     Directory.CreateDirectory(dir);
                     File.WriteAllText(Path.Combine(dir, "theme.json"), JsonSerializer.Serialize(pack, Json));
                 }
                 s.ThemesSeeded = true;
-                s.ThemesSeedVersion = 2;
+                s.ThemesSeedVersion = 3;
                 s.Touch();
             }
             catch (Exception ex)
@@ -345,12 +345,39 @@ namespace Elysium
             return slug.Length == 0 ? "theme-" + DateTime.Now.ToString("HHmmss") : slug;
         }
 
+        static readonly HashSet<string> NewInThree = new(StringComparer.OrdinalIgnoreCase) { "graphite", "fjord", "blossom", "moss", "vapor", "ember" };
+
+        static Dictionary<string, string> Ink(string ink, string line, string card, string field, string pill, bool dark, Dictionary<string, string>? more = null)
+        {
+            var d = new Dictionary<string, string>
+            {
+                ["Text"] = "#F2" + ink,
+                ["SubText"] = "#A6" + ink,
+                ["Faint"] = "#66" + ink,
+                ["GroupBg"] = card,
+                ["GroupStroke"] = (dark ? "#1A" : "#1F") + line,
+                ["Separator"] = (dark ? "#17" : "#1A") + line,
+                ["RowHover"] = (dark ? "#12" : "#0D") + ink,
+                ["PushStroke"] = (dark ? "#1F" : "#26") + line,
+                ["SegTrack"] = (dark ? "#1F" : "#14") + ink,
+                ["SwitchOff"] = (dark ? "#2E" : "#26") + ink,
+                ["SliderTrack"] = (dark ? "#2E" : "#21") + ink,
+                ["FieldBg"] = field,
+                ["FieldStroke"] = (dark ? "#24" : "#2E") + line,
+                ["PillBg"] = pill,
+                ["PillStroke"] = (dark ? "#2E" : "#33") + line,
+                ["TileBg"] = (dark ? "#14" : "#0F") + ink
+            };
+            if (more != null) foreach (var kv in more) d[kv.Key] = kv.Value;
+            return d;
+        }
+
         static IEnumerable<(string id, ThemePack pack)> Starters()
         {
             yield return ("frutiger-aero", new ThemePack
             {
                 Cursor = "Windows Default",
-                WallpaperColors = new[] { "#8FDBFF", "#38A8EC", "#1E7FC8", "#8ED36B" },
+                WallpaperColors = new[] { "#9BE2FF", "#3FB0F0", "#1E7FC8", "#7FD36B", "#C9F2FF" },
                 Name = "Frutiger Aero",
                 Author = "elysium",
                 Description = "glossy sky, bubbles and clean water. 2008 called",
@@ -360,92 +387,68 @@ namespace Elysium
                 Corner = 1.4,
                 Glass = 0.9,
                 Sounds = "glass",
-                Colors = new()
-                {
-                    ["Text"] = "#FF0B3954",
-                    ["SubText"] = "#B30B3954",
-                    ["Faint"] = "#800B3954",
-                    ["GroupBg"] = "#73FFFFFF",
-                    ["GroupStroke"] = "#B3FFFFFF",
-                    ["RowHover"] = "#4DFFFFFF",
-                    ["PillStroke"] = "#E6FFFFFF",
-                    ["FieldBg"] = "#B3FFFFFF",
-                    ["FieldStroke"] = "#806FC3E8",
-                    ["Separator"] = "#4D6FC3E8"
-                },
+                Colors = Ink("0B3954", "6FC3E8", "#80FFFFFF", "#CCFFFFFF", "#E6F4FBFF", false, new() { ["PillStroke"] = "#E6FFFFFF", ["GroupStroke"] = "#B3FFFFFF", ["RowHover"] = "#4DFFFFFF" }),
                 Gradients = new()
                 {
-                    ["GlassTint"] = new[] { "#F2F7FCFF", "#E0D6F0FC", "#D9AEDFF5" },
-                    ["PushBg"] = new[] { "#FFFFFFFF", "#FFE3F4FD", "#FFC6E8F9" },
-                    ["AccentFill"] = new[] { "#FF6DD0FA", "#FF1BA1E2", "#FF0B7DC1" },
+                    ["GlassTint"] = new[] { "@160", "#F2F9FDFF", "#E6DAF1FC", "#E0B4E3F7" },
+                    ["PushBg"] = new[] { "#FFFFFFFF", "#FFE6F5FD", "#FFC8E9FA" },
+                    ["PushHover"] = new[] { "#FFFFFFFF", "#FFEFF9FE", "#FFD6EFFB" },
+                    ["AccentFill"] = new[] { "#FF79D5FB", "#FF1BA1E2", "#FF0B7DC1" },
                     ["SegThumb"] = new[] { "#FFFFFFFF", "#FFDDF1FC" },
                     ["TileBg"] = new[] { "#B3FFFFFF", "#80BFE6F8" }
                 },
-                Bar = new BarLook { Fill = new[] { "#F7FFFFFF", "#E6CDEBF9", "#D98ACFF0" }, Gloss = true, Line = "#FFFFFFFF", Text = "#FF0B3954" },
-                Dock = new DockLook { Tile = new[] { "#E6FFFFFF", "#B37FCBEF" }, Stroke = "#FFFFFFFF", Gloss = true, Round = 0.32 },
-                Start = new StartLook { Scrim = "#40BFE7FA", Wash = new[] { "#3387D3F5", "#1A2BA8E0" }, Card = "#66FFFFFF" }
+                Bar = new BarLook { Fill = new[] { "#F7FFFFFF", "#E6D3EEFA", "#D98ACFF0" }, Gloss = true, Line = "#FFFFFFFF", Text = "#FF0B3954" },
+                Dock = new DockLook { Tile = new[] { "#F2FFFFFF", "#CC9AD7F3" }, Stroke = "#FFFFFFFF", Gloss = true, Round = 0.32 },
+                Start = new StartLook { Scrim = "#4DBFE7FA", Wash = new[] { "@radial", "#5587D3F5", "#002BA8E0" }, Card = "#80FFFFFF" }
             });
             yield return ("midnight", new ThemePack
             {
                 Cursor = "Windows Black",
-                WallpaperColors = new[] { "#141A3D", "#0B0F26", "#04050C" },
+                WallpaperColors = new[] { "#1B1F4D", "#07081A", "#2A145C", "#020205" },
                 Name = "Midnight",
                 Author = "elysium",
-                Description = "pure black, made for oled and late nights",
+                Description = "true black with a violet glow. made for oled and late nights",
                 Mode = "dark",
-                Accent = "#7C5CFF",
+                Accent = "#8B6CFF",
                 Corner = 1,
                 Glass = 1.2,
-                Colors = new()
-                {
-                    ["GroupBg"] = "#0DFFFFFF",
-                    ["GroupStroke"] = "#14FFFFFF",
-                    ["PillStroke"] = "#1FFFFFFF"
-                },
+                Colors = Ink("F3F2FF", "FFFFFF", "#0AFFFFFF", "#0FFFFFFF", "#F20A0A10", true),
                 Gradients = new()
                 {
-                    ["GlassTint"] = new[] { "#FA050507", "#FA0A0A10" },
-                    ["AccentFill"] = new[] { "#FF9479FF", "#FF6A45FF" }
+                    ["GlassTint"] = new[] { "@160", "#FB07070C", "#FB0E0B1C" },
+                    ["AccentFill"] = new[] { "@135", "#FFA996FF", "#FF6A45FF" },
+                    ["PushBg"] = new[] { "#24FFFFFF", "#14FFFFFF" }
                 },
-                Bar = new BarLook { Fill = new[] { "#FF000000", "#FF000000" }, Line = "#1AFFFFFF" },
-                Dock = new DockLook { Tile = new[] { "#F2101016", "#F2050508" }, Stroke = "#26FFFFFF" },
-                Start = new StartLook { Scrim = "#D9000000" }
+                Bar = new BarLook { Fill = new[] { "#FF000000" }, Line = "#1AFFFFFF" },
+                Start = new StartLook { Scrim = "#E6000000", Wash = new[] { "@radial", "#3D7C5CFF", "#00000000" } }
             });
             yield return ("paper", new ThemePack
             {
                 Cursor = "Windows Default",
-                WallpaperColors = new[] { "#FBF8F1", "#EFE8D8" },
+                WallpaperColors = new[] { "#FBF8F1", "#EFE6D2", "#F6F0E3" },
                 Name = "Paper",
                 Author = "elysium",
-                Description = "flat, quiet and warm. like a notebook",
+                Description = "flat, quiet and warm. like a good notebook",
                 Mode = "light",
-                Accent = "#1F1F1F",
+                Accent = "#C2410C",
                 Font = "Georgia",
                 Corner = 0.45,
                 Glass = 1.25,
                 Sounds = "soft",
-                Colors = new()
-                {
-                    ["Text"] = "#FF1C1B19",
-                    ["SubText"] = "#A61C1B19",
-                    ["Faint"] = "#661C1B19",
-                    ["GroupBg"] = "#FFFFFDF8",
-                    ["GroupStroke"] = "#1F1C1B19",
-                    ["PillStroke"] = "#261C1B19",
-                    ["FieldBg"] = "#FFFFFFFF"
-                },
+                Colors = Ink("1C1B19", "1C1B19", "#FFFFFDF8", "#FFFFFFFF", "#FFFBF8F1", false),
                 Gradients = new()
                 {
-                    ["GlassTint"] = new[] { "#FFF6F3EC" }
+                    ["GlassTint"] = new[] { "#FFF6F2E9" },
+                    ["PushBg"] = new[] { "#FFFFFDF8" }
                 },
-                Bar = new BarLook { Fill = new[] { "#FFF6F3EC" }, Line = "#261C1B19", Text = "#FF1C1B19" },
+                Bar = new BarLook { Fill = new[] { "#FFF6F2E9" }, Line = "#261C1B19", Text = "#FF1C1B19" },
                 Dock = new DockLook { Tile = new[] { "#FFFFFDF8" }, Stroke = "#261C1B19", Round = 0.18 },
-                Start = new StartLook { Scrim = "#99F6F3EC", Card = "#B3FFFFFF" }
+                Start = new StartLook { Scrim = "#B3F6F2E9", Card = "#CCFFFFFF" }
             });
             yield return ("y2k-chrome", new ThemePack
             {
                 Cursor = "Windows Default",
-                WallpaperColors = new[] { "#F2F5FA", "#B7C1D1", "#E6EBF2", "#8C99AE" },
+                WallpaperColors = new[] { "#F2F5FA", "#B7C1D1", "#FFB3DD", "#8C99AE" },
                 Name = "Y2K Chrome",
                 Author = "elysium",
                 Description = "brushed metal, bubblegum accent, very millennium",
@@ -455,28 +458,22 @@ namespace Elysium
                 Corner = 1.6,
                 Glass = 1.1,
                 Sounds = "retro",
-                Colors = new()
-                {
-                    ["Text"] = "#FF20242B",
-                    ["SubText"] = "#A620242B",
-                    ["PillStroke"] = "#FFFFFFFF",
-                    ["GroupStroke"] = "#CCFFFFFF"
-                },
+                Colors = Ink("20242B", "20242B", "#99FFFFFF", "#E6FFFFFF", "#F2F4F6F9", false, new() { ["PillStroke"] = "#FFFFFFFF", ["GroupStroke"] = "#CCFFFFFF" }),
                 Gradients = new()
                 {
                     ["GlassTint"] = new[] { "#FAFBFCFE", "#F0C9D2DC", "#FAEEF1F5", "#F0B8C2CE" },
                     ["PushBg"] = new[] { "#FFFFFFFF", "#FFC9D1DB", "#FFF2F4F7" },
-                    ["AccentFill"] = new[] { "#FFFF8CCB", "#FFFF3EA5", "#FFD10F7E" },
+                    ["AccentFill"] = new[] { "#FFFF9AD2", "#FFFF3EA5", "#FFD10F7E" },
                     ["GroupBg"] = new[] { "#99FFFFFF", "#66D5DCE4" }
                 },
                 Bar = new BarLook { Fill = new[] { "#FFFDFDFD", "#FFCBD3DD", "#FFEFF2F6", "#FFB9C3CF" }, Gloss = true, Line = "#FFFFFFFF", Text = "#FF20242B" },
                 Dock = new DockLook { Tile = new[] { "#FFFDFDFD", "#FFBCC6D1" }, Stroke = "#FFFFFFFF", Gloss = true, Round = 0.5 },
-                Start = new StartLook { Scrim = "#59C9D2DC", Wash = new[] { "#26FF3EA5", "#1A8FA3B8" }, Card = "#80FFFFFF" }
+                Start = new StartLook { Scrim = "#66C9D2DC", Wash = new[] { "@135", "#33FF3EA5", "#1A8FA3B8" }, Card = "#80FFFFFF" }
             });
             yield return ("terminal", new ThemePack
             {
                 Cursor = "Windows Black",
-                WallpaperColors = new[] { "#060A06", "#0A160A" },
+                WallpaperColors = new[] { "#060A06", "#0A160A", "#04140A" },
                 Name = "Terminal",
                 Author = "elysium",
                 Description = "green on black, everything in mono",
@@ -485,21 +482,13 @@ namespace Elysium
                 Font = "Cascadia Mono, Consolas",
                 Corner = 0.3,
                 Glass = 1.25,
+                Speed = 0.8,
                 Sounds = "retro",
-                Colors = new()
-                {
-                    ["Text"] = "#FF39FF6E",
-                    ["SubText"] = "#B339FF6E",
-                    ["Faint"] = "#6639FF6E",
-                    ["GroupBg"] = "#0D39FF6E",
-                    ["GroupStroke"] = "#3339FF6E",
-                    ["PillStroke"] = "#5939FF6E",
-                    ["OnAccent"] = "#FF020A04",
-                    ["Separator"] = "#2639FF6E"
-                },
+                Colors = Ink("39FF6E", "39FF6E", "#0D39FF6E", "#1439FF6E", "#F2020A04", true, new() { ["OnAccent"] = "#FF020A04", ["Text"] = "#FF39FF6E", ["Knob"] = "#FF39FF6E" }),
                 Gradients = new()
                 {
-                    ["GlassTint"] = new[] { "#FA020A04" }
+                    ["GlassTint"] = new[] { "#FA020A04" },
+                    ["PushBg"] = new[] { "#1A39FF6E" }
                 },
                 Bar = new BarLook { Fill = new[] { "#FF020A04" }, Line = "#6639FF6E", Text = "#FF39FF6E" },
                 Dock = new DockLook { Tile = new[] { "#F2020A04" }, Stroke = "#8039FF6E", Round = 0.08 },
@@ -508,7 +497,7 @@ namespace Elysium
             yield return ("sunset", new ThemePack
             {
                 Cursor = "Windows Default",
-                WallpaperColors = new[] { "#FFB36B", "#FF6F7D", "#B04A9A", "#3E1F6B" },
+                WallpaperColors = new[] { "#FFB36B", "#FF6F7D", "#B04A9A", "#3E1F6B", "#FFD49A" },
                 Name = "Sunset",
                 Author = "elysium",
                 Description = "warm purple into orange, like 7pm in july",
@@ -516,14 +505,143 @@ namespace Elysium
                 Accent = "#FF7A59",
                 Corner = 1.2,
                 Glass = 0.95,
+                Colors = Ink("FFF1EA", "FFC9AE", "#14FFE3D6", "#1AFFE3D6", "#E62C1533", true),
                 Gradients = new()
                 {
-                    ["GlassTint"] = new[] { "#E62B1338", "#E64A1E3B", "#E65E2633" },
-                    ["AccentFill"] = new[] { "#FFFFA26B", "#FFFF6A59", "#FFE0457B" }
+                    ["GlassTint"] = new[] { "@150", "#E8251135", "#E841193A", "#E85A2433" },
+                    ["AccentFill"] = new[] { "@120", "#FFFFB26B", "#FFFF6A59", "#FFE0457B" }
                 },
-                Bar = new BarLook { Fill = new[] { "#E62B1338", "#E65E2633" }, Line = "#33FFB38A" },
-                Dock = new DockLook { Tile = new[] { "#E64A1E3B", "#E62B1338" }, Stroke = "#40FFB38A" },
-                Start = new StartLook { Scrim = "#802B1338", Wash = new[] { "#40FF7A59", "#332B1338" } }
+                Bar = new BarLook { Fill = new[] { "@90", "#E62B1338", "#E64A1E3B", "#E65E2633" }, Line = "#33FFB38A" },
+                Start = new StartLook { Scrim = "#992B1338", Wash = new[] { "@radial", "#55FF7A59", "#002B1338" } }
+            });
+            yield return ("graphite", new ThemePack
+            {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#3A3F4A", "#16171B", "#2B2D33", "#4A5160" },
+                Name = "Graphite",
+                Author = "elysium",
+                Description = "neutral dark grey, cyan accent, nothing loud",
+                Mode = "dark",
+                Accent = "#5AC8FA",
+                Corner = 1.1,
+                Glass = 1.05,
+                Sounds = "glass",
+                Colors = Ink("F5F5F7", "FFFFFF", "#10FFFFFF", "#14FFFFFF", "#EB2A2A2D", true),
+                Gradients = new()
+                {
+                    ["GlassTint"] = new[] { "@165", "#EE232326", "#EE18181B" },
+                    ["AccentFill"] = new[] { "@135", "#FF7AD7FF", "#FF32ADE6" }
+                },
+                Bar = new BarLook { Fill = new[] { "#E61C1C1F" }, Line = "#14FFFFFF" },
+                Start = new StartLook { Scrim = "#B3101012" }
+            });
+            yield return ("fjord", new ThemePack
+            {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#5E81AC", "#2E3440", "#4C566A", "#88C0D0", "#3B4252" },
+                Name = "Fjord",
+                Author = "elysium",
+                Description = "cold blue-grey, like a lake in norway at 4pm",
+                Mode = "dark",
+                Accent = "#88C0D0",
+                Corner = 0.9,
+                Glass = 1.1,
+                Sounds = "soft",
+                Colors = Ink("ECEFF4", "D8DEE9", "#143B4252", "#1A434C5E", "#F03B4252", true, new() { ["OnAccent"] = "#FF2E3440", ["Danger"] = "#FFBF616A" }),
+                Gradients = new()
+                {
+                    ["GlassTint"] = new[] { "@160", "#F2353C4A", "#F22B313C" },
+                    ["AccentFill"] = new[] { "@135", "#FF8FBCBB", "#FF88C0D0", "#FF81A1C1" }
+                },
+                Bar = new BarLook { Fill = new[] { "#F02E3440" }, Line = "#334C566A", Text = "#FFECEFF4" },
+                Start = new StartLook { Scrim = "#B32E3440", Wash = new[] { "@radial", "#3388C0D0", "#002E3440" } }
+            });
+            yield return ("blossom", new ThemePack
+            {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#FFE3EC", "#F7C6D9", "#E7D3F5", "#FFF1E6", "#F9B8CF" },
+                Name = "Blossom",
+                Author = "elysium",
+                Description = "soft pink and lilac, rounded and cozy",
+                Mode = "light",
+                Accent = "#E0628C",
+                Corner = 1.5,
+                Glass = 0.95,
+                Speed = 1.1,
+                Sounds = "soft",
+                Colors = Ink("4A2B3A", "B9718E", "#99FFFFFF", "#D9FFFFFF", "#F2FFF7FA", false, new() { ["GroupStroke"] = "#33E7A9C0" }),
+                Gradients = new()
+                {
+                    ["GlassTint"] = new[] { "@160", "#F2FFF7FA", "#EBFBE6EF", "#E6EFE3FA" },
+                    ["AccentFill"] = new[] { "@135", "#FFF59BB8", "#FFE0628C", "#FFC2549F" },
+                    ["SegThumb"] = new[] { "#FFFFFFFF", "#FFFFF0F5" }
+                },
+                Bar = new BarLook { Fill = new[] { "@90", "#F2FFF7FA", "#F2F8ECFA" }, Line = "#40E7A9C0", Text = "#FF4A2B3A" },
+                Start = new StartLook { Scrim = "#59FBE6EF", Wash = new[] { "@radial", "#40F59BB8", "#00E7D3F5" }, Card = "#99FFFFFF" }
+            });
+            yield return ("moss", new ThemePack
+            {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#2F4A2A", "#14200F", "#5A7A3E", "#0C130A", "#3E5C34" },
+                Name = "Moss",
+                Author = "elysium",
+                Description = "deep forest green with a warm sage accent",
+                Mode = "dark",
+                Accent = "#9CC97A",
+                Corner = 1.0,
+                Glass = 1.05,
+                Sounds = "soft",
+                Colors = Ink("EAF2E3", "CFE3BF", "#12E3F2D6", "#18E3F2D6", "#EB1A2318", true, new() { ["OnAccent"] = "#FF14200F" }),
+                Gradients = new()
+                {
+                    ["GlassTint"] = new[] { "@160", "#EE1C2619", "#EE121A10" },
+                    ["AccentFill"] = new[] { "@135", "#FFB7DB97", "#FF86B862" }
+                },
+                Bar = new BarLook { Fill = new[] { "#E6151D12" }, Line = "#269CC97A" },
+                Start = new StartLook { Scrim = "#A60C130A", Wash = new[] { "@radial", "#339CC97A", "#000C130A" } }
+            });
+            yield return ("vapor", new ThemePack
+            {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#FF71CE", "#B967FF", "#01CDFE", "#1A0F2E", "#05FFA1" },
+                Name = "Vapor",
+                Author = "elysium",
+                Description = "neon pink and cyan on deep purple. aesthetic",
+                Mode = "dark",
+                Accent = "#FF71CE",
+                Corner = 1.25,
+                Glass = 0.95,
+                Sounds = "retro",
+                Colors = Ink("F7EEFF", "E3B8FF", "#14E3B8FF", "#1AE3B8FF", "#E6241040", true, new() { ["Danger"] = "#FFFF5C8A" }),
+                Gradients = new()
+                {
+                    ["GlassTint"] = new[] { "@150", "#EB1D0F36", "#EB2D1048", "#EB1A0F2E" },
+                    ["AccentFill"] = new[] { "@90", "#FFFF71CE", "#FFB967FF", "#FF01CDFE" }
+                },
+                Bar = new BarLook { Fill = new[] { "@90", "#E62D1048", "#E61D0F36", "#E6102A44" }, Line = "#59FF71CE" },
+                Start = new StartLook { Scrim = "#8C1A0F2E", Wash = new[] { "@135", "#40FF71CE", "#1AB967FF", "#3301CDFE" } }
+            });
+            yield return ("ember", new ThemePack
+            {
+                Cursor = "Windows Default",
+                WallpaperColors = new[] { "#3A2418", "#1A110C", "#7A3E1F", "#C2702E", "#120B08" },
+                Name = "Ember",
+                Author = "elysium",
+                Description = "coffee browns and a glowing orange. warm and slow",
+                Mode = "dark",
+                Accent = "#F0A35E",
+                Corner = 1.2,
+                Glass = 1.05,
+                Speed = 1.1,
+                Sounds = "soft",
+                Colors = Ink("F5E8DC", "E8C9AE", "#12F5E1CF", "#18F5E1CF", "#EB2A1D16", true, new() { ["OnAccent"] = "#FF1A110C" }),
+                Gradients = new()
+                {
+                    ["GlassTint"] = new[] { "@160", "#EE2A1E17", "#EE1C140F" },
+                    ["AccentFill"] = new[] { "@135", "#FFF7C084", "#FFF0A35E", "#FFD9773A" }
+                },
+                Bar = new BarLook { Fill = new[] { "#E61E1510" }, Line = "#26F0A35E" },
+                Start = new StartLook { Scrim = "#A61A110C", Wash = new[] { "@radial", "#40F0A35E", "#001A110C" } }
             });
         }
     }
