@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
@@ -143,12 +144,20 @@ namespace Elysium.Ui
 
         static object? _defaultFont;
 
+        static readonly Dictionary<string, object?> PackSaved = new();
+
         public static void Apply(string mode)
         {
             _defaultFont ??= Application.Current.Resources["UiFont"];
             bool dark = mode == "dark" || (mode != "light" && SystemIsDark());
             IsDark = dark;
             var res = Application.Current.Resources;
+            foreach (var kv in PackSaved)
+            {
+                if (kv.Value == null) res.Remove(kv.Key);
+                else res[kv.Key] = kv.Value;
+            }
+            PackSaved.Clear();
 
             Color accent = PickAccent(dark);
             Accent = accent;
@@ -226,15 +235,20 @@ namespace Elysium.Ui
             var pack = Themes.Active;
             if (pack != null)
             {
+                void Put(string key, Brush b)
+                {
+                    if (!PackSaved.ContainsKey(key)) PackSaved[key] = res.Contains(key) ? res[key] : null;
+                    res[key] = b;
+                }
                 foreach (var kv in pack.Colors)
                 {
                     var b = Paint(new[] { kv.Value });
-                    if (b != null) res[kv.Key] = b;
+                    if (b != null) Put(kv.Key, b);
                 }
                 foreach (var kv in pack.Gradients)
                 {
                     var b = Paint(kv.Value);
-                    if (b != null) res[kv.Key] = b;
+                    if (b != null) Put(kv.Key, b);
                 }
                 if (Paint(pack.Dock?.Tile) is Brush tile) res["DockTile"] = tile;
                 if (Paint(pack.Dock?.Stroke) is Brush stroke) res["DockStroke"] = stroke;

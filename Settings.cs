@@ -231,6 +231,7 @@ namespace Elysium
         public bool ThemeWallpaper { get; set; } = true;
         public bool ThemeCursor { get; set; } = true;
         public string WallpaperBefore { get; set; } = "";
+        public Dictionary<string, string> LookBefore { get; set; } = new();
         public Dictionary<string, string> CursorsBefore { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         public string GalleryUrl { get; set; } = "https://raw.githubusercontent.com/drapids/elysium-gallery/main/index.json";
         public bool SnippetsOn { get; set; } = true;
@@ -339,6 +340,7 @@ namespace Elysium
                         s.CalendarFeeds ??= new List<CalFeed>();
                         s.HiddenTrayApps ??= new List<string>();
                         s.CursorsBefore = new Dictionary<string, string>(s.CursorsBefore ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+                        s.LookBefore ??= new Dictionary<string, string>();
                         foreach (var pinned in s.StartPins) pinned.Kids ??= new List<StartPin>();
                         s.ExtEnabled = new Dictionary<string, bool>(s.ExtEnabled ?? new Dictionary<string, bool>(), StringComparer.OrdinalIgnoreCase);
                         s.Remaps = new Dictionary<string, string>(s.Remaps ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);

@@ -148,18 +148,22 @@ namespace Elysium
 
         public static void Pick(Settings s, ThemePack? p)
         {
+            var was = Active;
+            if (p != null && (s.LookBefore == null || s.LookBefore.Count == 0)) s.LookBefore = Snap(s);
             s.ThemePack = p?.Id ?? "";
             Active = p;
             if (p == null)
             {
+                Restore(s, was);
                 Extras(s, null);
                 s.Touch();
                 return;
             }
+            if (was != null && s.LookBefore is { Count: > 0 } before) Reset(s, before);
             if (p.Mode is "dark" or "light" or "system") s.Theme = p.Mode;
             if (p.Accent.Length > 0)
             {
-                s.AccentMode = p.Accent is "system" or "wallpaper" or "default" ? p.Accent : "custom";
+                s.AccentMode = p.Accent is "system" or "wallpaper" or "default" or "app" ? p.Accent : "custom";
                 if (s.AccentMode == "custom") s.AccentHex = p.Accent;
             }
             s.UiFontName = p.Font;
@@ -169,6 +173,55 @@ namespace Elysium
             if (p.Sounds.Length > 0) s.SoundPack = p.Sounds;
             Extras(s, p);
             s.Touch();
+        }
+
+        static Dictionary<string, string> Snap(Settings s) => new()
+        {
+            ["Theme"] = s.Theme,
+            ["AccentMode"] = s.AccentMode,
+            ["AccentHex"] = s.AccentHex,
+            ["UiFontName"] = s.UiFontName,
+            ["CornerScale"] = s.CornerScale.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["GlassAlpha"] = s.GlassAlpha.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["AnimScale"] = s.AnimScale.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["SoundPack"] = s.SoundPack
+        };
+
+        static double Num(Dictionary<string, string> d, string k, double fallback) =>
+            d.TryGetValue(k, out var v) && double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x) ? x : fallback;
+
+        static string Str(Dictionary<string, string> d, string k, string fallback) => d.TryGetValue(k, out var v) && v != null ? v : fallback;
+
+        static void Reset(Settings s, Dictionary<string, string> b)
+        {
+            s.Theme = Str(b, "Theme", "system");
+            s.AccentMode = Str(b, "AccentMode", "default");
+            s.AccentHex = Str(b, "AccentHex", "#0A84FF");
+            s.UiFontName = Str(b, "UiFontName", "");
+            s.CornerScale = Math.Clamp(Num(b, "CornerScale", 1), 0.3, 1.8);
+            s.GlassAlpha = Math.Clamp(Num(b, "GlassAlpha", 1), 0.4, 1.25);
+            s.AnimScale = Math.Clamp(Num(b, "AnimScale", 1), 0.4, 2.5);
+            s.SoundPack = Str(b, "SoundPack", "glass");
+        }
+
+        static void Restore(Settings s, ThemePack? was)
+        {
+            var b = s.LookBefore;
+            if (b == null || b.Count == 0)
+            {
+                if (was != null && was.Accent.Length > 0)
+                {
+                    s.AccentMode = "default";
+                    s.AccentHex = "#0A84FF";
+                }
+                if (was != null && was.Font.Length > 0) s.UiFontName = "";
+                if (was?.Corner != null) s.CornerScale = 1;
+                if (was?.Glass != null) s.GlassAlpha = 1;
+                if (was?.Speed != null) s.AnimScale = 1;
+                return;
+            }
+            Reset(s, b);
+            s.LookBefore = new Dictionary<string, string>();
         }
 
         static void Extras(Settings s, ThemePack? p)
