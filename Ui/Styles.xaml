@@ -386,4 +386,247 @@
         </Setter>
     </Style>
 
+    <Style x:Key="TrackHit" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{x:Null}"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="VBarThumb" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Background="Transparent">
+                        <Border x:Name="b" Width="5" MinHeight="24" HorizontalAlignment="Right" Margin="0,3,3,3" CornerRadius="3" Background="{DynamicResource SubText}" Opacity="0.5"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="Width" Value="8"/>
+                            <Setter TargetName="b" Property="CornerRadius" Value="4"/>
+                            <Setter TargetName="b" Property="Opacity" Value="0.75"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="b" Property="Width" Value="8"/>
+                            <Setter TargetName="b" Property="CornerRadius" Value="4"/>
+                            <Setter TargetName="b" Property="Opacity" Value="1"/>
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentFill}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="HBarThumb" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Background="Transparent">
+                        <Border x:Name="b" Height="5" MinWidth="24" VerticalAlignment="Bottom" Margin="3,0,3,3" CornerRadius="3" Background="{DynamicResource SubText}" Opacity="0.5"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="Height" Value="8"/>
+                            <Setter TargetName="b" Property="CornerRadius" Value="4"/>
+                            <Setter TargetName="b" Property="Opacity" Value="0.75"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="b" Property="Height" Value="8"/>
+                            <Setter TargetName="b" Property="CornerRadius" Value="4"/>
+                            <Setter TargetName="b" Property="Opacity" Value="1"/>
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource AccentFill}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="MinWidth" Value="12"/>
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid>
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource TrackHit}" Command="ScrollBar.PageUpCommand"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource VBarThumb}"/>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource TrackHit}" Command="ScrollBar.PageDownCommand"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="MinWidth" Value="0"/>
+                <Setter Property="Height" Value="12"/>
+                <Setter Property="MinHeight" Value="12"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid>
+                                <Track x:Name="PART_Track" IsDirectionReversed="False">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource TrackHit}" Command="ScrollBar.PageLeftCommand"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource HBarThumb}"/>
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Style="{StaticResource TrackHit}" Command="ScrollBar.PageRightCommand"/>
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style TargetType="ScrollViewer">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid Background="{TemplateBinding Background}">
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}" CanContentScroll="{TemplateBinding CanContentScroll}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                        <ScrollBar x:Name="PART_VerticalScrollBar" HorizontalAlignment="Right" Orientation="Vertical" Cursor="Arrow" Opacity="0.45"
+                                   Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" VerticalAlignment="Bottom" Orientation="Horizontal" Cursor="Arrow" Opacity="0.45"
+                                   Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}"
+                                   Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                   Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PART_VerticalScrollBar" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15"/>
+                                        <DoubleAnimation Storyboard.TargetName="PART_HorizontalScrollBar" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.15"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="PART_VerticalScrollBar" Storyboard.TargetProperty="Opacity" To="0.45" Duration="0:0:0.4"/>
+                                        <DoubleAnimation Storyboard.TargetName="PART_HorizontalScrollBar" Storyboard.TargetProperty="Opacity" To="0.45" Duration="0:0:0.4"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ToolTip">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="HasDropShadow" Value="False"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource UiFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MaxWidth" Value="380"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Margin="0,0,10,12" Padding="10,6,10,7" CornerRadius="{DynamicResource R8}" BorderThickness="1"
+                            Background="{DynamicResource PillBg}" BorderBrush="{DynamicResource PillStroke}" Effect="{StaticResource PillShadow}">
+                        <ContentPresenter>
+                            <ContentPresenter.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap"/>
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ContextMenu">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="HasDropShadow" Value="False"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource UiFont}"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Margin="0,0,12,14" Padding="5" MinWidth="170" CornerRadius="{DynamicResource R10}" BorderThickness="1"
+                            Background="{DynamicResource PillBg}" BorderBrush="{DynamicResource PillStroke}" Effect="{StaticResource PillShadow}">
+                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="MenuItem">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="b" Background="Transparent" CornerRadius="{DynamicResource R7}" Padding="10,6,12,6">
+                        <DockPanel>
+                            <TextBlock x:Name="gesture" DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Margin="18,0,0,0" Foreground="{DynamicResource Faint}" VerticalAlignment="Center"/>
+                            <ContentPresenter ContentSource="Header" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource RowHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="b" Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Separator">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Margin="8,4,8,4" Background="{DynamicResource Separator}"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>
