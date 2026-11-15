@@ -91,42 +91,11 @@ namespace Elysium.Ui
             GallerySection(h, "theme");
         }
 
-        static string[]? Grad(ThemePack? p, string key)
-        {
-            if (p == null || p.Gradients == null) return null;
-            return p.Gradients.TryGetValue(key, out var stops) ? stops : null;
-        }
-
         FrameworkElement ThemeCard(ThemePack? p)
         {
             bool on = (Themes.Active?.Id ?? "") == (p?.Id ?? "");
-            var box = new StackPanel { Width = 150 };
-            var preview = new Grid { Height = 64, ClipToBounds = true };
-            var bg = new Border { CornerRadius = Kit.Round(9) };
-            bg.Background = Theme.Paint(Grad(p, "GlassTint"))
-                ?? (p?.Mode == "light" ? new SolidColorBrush(Color.FromRgb(0xF3, 0xF3, 0xF5)) : new SolidColorBrush(Color.FromRgb(0x1C, 0x1C, 0x1F)));
-            preview.Children.Add(bg);
-            var bar = new Border { Height = 12, VerticalAlignment = VerticalAlignment.Top, CornerRadius = Kit.Round(9, 9, 0, 0) };
-            bar.Background = Theme.Paint(p?.Bar?.Fill) ?? new SolidColorBrush(Color.FromArgb(0xC0, 0x16, 0x16, 0x18));
-            preview.Children.Add(bar);
-            if (p?.Bar?.Gloss == true)
-            {
-                var gloss = new Border { Height = 6, VerticalAlignment = VerticalAlignment.Top, CornerRadius = Kit.Round(9, 9, 0, 0), Background = new SolidColorBrush(Color.FromArgb(0x70, 255, 255, 255)) };
-                preview.Children.Add(gloss);
-            }
-            Color accent = Color.FromRgb(0x0A, 0x84, 0xFF);
-            try
-            {
-                if (p != null && p.Accent.StartsWith('#')) accent = (Color)ColorConverter.ConvertFromString(p.Accent);
-            }
-            catch
-            {
-            }
-            var dots = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(10, 0, 0, 10) };
-            dots.Children.Add(new Border { Width = 34, Height = 14, CornerRadius = new CornerRadius(7), Background = Theme.Paint(Grad(p, "AccentFill")) ?? new SolidColorBrush(accent) });
-            var dockTile = new Border { Width = 18, Height = 18, Margin = new Thickness(8, 0, 0, -2), CornerRadius = new CornerRadius(18 * (p?.Dock?.Round ?? 0.3)), Background = Theme.Paint(p?.Dock?.Tile) ?? new SolidColorBrush(Color.FromArgb(0xD9, 0x2C, 0x2C, 0x2E)), BorderThickness = new Thickness(1), BorderBrush = Theme.Paint(p?.Dock?.Stroke) ?? new SolidColorBrush(Color.FromArgb(0x40, 255, 255, 255)) };
-            dots.Children.Add(dockTile);
-            preview.Children.Add(dots);
+            var box = new StackPanel { Width = 172 };
+            var preview = ThemePreview.Build(p, 172, 104);
             box.Children.Add(preview);
             var title = Kit.Text(p?.Name ?? "elysium", 12.5, true);
             title.Margin = new Thickness(2, 7, 0, 0);
@@ -148,8 +117,17 @@ namespace Elysium.Ui
             };
             card.SetResourceReference(Border.BackgroundProperty, "GroupBg");
             card.SetResourceReference(Border.BorderBrushProperty, on ? "AccentFill" : "GroupStroke");
+            card.MouseEnter += (_, _) =>
+            {
+                if (!on) card.SetResourceReference(Border.BorderBrushProperty, "AccentSoft");
+            };
+            card.MouseLeave += (_, _) =>
+            {
+                if (!on) card.SetResourceReference(Border.BorderBrushProperty, "GroupStroke");
+            };
             card.MouseLeftButtonUp += (_, _) =>
             {
+                if (on) return;
                 Themes.Pick(_s, p);
                 Rebuild();
             };

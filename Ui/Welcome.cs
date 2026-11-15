@@ -203,7 +203,7 @@ namespace Elysium.Ui
                     var wrap = new WrapPanel();
                     wrap.Children.Add(Chip("elysium", null));
                     foreach (var p in Themes.All()) wrap.Children.Add(Chip(p.Name, p));
-                    content.Children.Add(wrap);
+                    content.Children.Add(new ScrollViewer { Content = wrap, MaxHeight = 300, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
                     break;
                 case 2:
                     content.Children.Add(Big("accent color"));
@@ -308,8 +308,12 @@ namespace Elysium.Ui
         FrameworkElement Chip(string name, ThemePack? p)
         {
             bool on = (Themes.Active?.Id ?? "") == (p?.Id ?? "");
-            var t = Kit.Text(name, 12.5, on);
-            var b = new Border { Child = t, Padding = new Thickness(12, 6, 12, 7), Margin = new Thickness(0, 0, 8, 8), CornerRadius = Kit.Round(10), BorderThickness = new Thickness(on ? 2 : 1), Cursor = Cursors.Hand };
+            var t = Kit.Text(name, 12, on);
+            t.Margin = new Thickness(2, 5, 0, 0);
+            var stack = new StackPanel { Width = 112 };
+            stack.Children.Add(ThemePreview.Build(p, 112, 68));
+            stack.Children.Add(t);
+            var b = new Border { Child = stack, Padding = new Thickness(6, 6, 6, 7), Margin = new Thickness(0, 0, 8, 8), CornerRadius = Kit.Round(10), BorderThickness = new Thickness(on ? 2 : 1), Cursor = Cursors.Hand };
             b.SetResourceReference(Border.BackgroundProperty, "GroupBg");
             b.SetResourceReference(Border.BorderBrushProperty, on ? "AccentFill" : "GroupStroke");
             b.MouseLeftButtonUp += (_, _) =>
