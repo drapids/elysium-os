@@ -31,11 +31,13 @@ namespace Elysium.Ui
             _hover.Tick += (_, _) =>
             {
                 _hover.Stop();
+                if (_asleep || EdgeGuard.Blocked() || Native.MouseDown() || !Over()) return;
                 DockRequested?.Invoke();
             };
 
             hit.MouseEnter += (_, _) =>
             {
+                if (_asleep || EdgeGuard.Blocked()) return;
                 Grow(true);
                 _hover.Start();
             };
@@ -47,14 +49,42 @@ namespace Elysium.Ui
             hit.MouseLeftButtonUp += (_, _) =>
             {
                 _hover.Stop();
+                if (_asleep || EdgeGuard.Blocked()) return;
                 DockRequested?.Invoke();
             };
             hit.MouseRightButtonUp += (_, e) =>
             {
                 _hover.Stop();
                 e.Handled = true;
+                if (_asleep || EdgeGuard.Blocked()) return;
                 SettingsRequested?.Invoke();
             };
+        }
+
+        bool _asleep;
+
+        public void Sleep(int level)
+        {
+            bool on = level > 0;
+            Opacity = level > 1 ? 0 : 1;
+            if (_asleep == on) return;
+            _asleep = on;
+            _hover.Stop();
+            if (on) Grow(false);
+            hit.IsHitTestVisible = !on;
+            var h = new WindowInteropHelper(this).Handle;
+            if (h == IntPtr.Zero) return;
+            long ex = Native.ExStyle(h);
+            ex = on ? ex | 0x20 : ex & ~0x20L;
+            Native.SetWindowLongPtr(h, Native.GWL_EXSTYLE, new IntPtr(ex));
+        }
+
+        bool Over()
+        {
+            var h = new WindowInteropHelper(this).Handle;
+            if (h == IntPtr.Zero || !Native.GetWindowRect(h, out var r)) return false;
+            Native.GetCursorPos(out var p);
+            return p.X >= r.Left - 2 && p.X <= r.Right + 2 && p.Y >= r.Top - 2 && p.Y <= r.Bottom + 2;
         }
 
         bool Vertical => _side == "left" || _side == "right";

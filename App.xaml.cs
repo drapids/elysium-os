@@ -455,6 +455,7 @@ namespace Elysium
                     t.Show();
                 }
                 _tabs[i].SetEdge(edges[i].display, edges[i].side);
+                _tabs[i].Sleep(_edgesAsleep);
             }
         }
 
@@ -781,7 +782,7 @@ namespace Elysium
                 "bl" => p.X <= b.Left + 1 && p.Y >= b.Bottom - 2,
                 _ => p.X >= b.Right - 2 && p.Y >= b.Bottom - 2
             };
-            if (!still) return;
+            if (!still || EdgeGuard.Blocked()) return;
             var fg = Native.GetForegroundWindow();
             if (fg != IntPtr.Zero && CursorLock.IsFullscreen(fg, out _)) return;
             string action = _s.HotCorners.TryGetValue(corner, out var a) ? a : "none";

@@ -28,8 +28,25 @@ namespace Elysium
         string _accentPath = "";
         readonly List<Toasts> _moreToasts = new();
 
+        readonly DispatcherTimer _edgeGuard = new() { Interval = TimeSpan.FromMilliseconds(180) };
+        int _edgesAsleep;
+
+        void GuardEdges()
+        {
+            int level = EdgeGuard.Level();
+            if (level == _edgesAsleep) return;
+            _edgesAsleep = level;
+            foreach (var t in _tabs) t.Sleep(level);
+            if (level > 1) foreach (var b in _bars) b.EdgeQuiet();
+        }
+
         void InitShell()
         {
+            EdgeGuard.Gaming = () => _game;
+            EdgeGuard.OwnClip = () => _lock != null && _lock.Locked;
+            _edgeGuard.Tick += (_, _) => GuardEdges();
+            _edgeGuard.Start();
+            WinEvents.Foreground += _ => GuardEdges();
             _fx = new WindowFx(_s);
             _mouse.LeftDown += pt => _fx?.ArmClose(pt);
             _mouse.DesktopRight += DesktopMenu;
@@ -182,6 +199,7 @@ namespace Elysium
 
         void DisposeShell()
         {
+            _edgeGuard.Stop();
             Try(() => _fx?.Dispose());
             Try(() => _shade?.Dispose());
             Try(() => _borders?.Dispose());

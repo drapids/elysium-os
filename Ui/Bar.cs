@@ -1000,6 +1000,14 @@ namespace Elysium.Ui
             }
         }
 
+        int _topDwell;
+
+        public void EdgeQuiet()
+        {
+            _topDwell = 0;
+            if (_s.BarAutoHide && _revealed && !_pressed) Reveal(false);
+        }
+
         void EdgeTick()
         {
             if (!_s.BarAutoHide || !IsVisible || _hwnd == IntPtr.Zero) return;
@@ -1010,7 +1018,16 @@ namespace Elysium.Ui
             bool inside = inX && p.Y >= d.Bounds.Top && p.Y <= d.Bounds.Top + _px + 6;
             bool keep = inside || _pressed || (KeepOpen?.Invoke() ?? false);
 
-            if (atTop && !_revealed) Reveal(true);
+            if (atTop && !_revealed && (_fullscreen || Native.MouseDown() || EdgeGuard.Blocked()))
+            {
+                _topDwell = 0;
+                return;
+            }
+            _topDwell = atTop ? _topDwell + 1 : 0;
+            if (atTop && !_revealed)
+            {
+                if (_topDwell >= 2) Reveal(true);
+            }
             else if (_revealed && !keep)
             {
                 _outside += 0.09;
