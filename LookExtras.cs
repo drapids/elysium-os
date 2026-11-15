@@ -60,8 +60,26 @@ namespace Elysium
                     var brush = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0.35, 1) };
                     for (int i = 0; i < colors.Count; i++) brush.GradientStops.Add(new GradientStop(colors[i], i / (double)(colors.Count - 1)));
                     g.DrawRectangle(brush, null, new Rect(0, 0, w, h));
-                    var glow = new RadialGradientBrush(Color.FromArgb(0x55, 255, 255, 255), Color.FromArgb(0, 255, 255, 255)) { Center = new Point(0.72, 0.28), GradientOrigin = new Point(0.72, 0.28), RadiusX = 0.55, RadiusY = 0.7 };
+                    var seed = new Random(id.Aggregate(17, (a, ch) => a * 31 + ch));
+                    int blobs = Math.Max(3, colors.Count + 2);
+                    for (int i = 0; i < blobs; i++)
+                    {
+                        var c = colors[(i + 1) % colors.Count];
+                        double cx = 0.1 + seed.NextDouble() * 0.8, cy = 0.1 + seed.NextDouble() * 0.8;
+                        double r = 0.35 + seed.NextDouble() * 0.35;
+                        var blob = new RadialGradientBrush { Center = new Point(cx, cy), GradientOrigin = new Point(cx, cy), RadiusX = r, RadiusY = r * w / h };
+                        blob.GradientStops.Add(new GradientStop(Color.FromArgb(0x9A, c.R, c.G, c.B), 0));
+                        blob.GradientStops.Add(new GradientStop(Color.FromArgb(0x40, c.R, c.G, c.B), 0.45));
+                        blob.GradientStops.Add(new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1));
+                        g.DrawRectangle(blob, null, new Rect(0, 0, w, h));
+                    }
+                    var glow = new RadialGradientBrush(Color.FromArgb(0x38, 255, 255, 255), Color.FromArgb(0, 255, 255, 255)) { Center = new Point(0.72, 0.22), GradientOrigin = new Point(0.72, 0.22), RadiusX = 0.5, RadiusY = 0.6 };
                     g.DrawRectangle(glow, null, new Rect(0, 0, w, h));
+                    var shade = new RadialGradientBrush { Center = new Point(0.5, 0.45), GradientOrigin = new Point(0.5, 0.45), RadiusX = 0.85, RadiusY = 0.85 };
+                    shade.GradientStops.Add(new GradientStop(Color.FromArgb(0, 0, 0, 0), 0.55));
+                    shade.GradientStops.Add(new GradientStop(Color.FromArgb(0x48, 0, 0, 0), 1));
+                    g.DrawRectangle(shade, null, new Rect(0, 0, w, h));
+                    g.DrawRectangle(Grain(), null, new Rect(0, 0, w, h));
                     if (id == "frutiger-aero")
                     {
                         var rng = new Random(7);
@@ -97,6 +115,28 @@ namespace Elysium
                 PhysicsEngine.Log("wallpaper render failed " + ex.Message);
                 return null;
             }
+        }
+
+        static Brush Grain()
+        {
+            const int n = 192;
+            var px = new byte[n * n * 4];
+            var rng = new Random(3);
+            for (int i = 0; i < n * n; i++)
+            {
+                byte v = (byte)(rng.Next(2) * 255);
+                byte a = (byte)rng.Next(0, 9);
+                byte pre = (byte)(v * a / 255);
+                px[i * 4] = pre;
+                px[i * 4 + 1] = pre;
+                px[i * 4 + 2] = pre;
+                px[i * 4 + 3] = a;
+            }
+            var bmp = BitmapSource.Create(n, n, 96, 96, PixelFormats.Pbgra32, null, px, n * 4);
+            bmp.Freeze();
+            var b = new ImageBrush(bmp) { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, n, n), ViewportUnits = BrushMappingMode.Absolute, Stretch = Stretch.None };
+            b.Freeze();
+            return b;
         }
 
         static Color? Parse(string hex)

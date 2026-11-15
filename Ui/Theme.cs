@@ -265,14 +265,32 @@ namespace Elysium.Ui
             if (stops == null || stops.Length == 0) return null;
             try
             {
-                var colors = stops.Select(x => (Color)ColorConverter.ConvertFromString(x.Trim())).ToList();
+                string shape = "";
+                var list = stops.Select(x => x.Trim()).ToList();
+                if (list.Count > 1 && list[0].StartsWith('@'))
+                {
+                    shape = list[0][1..].Trim().ToLowerInvariant();
+                    list.RemoveAt(0);
+                }
+                var colors = list.Select(x => (Color)ColorConverter.ConvertFromString(x)).ToList();
                 if (colors.Count == 1)
                 {
                     var solid = new SolidColorBrush(colors[0]);
                     solid.Freeze();
                     return solid;
                 }
-                var g = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+                GradientBrush g;
+                if (shape == "radial")
+                {
+                    g = new RadialGradientBrush { Center = new Point(0.5, 0.35), GradientOrigin = new Point(0.5, 0.2), RadiusX = 0.9, RadiusY = 0.9 };
+                }
+                else
+                {
+                    double deg = double.TryParse(shape, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var a) ? a : 180;
+                    double rad = (deg - 90) * Math.PI / 180;
+                    double dx = Math.Cos(rad) / 2, dy = Math.Sin(rad) / 2;
+                    g = new LinearGradientBrush { StartPoint = new Point(0.5 - dx, 0.5 - dy), EndPoint = new Point(0.5 + dx, 0.5 + dy) };
+                }
                 for (int i = 0; i < colors.Count; i++) g.GradientStops.Add(new GradientStop(colors[i], i / (double)(colors.Count - 1)));
                 g.Freeze();
                 return g;
