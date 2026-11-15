@@ -14,11 +14,8 @@ namespace Elysium.Ui
 {
     public partial class SidePanel : Window
     {
-        const double Gap = 10;
-
         readonly Settings _s;
         readonly AppCatalog _cat;
-        readonly DispatcherTimer _outside = new() { Interval = TimeSpan.FromMilliseconds(60) };
         bool _loading, _open, _suppress;
 
         string _tab = "dock";
@@ -37,15 +34,17 @@ namespace Elysium.Ui
 
             SourceInitialized += (_, _) =>
             {
-                var h = new WindowInteropHelper(this).Handle;
-                Native.MakeToolWindow(h, false);
                 Theme.Glass(this);
             };
             Theme.Applied += () => Theme.Glass(this);
 
-            Deactivated += (_, _) =>
+            dragSide.MouseLeftButtonDown += (_, e) => Drag(e);
+            dragHead.MouseLeftButtonDown += (_, e) => Drag(e);
+            Closing += (_, e) =>
             {
-                if (!_suppress) SlideOut();
+                if (_quitting) return;
+                e.Cancel = true;
+                SlideOut();
             };
             PreviewKeyDown += (_, e) =>
             {
@@ -70,7 +69,6 @@ namespace Elysium.Ui
                 if (find.Text.Trim().Length == 0) ShowTab(_tab);
                 else _findWait.Start();
             };
-            _outside.Tick += (_, _) => CheckOutsideClick();
 
             close.Click += (_, _) => SlideOut();
             quit.Click += (_, _) => QuitRequested?.Invoke();
@@ -114,6 +112,45 @@ namespace Elysium.Ui
             Activate();
         }
 
+        bool _quitting;
+
+        public void Quit()
+        {
+            _quitting = true;
+            Close();
+        }
+
+        void Drag(MouseButtonEventArgs e)
+        {
+            if (e.ButtonState != MouseButtonState.Pressed || e.OriginalSource is Button) return;
+            try
+            {
+                DragMove();
+            }
+            catch
+            {
+            }
+        }
+
+        static string TabGlyph(string id) => id switch
+        {
+            "general" => "\uE713",
+            "look" => "\uE790",
+            "dock" => "\uE8A9",
+            "windows" => "\uE737",
+            "files" => "\uE8B7",
+            "shell" => "\uE7F4",
+            "audio" => "\uE767",
+            "alerts" => "\uEA8F",
+            "calendar" => "\uE787",
+            "search" => "\uE721",
+            "extensions" => "\uEA86",
+            "keys" => "\uE765",
+            "share" => "\uE72D",
+            "about" => "\uE946",
+            _ => "\uE713"
+        };
+
         void BuildTabs()
         {
             tabs.Children.Clear();
@@ -121,9 +158,25 @@ namespace Elysium.Ui
             {
                 string tid = id;
                 bool on = _tab == id;
-                var chip = new Border { CornerRadius = new CornerRadius(9), Padding = new Thickness(10, 4, 11, 5), Margin = new Thickness(0, 0, 5, 6), Cursor = Cursors.Hand };
-                chip.SetResourceReference(Border.BackgroundProperty, on ? "AccentFill" : "GroupBg");
-                chip.Child = Kit.Text(label, 12, on, on ? "OnAccent" : "Text");
+                var row = new StackPanel { Orientation = Orientation.Horizontal };
+                var badge = new Border { Width = 26, Height = 26, CornerRadius = Kit.Round(7), Margin = new Thickness(0, 0, 11, 0) };
+                badge.SetResourceReference(Border.BackgroundProperty, on ? "AccentFill" : "TileBg");
+                var g = Kit.Icon(TabGlyph(id), 13, on ? "OnAccent" : "Text");
+                g.HorizontalAlignment = HorizontalAlignment.Center;
+                g.VerticalAlignment = VerticalAlignment.Center;
+                badge.Child = g;
+                row.Children.Add(badge);
+                var t = Kit.Text(label, 13, on);
+                t.VerticalAlignment = VerticalAlignment.Center;
+                row.Children.Add(t);
+                var chip = new Border { CornerRadius = Kit.Round(9), Padding = new Thickness(6, 5, 8, 5), Margin = new Thickness(0, 0, 0, 2), Cursor = Cursors.Hand, Child = row };
+                if (on) chip.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+                else
+                {
+                    chip.Background = Brushes.Transparent;
+                    chip.MouseEnter += (_, _) => chip.SetResourceReference(Border.BackgroundProperty, "RowHover");
+                    chip.MouseLeave += (_, _) => chip.Background = Brushes.Transparent;
+                }
                 chip.MouseLeftButtonUp += (_, _) => ShowTab(tid);
                 tabs.Children.Add(chip);
             }
@@ -138,6 +191,7 @@ namespace Elysium.Ui
             bool classicHit = words.All(w => classicText.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
             classic.Visibility = Visibility.Collapsed;
             pages.Visibility = Visibility.Visible;
+            pageTitle.Text = "results for \"" + q + "\"";
             _pages.Find(q, pages, ShowTab, classicHit);
             scroll.ScrollToTop();
         }
@@ -153,6 +207,7 @@ namespace Elysium.Ui
             }
             _tab = tab;
             BuildTabs();
+            pageTitle.Text = SettingsPages.Tabs.FirstOrDefault(t => t.id == tab).label?.ToLowerInvariant() ?? "";
             bool classicTab = tab == "dock" || _pages == null;
             classic.Visibility = classicTab ? Visibility.Visible : Visibility.Collapsed;
             if (classicTab && _open) Load();
@@ -171,6 +226,7 @@ namespace Elysium.Ui
         {
             if (_open)
             {
+                if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
                 Activate();
                 return;
             }
@@ -179,87 +235,48 @@ namespace Elysium.Ui
             var d = Displays.AtCursor();
             _display = d;
             double scale = d.Scale;
-            int gap = (int)(Gap * scale);
-            int wpx = (int)Math.Round(Width * scale);
-            int hpx = d.Work.Height - gap * 2;
-            int target = d.Work.Right - wpx - gap;
-            int y = d.Work.Top + gap;
+            int wpx = (int)Math.Round(Math.Min(Width, d.Work.Width / scale - 60) * scale);
+            int hpx = (int)Math.Round(Math.Min(Height, d.Work.Height / scale - 60) * scale);
+            int x = d.Work.Left + (d.Work.Width - wpx) / 2;
+            int y = d.Work.Top + (d.Work.Height - hpx) / 2;
 
             Load();
             frame.BeginAnimation(OpacityProperty, null);
             frame.Opacity = 0;
             bool fresh = !IsVisible;
-            if (fresh)
+            var h = new WindowInteropHelper(this).EnsureHandle();
+            if (fresh) Native.Cloak(h, true);
+            if (fresh || !_placed)
             {
-                Native.Cloak(new WindowInteropHelper(this).EnsureHandle(), true);
-                Left = -20000;
-                Show();
+                Native.SetWindowPos(h, IntPtr.Zero, x, y, wpx, hpx, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+                _placed = true;
             }
-            var h = new WindowInteropHelper(this).Handle;
-            Native.SetWindowPos(h, IntPtr.Zero, d.Work.Left + 20, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
-            Native.SetWindowPos(h, IntPtr.Zero, d.Work.Left + 20, y, wpx, hpx, Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
+            if (fresh) Show();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
             Activate();
-            _outside.Start();
-
-            SlideTo(d.Bounds.Right, target, y, wpx, hpx, 280, true, null);
-            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(200)));
+            var lift = new TranslateTransform(0, 10);
+            frame.RenderTransform = lift;
+            var ease = new QuinticEase { EasingMode = EasingMode.EaseOut };
+            var dur = TimeSpan.FromMilliseconds(Math.Max(120, 260 * Theme.Speed));
+            lift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(10, 0, dur) { EasingFunction = ease });
+            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(Math.Max(90, 180 * Theme.Speed))));
             if (fresh) Glass.Unveil(this);
         }
 
         Display? _display;
-        DispatcherTimer? _slide;
-
-        void SlideTo(int from, int to, int y, int wpx, int hpx, int ms, bool easeOut, Action? done)
-        {
-            _slide?.Stop();
-            var h = new WindowInteropHelper(this).Handle;
-            int edge = _display?.Bounds.Right ?? to + wpx;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            var timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(7) };
-            _slide = timer;
-            void Step()
-            {
-                double t = Math.Min(1, sw.Elapsed.TotalMilliseconds / ms);
-                double e = easeOut ? 1 - Math.Pow(1 - t, 5) : t * t * t;
-                int x = (int)Math.Round(from + (to - from) * e);
-                int visible = Math.Clamp(edge - x, 0, wpx);
-                Native.SetWindowRgn(h, visible >= wpx ? IntPtr.Zero : Native.CreateRectRgn(0, 0, visible, hpx), true);
-                Native.SetWindowPos(h, IntPtr.Zero, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
-                if (t < 1) return;
-                timer.Stop();
-                done?.Invoke();
-            }
-            timer.Tick += (_, _) => Step();
-            Step();
-            timer.Start();
-        }
+        bool _placed;
 
         public void SlideOut()
         {
             if (!_open) return;
             _open = false;
-            _outside.Stop();
             Keyboard.ClearFocus();
-
-            var h = new WindowInteropHelper(this).Handle;
-            Native.GetWindowRect(h, out var r);
-            int edge = _display?.Bounds.Right ?? r.Right;
-            SlideTo(r.Left, edge, r.Top, r.Width, r.Height, 200, false, () =>
+            var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(Math.Max(80, 140 * Theme.Speed)));
+            fade.Completed += (_, _) =>
             {
-                if (_open) return;
-                Hide();
-                Native.SetWindowRgn(h, IntPtr.Zero, false);
-            });
-            frame.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(200)));
-        }
-
-        void CheckOutsideClick()
-        {
-            if (!_open || _suppress || IsActive) return;
-            if (!Native.MouseDown()) return;
-            Native.GetCursorPos(out var p);
-            Native.GetWindowRect(new WindowInteropHelper(this).Handle, out var r);
-            if (!r.Contains(p.X, p.Y)) SlideOut();
+                if (!_open) Hide();
+            };
+            frame.BeginAnimation(OpacityProperty, fade);
         }
 
         void Wire()
@@ -509,7 +526,7 @@ namespace Elysium.Ui
             sizeVal.Text = $"{_s.IconSize:0}";
             magVal.Text = _s.Magnify < 0.01 ? "Off" : Pct(_s.Magnify);
             shakeRow.Visibility = _s.ShakeToMinimize ? Visibility.Visible : Visibility.Collapsed;
-            status.Text = _s.Enabled ? "throw your windows around" : "physics off, dock still works";
+            status.Text = "elysium " + Changelog.Version;
             physicsCaption.Text = _s.Enabled ? "fling windows and they keep going" : "off. windows move like normal";
             physicsBody.IsEnabled = _s.Enabled;
             physicsBody.Opacity = _s.Enabled ? 1 : 0.45;
