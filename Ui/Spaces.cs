@@ -140,6 +140,7 @@ namespace Elysium.Ui
             _np = np;
             _data = data;
             Glass.Attach(this, 0);
+            Glass.Opaque(this);
             Topmost = false;
             Title = "elysium spaces";
 
@@ -152,6 +153,9 @@ namespace Elysium.Ui
             cell.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 28, 28))));
             cell.Children.Add(dots);
             _dotBrush = new DrawingBrush(cell) { TileMode = TileMode.Tile, ViewportUnits = BrushMappingMode.Absolute, Viewport = new Rect(0, 0, 28, 28), Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top };
+            RenderOptions.SetCachingHint(_dotBrush, CachingHint.Cache);
+            RenderOptions.SetCacheInvalidationThresholdMinimum(_dotBrush, 0.5);
+            RenderOptions.SetCacheInvalidationThresholdMaximum(_dotBrush, 2);
             _dots.Background = _dotBrush;
             _root.Children.Add(_dots);
 
@@ -344,6 +348,7 @@ namespace Elysium.Ui
             _shown = true;
             var d = Displays.AtCursor();
             _display = d;
+            Glass.Behind(this, Elysium.Backdrop.Shot(d.Work));
             PickDesktop();
             BuildTabs();
             Build();
@@ -509,7 +514,20 @@ namespace Elysium.Ui
             _zoomText.Text = $"{Math.Round(z * 100)}%";
             foreach (var (el, minZoom) in _details) el.Visibility = z >= minZoom ? Visibility.Visible : Visibility.Collapsed;
             PlaceThumbs();
-            UpdateMini();
+            QueueMini();
+        }
+
+        bool _miniQueued;
+
+        void QueueMini()
+        {
+            if (_miniQueued) return;
+            _miniQueued = true;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _miniQueued = false;
+                UpdateMini();
+            }), DispatcherPriority.Background);
         }
 
         static double Mod(double a, double m) => ((a % m) + m) % m;
@@ -855,8 +873,7 @@ namespace Elysium.Ui
                 CornerRadius = new CornerRadius(radius),
                 Background = new SolidColorBrush(Color.FromArgb(alpha, 34, 35, 40)),
                 BorderBrush = new SolidColorBrush(Color.FromArgb(0x2E, 255, 255, 255)),
-                BorderThickness = new Thickness(1),
-                Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 18, ShadowDepth = 4, Direction = 270, Opacity = 0.35, Color = Colors.Black }
+                BorderThickness = new Thickness(1)
             };
         }
 
@@ -1096,7 +1113,6 @@ namespace Elysium.Ui
                         if (name.Length == 0) name = it.Path;
                         if (it.Kind == "app" && name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)) name = name[..^4];
                         var label = new TextBlock { Text = name, FontSize = 11.5, Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center, MaxHeight = 32, Margin = new Thickness(0, 6, 0, 0) };
-                        label.Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 6, ShadowDepth = 1, Opacity = 0.8, Color = Colors.Black };
                         sp.Children.Add(label);
                         _details.Add((label, 0.5));
                         b.Child = sp;
@@ -1247,6 +1263,7 @@ namespace Elysium.Ui
                     UpdateMini();
                     Touch();
                 }
+                else if (!resized && it.Kind == "portal" && e.ClickCount == 1) Open(it);
                 if (resized && it.Kind == "smart") Build();
             };
             el.MouseRightButtonUp += (_, e) =>
@@ -1306,14 +1323,18 @@ namespace Elysium.Ui
             switch (it.Kind)
             {
                 case "portal":
-                    if (_thumbs.ContainsKey(it))
                     {
                         var h = FindWindow(it);
-                        if (h != IntPtr.Zero) Native.ForceForeground(h);
-                    }
-                    else
-                    {
-                        Build();
+                        if (h != IntPtr.Zero)
+                        {
+                            Close2();
+                            WinList.Switch(h);
+                        }
+                        else
+                        {
+                            Build();
+                            Say?.Invoke("that window's closed. open the app and it'll show up here again");
+                        }
                     }
                     break;
                 case "group":
