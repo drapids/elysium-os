@@ -564,9 +564,9 @@ namespace Elysium.Ui
                 }
                 else
                 {
-                    _edge.Stop();
                     _revealed = true;
                     Register(d, px);
+                    _edge.Start();
                 }
                 if (!IsVisible)
                 {
@@ -654,8 +654,14 @@ namespace Elysium.Ui
             else if (code == Native.ABN_FULLSCREENAPP)
             {
                 _fullscreen = lParam != IntPtr.Zero;
+                _peek = false;
+                _peekOut = 0;
                 Topmost = !_fullscreen;
-                if (_fullscreen) Native.SetWindowPos(_hwnd, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+                if (_fullscreen)
+                {
+                    if (_s.BarAutoHide && _revealed) Reveal(false);
+                    Native.SetWindowPos(_hwnd, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+                }
                 else Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
             }
             return IntPtr.Zero;
@@ -1001,29 +1007,68 @@ namespace Elysium.Ui
         }
 
         int _topDwell;
+        bool _peek;
+        double _peekOut;
 
         public void EdgeQuiet()
         {
             _topDwell = 0;
-            if (_s.BarAutoHide && _revealed && !_pressed) Reveal(false);
+            if (_peek) Peek(false);
+            else if (_s.BarAutoHide && _revealed && !_pressed) Reveal(false);
+        }
+
+        void Peek(bool on)
+        {
+            if (_peek == on || _hwnd == IntPtr.Zero) return;
+            _peek = on;
+            _peekOut = 0;
+            if (on)
+            {
+                Topmost = true;
+                Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+                if (_s.BarAutoHide) Reveal(true);
+                return;
+            }
+            if (_s.BarAutoHide) Reveal(false);
+            if (!_fullscreen) return;
+            Topmost = false;
+            Native.SetWindowPos(_hwnd, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
         }
 
         void EdgeTick()
         {
-            if (!_s.BarAutoHide || !IsVisible || _hwnd == IntPtr.Zero) return;
+            if (!IsVisible || _hwnd == IntPtr.Zero) return;
+            if (!_s.BarAutoHide && !_fullscreen && !_peek) return;
             var d = Display;
             Native.GetCursorPos(out var p);
             bool inX = p.X >= d.Bounds.Left && p.X < d.Bounds.Right;
             bool atTop = inX && p.Y <= d.Bounds.Top + 1 && p.Y >= d.Bounds.Top - 1;
             bool inside = inX && p.Y >= d.Bounds.Top && p.Y <= d.Bounds.Top + _px + 6;
             bool keep = inside || _pressed || (KeepOpen?.Invoke() ?? false);
+            bool hidden = _fullscreen ? !_peek : !_revealed;
 
-            if (atTop && !_revealed && (_fullscreen || Native.MouseDown() || EdgeGuard.Blocked()))
+            if (atTop && hidden && (Native.MouseDown() || EdgeGuard.Blocked()))
             {
                 _topDwell = 0;
                 return;
             }
             _topDwell = atTop ? _topDwell + 1 : 0;
+
+            if (_fullscreen || _peek)
+            {
+                if (atTop && !_peek)
+                {
+                    if (_topDwell >= 2) Peek(true);
+                }
+                else if (_peek && !keep)
+                {
+                    _peekOut += 0.09;
+                    if (_peekOut > 0.6) Peek(false);
+                }
+                else _peekOut = 0;
+                return;
+            }
+
             if (atTop && !_revealed)
             {
                 if (_topDwell >= 2) Reveal(true);
