@@ -42,6 +42,8 @@ namespace Elysium
 
         void InitShell()
         {
+            _keyHook.TaskManager += () => TaskMgr().Open();
+            _keyHook.TaskKeys = _s.TaskManagerKeys;
             EdgeGuard.Gaming = () => _game;
             EdgeGuard.OwnClip = () => _lock != null && _lock.Locked;
             _edgeGuard.Tick += (_, _) => GuardEdges();
@@ -89,6 +91,7 @@ namespace Elysium
             {
                 _pages.WhatsNewRequested = () => new WhatsNew().Open();
                 _pages.LockLookRequested = () => _ = MatchLockScreen();
+                _pages.TaskManagerRequested = () => TaskMgr().Open();
                 _pages.CalendarsChanged = () => _cals?.Refresh(true);
             }
             SystemEvents.PowerModeChanged += (_, e) =>
@@ -137,6 +140,7 @@ namespace Elysium
             _fx?.Sync();
             _borders?.Sync(_s.ThemedBorders);
             _mouse.DesktopMenu = _s.DesktopMenu;
+            _keyHook.TaskKeys = _s.TaskManagerKeys;
             if (_s.DesktopPiles && _piles == null)
             {
                 _piles = new DesktopPiles(_s, _catalog) { ItemMenu = (p, el) => FileMenu(p, el) };
@@ -176,12 +180,15 @@ namespace Elysium
                 else _standby.Enter();
             };
             map["retile"] = () => _tiler?.Now();
+            map["taskmgr"] = () => TaskMgr().Toggle();
         }
 
         void ShellCommands(Commands c)
         {
             c.Add("elysium", "shade", "Roll this window up / down", "\uE70E", () => _shade?.Toggle(Native.GetForegroundWindow()), "shade roll up collapse title bar window");
             c.Add("elysium", "standby", "Standby mode", "\uE708", () => _standby?.Enter(), "standby clock screensaver idle away");
+            c.Add("elysium", "taskmgr", "Task manager", "\uE9D9", () => TaskMgr().Open(), "task manager processes end task kill cpu memory ram performance startup apps");
+            c.Add("elysium", "startup-apps", "Startup apps", "\uE7E8", () => TaskMgr().Open("startup"), "startup boot sign in launch on login task manager");
             c.Add("elysium", "retile", "Tile windows now", "\uF0E2", () => _tiler?.Now(), "tile tiling arrange grid windows");
             c.Add("elysium", "calendar", "Calendar", "\uE787", () =>
             {
@@ -197,8 +204,21 @@ namespace Elysium
             }, "tray system tray notification area discord steam");
         }
 
+        TaskManager? _taskMgr;
+
+        TaskManager TaskMgr()
+        {
+            if (_taskMgr != null) return _taskMgr;
+            _taskMgr = new TaskManager(_s, _catalog, () => _activity.Gpu, () => (_activity.NetDown, _activity.NetUp))
+            {
+                SetKeys = on => _keyHook.TaskKeys = on
+            };
+            return _taskMgr;
+        }
+
         void DisposeShell()
         {
+            Try(() => _taskMgr?.Quit());
             _edgeGuard.Stop();
             Try(() => _fx?.Dispose());
             Try(() => _shade?.Dispose());
@@ -504,6 +524,8 @@ namespace Elysium
                     })
                 }));
             }
+            items.Add(MenuEntry.Sep());
+            items.Add(MenuEntry.Item("\uE9D9", "task manager", () => TaskMgr().Open()));
             if (_s.HiddenTrayApps.Count > 0)
             {
                 items.Add(MenuEntry.Sep());

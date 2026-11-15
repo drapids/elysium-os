@@ -27,6 +27,7 @@ namespace Elysium.Ui
             ("0.6", new[]
             {
                 "heft is elysium now. your settings came with you",
+                "elysium has its own task manager now (processes, performance, startup apps). ctrl + shift + esc can open it",
                 "flicking your mouse to the screen edge in a game won't pop the dock or the bar anymore",
                 "themes got redone, six new ones, nicer wallpapers, and turning one off puts your accent back",
                 "quick look got rebuilt: opens instantly, arrows flip through the folder, delete right from it",

@@ -42,6 +42,8 @@ namespace Elysium
         public volatile bool Paused;
         public volatile uint HoldVk;
         public volatile bool HoldSwallow;
+        public volatile bool TaskKeys;
+        public event Action? TaskManager;
         public event Action<bool>? Hold;
         bool _holdDown;
         public event Action<int, string>? Expand;
@@ -169,6 +171,12 @@ namespace Elysium
                         catch
                         {
                         }
+                    }
+
+                    if (!injected && TaskKeys && k.vkCode == 0x1B && (Native.GetAsyncKeyState(0x11) & 0x8000) != 0 && (Native.GetAsyncKeyState(0x10) & 0x8000) != 0 && (Native.GetAsyncKeyState(0x12) & 0x8000) == 0)
+                    {
+                        if (down) _ui.BeginInvoke(new Action(() => TaskManager?.Invoke()));
+                        return new IntPtr(1);
                     }
 
                     if (SysKey != null && ((down && k.vkCode is 0xAD or 0xAE or 0xAF) || (up && k.vkCode == 0x14)))

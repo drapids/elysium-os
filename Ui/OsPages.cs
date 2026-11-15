@@ -12,6 +12,7 @@ namespace Elysium.Ui
     {
         public Action? WhatsNewRequested;
         public Action? LockLookRequested;
+        public Action? TaskManagerRequested;
         public Action? CalendarsChanged;
         string _calName = "", _calUrl = "";
 
@@ -100,6 +101,10 @@ namespace Elysium.Ui
 
         void GeneralMore(Panel h)
         {
+            h.Children.Add(Kit.Header("Task manager"));
+            h.Children.Add(Kit.Group(
+                Kit.Row("Ctrl + Shift + Esc opens elysium's", "instead of the windows one. processes, performance graphs and startup apps", Sw(_s.TaskManagerKeys, v => _s.TaskManagerKeys = v)),
+                Kit.Row("Open it", KeyHint("taskmgr"), Kit.Push("Open", () => TaskManagerRequested?.Invoke()))));
             h.Children.Add(Kit.Header("Moments"));
             h.Children.Add(Kit.Group(
                 Kit.Block("Boot screen", null, Kit.Segments(new[] { "Off", "When the pc starts", "Every time" }, new[] { "off", "startup", "always" }, _s.BootScreen, v =>

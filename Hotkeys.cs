@@ -46,6 +46,7 @@ namespace Elysium
             ("shade", "Roll a window up / down", ""),
             ("standby", "Standby mode", ""),
             ("retile", "Tile windows now", ""),
+            ("taskmgr", "Task manager", ""),
             ("start", "Start", "")
         };
 

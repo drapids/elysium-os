@@ -226,6 +226,7 @@ namespace Elysium
         public bool SetupSeen { get; set; } = false;
         public string NotifyScreen { get; set; } = "mouse";
         public bool CalendarOn { get; set; } = false;
+        public bool TaskManagerKeys { get; set; } = false;
         public List<CalFeed> CalendarFeeds { get; set; } = new();
         public int ThemesSeedVersion { get; set; } = 0;
         public bool ThemeWallpaper { get; set; } = true;
