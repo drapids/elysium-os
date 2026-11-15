@@ -28,7 +28,10 @@ namespace Elysium.Ui
             {
                 "heft is elysium now. your settings came with you",
                 "elysium has its own task manager now (processes, performance, startup apps). ctrl + shift + esc can open it",
-                "flicking your mouse to the screen edge in a game won't pop the dock or the bar anymore",
+                "the dock, bar and hot corners work over fullscreen apps. games that grab your mouse don't set them off",
+                "the top bar peeks down over fullscreen apps when you push the mouse to the top",
+                "turning cursor lock off actually keeps it off now",
+                "custom scrollbars, tooltips and menus everywhere",
                 "themes got redone, six new ones, nicer wallpapers, and turning one off puts your accent back",
                 "quick look got rebuilt: opens instantly, arrows flip through the folder, delete right from it",
                 "right-click stuff on the shelf to delete it (or hit delete)",
@@ -51,53 +54,169 @@ namespace Elysium.Ui
     internal sealed class WhatsNew : Window
     {
         readonly Border _surface;
+        readonly List<FrameworkElement> _rows = new();
+        readonly StackPanel _list = new();
+        readonly ScrollViewer _scroll;
+        bool _older;
+
+        static string GlyphFor(string line)
+        {
+            string l = line.ToLowerInvariant();
+            (string word, string glyph)[] map =
+            {
+                ("task manager", "\uE9D9"), ("theme", "\uE790"), ("wallpaper", "\uE91B"), ("game", "\uE7FC"), ("fullscreen", "\uE740"),
+                ("quick look", "\uE8FF"), ("shelf", "\uE7B8"), ("audio", "\uE767"), ("volume", "\uE767"), ("minimize", "\uE73F"),
+                ("border", "\uE81E"), ("accent", "\uE790"), ("roll", "\uE70E"), ("island", "\uE9E9"), ("popup", "\uE7F4"),
+                ("dock", "\uE8A9"), ("calendar", "\uE787"), ("desktop", "\uE8FC"), ("boot", "\uE7E8"), ("standby", "\uE708"),
+                ("notification", "\uEA8F"), ("cursor", "\uE8B0"), ("scroll", "\uE8CB"), ("elysium", "\uE734")
+            };
+            foreach (var (word, glyph) in map)
+                if (l.Contains(word)) return glyph;
+            return "\uE734";
+        }
 
         public WhatsNew()
         {
-            Glass.Attach(this, 18);
+            Glass.Attach(this, 20);
             Title = "elysium what's new";
             SizeToContent = SizeToContent.WidthAndHeight;
-            _surface = Glass.Surface(18);
-            var body = new StackPanel { Width = 420, Margin = new Thickness(24, 20, 24, 20) };
-            var top = Kit.Text("what's new", 22, true);
-            body.Children.Add(top);
-            var ver = Kit.Caption("elysium " + Changelog.Version);
-            ver.Margin = new Thickness(0, 2, 0, 14);
-            body.Children.Add(ver);
-            var lines = Changelog.Notes.FirstOrDefault(n => n.version == Changelog.Version).lines ?? Changelog.Notes[0].lines;
-            var list = new StackPanel();
-            foreach (var line in lines)
+            _surface = Glass.Surface(20);
+            var root = new StackPanel { Width = 540 };
+
+            var hero = new Grid { Height = 150, ClipToBounds = true };
+            var wash = new Border();
+            var glow = new RadialGradientBrush { Center = new Point(0.85, 0.1), GradientOrigin = new Point(0.85, 0.1), RadiusX = 0.9, RadiusY = 1.4 };
+            var a = Theme.Accent;
+            glow.GradientStops.Add(new GradientStop(Color.FromArgb(0x66, a.R, a.G, a.B), 0));
+            glow.GradientStops.Add(new GradientStop(Color.FromArgb(0x18, a.R, a.G, a.B), 0.55));
+            glow.GradientStops.Add(new GradientStop(Color.FromArgb(0, a.R, a.G, a.B), 1));
+            wash.Background = glow;
+            hero.Children.Add(wash);
+            var mark = new Grid { Width = 92, Height = 92, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 34, 0) };
+            var halo = new Border { Width = 70, Height = 70, CornerRadius = new CornerRadius(35), Opacity = 0.45, Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 26 } };
+            halo.SetResourceReference(Border.BackgroundProperty, "AccentFill");
+            mark.Children.Add(halo);
+            var ring = new System.Windows.Shapes.Ellipse { Width = 66, Height = 66, StrokeThickness = 3 };
+            ring.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Text");
+            mark.Children.Add(ring);
+            var dot = new System.Windows.Shapes.Ellipse { Width = 13, Height = 13 };
+            dot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, "AccentFill");
+            mark.Children.Add(dot);
+            hero.Children.Add(mark);
+            var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(30, 0, 150, 0) };
+            var chip = new Border { HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(9, 2, 9, 3), CornerRadius = new CornerRadius(9) };
+            chip.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+            chip.Child = Kit.Text("elysium " + Changelog.Version, 11.5, true, "Text");
+            words.Children.Add(chip);
+            var title = Kit.Text("what's new", 30, false);
+            title.FontWeight = FontWeights.Light;
+            title.Margin = new Thickness(0, 6, 0, 0);
+            words.Children.Add(title);
+            var lines = Current();
+            var count = Kit.Text(lines.Length + " things changed. scroll through or just hit nice", 12.5, false, "SubText");
+            count.TextWrapping = TextWrapping.Wrap;
+            words.Children.Add(count);
+            hero.Children.Add(words);
+            root.Children.Add(hero);
+
+            foreach (var line in lines) _list.Children.Add(Item(line));
+            _scroll = new ScrollViewer { Content = _list, MaxHeight = 380, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(18, 4, 18, 8), Focusable = false };
+            var fade = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+            fade.GradientStops.Add(new GradientStop(Colors.Black, 0));
+            fade.GradientStops.Add(new GradientStop(Colors.Black, 0.86));
+            fade.GradientStops.Add(new GradientStop(Colors.Transparent, 1));
+            _scroll.ScrollChanged += (_, _) => _scroll.OpacityMask = _scroll.ScrollableHeight > 1 && _scroll.VerticalOffset < _scroll.ScrollableHeight - 2 ? fade : null;
+            root.Children.Add(_scroll);
+
+            var foot = new DockPanel { Margin = new Thickness(26, 10, 22, 20) };
+            var ok = Kit.Push("Nice", Leave, true);
+            ok.MinWidth = 96;
+            DockPanel.SetDock(ok, Dock.Right);
+            foot.Children.Add(ok);
+            var left = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            if (Changelog.Notes.Length > 1)
             {
-                var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
-                var dot = new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Margin = new Thickness(2, 6, 12, 0), VerticalAlignment = VerticalAlignment.Top };
-                dot.SetResourceReference(Border.BackgroundProperty, "AccentFill");
-                DockPanel.SetDock(dot, Dock.Left);
-                row.Children.Add(dot);
-                var t = Kit.Text(line, 13);
-                t.TextWrapping = TextWrapping.Wrap;
-                row.Children.Add(t);
-                list.Children.Add(row);
+                var more = Kit.Push("Older updates", () => { });
+                more.Click += (_, _) =>
+                {
+                    if (_older) return;
+                    _older = true;
+                    more.IsEnabled = false;
+                    foreach (var (version, older) in Changelog.Notes.Where(n => n.version != Changelog.Version))
+                    {
+                        var h = Kit.Text("elysium " + version, 12, true, "SubText");
+                        h.Margin = new Thickness(6, 16, 0, 6);
+                        _list.Children.Add(h);
+                        foreach (var l in older) _list.Children.Add(Item(l));
+                    }
+                };
+                more.Margin = new Thickness(0, 0, 10, 0);
+                left.Children.Add(more);
             }
-            body.Children.Add(new ScrollViewer { Content = list, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
-            var ok = Kit.Push("Nice", () => Glass.Dismiss(this, _surface), true);
-            ok.HorizontalAlignment = HorizontalAlignment.Right;
-            ok.Margin = new Thickness(0, 16, 0, 0);
-            body.Children.Add(ok);
-            _surface.Child = body;
+            left.Children.Add(Kit.Text("esc closes this", 11.5, false, "Faint"));
+            foot.Children.Add(left);
+            var sep = new Border { Height = 1 };
+            sep.SetResourceReference(Border.BackgroundProperty, "Separator");
+            root.Children.Add(sep);
+            root.Children.Add(foot);
+
+            _surface.Child = root;
             Content = _surface;
             PreviewKeyDown += (_, e) =>
             {
                 if (e.Key is not (Key.Escape or Key.Enter)) return;
                 e.Handled = true;
-                Glass.Dismiss(this, _surface);
+                Leave();
             };
         }
+
+        static string[] Current() => Changelog.Notes.FirstOrDefault(n => n.version == Changelog.Version).lines ?? Changelog.Notes[0].lines;
+
+        FrameworkElement Item(string line)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
+            var badge = new Border { Width = 34, Height = 34, CornerRadius = Kit.Round(10), Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Top };
+            badge.SetResourceReference(Border.BackgroundProperty, "AccentSoft");
+            var g = Kit.Icon(GlyphFor(line), 15, "AccentFill");
+            g.HorizontalAlignment = HorizontalAlignment.Center;
+            g.VerticalAlignment = VerticalAlignment.Center;
+            badge.Child = g;
+            DockPanel.SetDock(badge, Dock.Left);
+            row.Children.Add(badge);
+            var t = Kit.Text(line, 13.5);
+            t.TextWrapping = TextWrapping.Wrap;
+            t.VerticalAlignment = VerticalAlignment.Center;
+            t.LineHeight = 19;
+            row.Children.Add(t);
+            var card = new Border { Child = row, Padding = new Thickness(10, 8, 12, 8), CornerRadius = Kit.Round(12) };
+            card.MouseEnter += (_, _) => card.SetResourceReference(Border.BackgroundProperty, "RowHover");
+            card.MouseLeave += (_, _) => card.Background = Brushes.Transparent;
+            card.Background = Brushes.Transparent;
+            _rows.Add(card);
+            return card;
+        }
+
+        void Leave() => Glass.Dismiss(this, _surface);
 
         public void Open()
         {
             var d = Displays.AtCursor();
+            foreach (var r in _rows) r.Opacity = 0;
             Glass.Present(this, _surface, () => Center(this, _surface, d), 12, 0.96, 260);
             Activate();
+            int i = 0;
+            var stagger = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(Math.Max(12, 38 * Theme.Speed)) };
+            stagger.Tick += (_, _) =>
+            {
+                if (i >= _rows.Count || i > 14)
+                {
+                    stagger.Stop();
+                    for (; i < _rows.Count; i++) _rows[i].Opacity = 1;
+                    return;
+                }
+                Glass.FadeIn(_rows[i++], 10, 260);
+            };
+            stagger.Start();
         }
 
         public static void Center(Window w, FrameworkElement surface, Display d)
