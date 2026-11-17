@@ -1058,7 +1058,7 @@ namespace Elysium.Ui
             {
                 if (atTop && !_peek)
                 {
-                    if (_topDwell >= 2) Peek(true);
+                    if (_topDwell >= 4) Peek(true);
                 }
                 else if (_peek && !keep)
                 {

@@ -154,7 +154,7 @@ namespace Elysium
             _pocket = new Pocket(_s);
             _pocket.RestoreLeftovers();
             _lock = new CursorLock(_s);
-            _lock.IsGame = h => _gameWins.Contains(h) || EdgeGuard.CursorHidden();
+            _lock.IsGame = h => _gameWins.Contains(h) || EdgeGuard.IsGameWindow(h) || EdgeGuard.CursorHidden();
             _lock.Changed += on =>
             {
                 string key = Hotkeys.Spec(_s, "lock").ToLowerInvariant().Replace("+", " + ");

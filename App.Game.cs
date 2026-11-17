@@ -55,7 +55,7 @@ namespace Elysium
             {
                 string exe = ExeOf(fg);
                 bool skip = exe.Equals("explorer", StringComparison.OrdinalIgnoreCase) || NotGames.Contains(exe) || _s.GameSkip.Exists(x => x.Equals(exe, StringComparison.OrdinalIgnoreCase));
-                if (!skip && (EdgeGuard.CursorHidden() || EdgeGuard.ForeignClip()))
+                if (!skip && (EdgeGuard.IsGameWindow(fg) || EdgeGuard.CursorHidden() || EdgeGuard.ForeignClip()))
                 {
                     if (_gameWins.Count > 40) _gameWins.RemoveWhere(h => !Native.IsWindow(h));
                     _gameWins.Add(fg);

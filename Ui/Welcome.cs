@@ -35,6 +35,8 @@ namespace Elysium.Ui
                 "settings is a proper window now, with tabs down the side",
                 "typing in start searches right there instead of jumping to the launcher",
                 "spaces is way smoother, and clicking a portal takes you to that window",
+                "games (steam, epic, riot, roblox, minecraft and more) never set off the bar, dock or corners",
+                "breaking up a workspace always gets rid of its tab bar",
                 "themes got redone, six new ones, nicer wallpapers, and turning one off puts your accent back",
                 "quick look got rebuilt: opens instantly, arrows flip through the folder, delete right from it",
                 "right-click stuff on the shelf to delete it (or hit delete)",

@@ -45,6 +45,7 @@ namespace Elysium
             _keyHook.TaskManager += () => TaskMgr().Open();
             _keyHook.TaskKeys = _s.TaskManagerKeys;
             EdgeGuard.Gaming = () => _game;
+            EdgeGuard.Learned = h => _gameWins.Contains(h);
             EdgeGuard.OwnClip = () => _lock != null && _lock.Locked;
             _edgeGuard.Tick += (_, _) => GuardEdges();
             _edgeGuard.Start();
