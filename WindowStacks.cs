@@ -289,6 +289,15 @@ namespace Elysium
             _stacks.Remove(st);
             if (_stacks.Count == 0) _timer.Stop();
             Persist();
+            Sweep();
+        }
+
+        void Sweep()
+        {
+            foreach (var strip in TabStrip.Live.ToList())
+                if (!_stacks.Any(x => x.Strip == strip)) strip.Kill();
+            foreach (var st in _stacks)
+                if (st.Pill != null && !st.Collapsed) ClosePill(st);
         }
 
         public void ReleaseAll()
@@ -311,6 +320,7 @@ namespace Elysium
             }
             _stacks.Clear();
             _timer.Stop();
+            Sweep();
             _s.StackedAway.Clear();
             _s.SaveNow();
             try
@@ -370,6 +380,7 @@ namespace Elysium
 
         void Tick()
         {
+            Sweep();
             long now = Environment.TickCount64;
             _waiting.RemoveAll(w => w.until < now);
             foreach (var st in _stacks.ToList())
@@ -733,7 +744,12 @@ namespace Elysium
 
             _surface.Child = dock;
             Content = _surface;
-            Closed += (_, _) => Dead = true;
+            Live.Add(this);
+            Closed += (_, _) =>
+            {
+                Dead = true;
+                Live.Remove(this);
+            };
             MouseWheel += (_, e) =>
             {
                 e.Handled = true;
@@ -766,11 +782,42 @@ namespace Elysium
             if (Native.IsWindow(_active)) Native.ForceForeground(_active);
         }
 
+        public static readonly HashSet<TabStrip> Live = new();
+
         public void Kill()
         {
             if (Dead) return;
             Dead = true;
-            Close();
+            Live.Remove(this);
+            Vanish(this);
+        }
+
+        public static void Vanish(Window w)
+        {
+            var me = new WindowInteropHelper(w).Handle;
+            if (me != IntPtr.Zero)
+            {
+                Native.SetWindowLongPtr(me, Native.GWLP_HWNDPARENT, IntPtr.Zero);
+                Native.ShowWindow(me, Native.SW_HIDE);
+            }
+            try
+            {
+                w.Hide();
+            }
+            catch
+            {
+            }
+            w.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    w.Close();
+                }
+                catch (Exception ex)
+                {
+                    PhysicsEngine.Log("tab strip close failed " + ex.Message);
+                }
+            }), DispatcherPriority.Background);
         }
 
         public void Build(List<IntPtr> wins, IntPtr active, string name, string layer)
@@ -980,16 +1027,19 @@ namespace Elysium
         {
             if (Dead) return;
             Dead = true;
+            bool gone = false;
             Glass.Dismiss(this, _surface, () =>
             {
-                try
-                {
-                    Close();
-                }
-                catch
-                {
-                }
+                gone = true;
+                TabStrip.Vanish(this);
             });
+            var guard = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
+            guard.Tick += (_, _) =>
+            {
+                guard.Stop();
+                if (!gone) TabStrip.Vanish(this);
+            };
+            guard.Start();
         }
     }
 
