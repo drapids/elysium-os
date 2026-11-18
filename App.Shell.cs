@@ -34,14 +34,11 @@ namespace Elysium
         void GuardEdges()
         {
             int level = EdgeGuard.Level();
+            foreach (var b in _bars) b.GameQuiet(level > 1);
             if (level == _edgesAsleep) return;
             _edgesAsleep = level;
             foreach (var t in _tabs) t.Sleep(level);
-            foreach (var b in _bars)
-            {
-                if (level > 1) b.EdgeQuiet();
-                b.GameQuiet(level > 1);
-            }
+            if (level > 1) foreach (var b in _bars) b.EdgeQuiet();
         }
 
         void InitShell()
