@@ -333,6 +333,10 @@ namespace Elysium.Ui
             int dark = IsDark ? 1 : 0;
             Native.DwmSetWindowAttribute(h, Native.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
             Native.RoundCorners(h);
+            int border = IsDark ? 0x00333333 : 0x00D6D6D6;
+            Native.DwmSetWindowAttribute(h, 34, ref border, sizeof(int));
+            int caption = IsDark ? 0x00211D1D : 0x00F6F3F3;
+            Native.DwmSetWindowAttribute(h, 35, ref caption, sizeof(int));
             if (Environment.OSVersion.Version.Build >= 22621)
             {
                 int none = 1;
