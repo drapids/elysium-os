@@ -6,7 +6,7 @@
         FontFamily="{StaticResource UiFont}" UseLayoutRounding="True">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome GlassFrameThickness="0" CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="0" UseAeroCaptionButtons="False"/>
+        <WindowChrome GlassFrameThickness="1" CaptionHeight="0" ResizeBorderThickness="6" CornerRadius="0" UseAeroCaptionButtons="False"/>
     </WindowChrome.WindowChrome>
 
     <Grid x:Name="frame" Background="{DynamicResource GlassTint}">

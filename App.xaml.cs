@@ -1246,6 +1246,7 @@ namespace Elysium
         {
             if (_cleaned) return;
             _cleaned = true;
+            Try(() => _panel?.Quit());
             Try(() => _state.Stop());
             Try(() => _autosave?.Stop());
             Try(() => _catalog?.Dispose());
