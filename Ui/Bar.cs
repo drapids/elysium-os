@@ -1010,6 +1010,17 @@ namespace Elysium.Ui
         bool _peek;
         double _peekOut;
 
+        bool _gameQuiet;
+
+        public void GameQuiet(bool on)
+        {
+            if (_gameQuiet == on || _hwnd == IntPtr.Zero) return;
+            _gameQuiet = on;
+            long ex = Native.ExStyle(_hwnd);
+            ex = on ? ex | 0x20 : ex & ~0x20L;
+            Native.SetWindowLongPtr(_hwnd, Native.GWL_EXSTYLE, new IntPtr(ex));
+        }
+
         public void EdgeQuiet()
         {
             _topDwell = 0;

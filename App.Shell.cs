@@ -37,7 +37,11 @@ namespace Elysium
             if (level == _edgesAsleep) return;
             _edgesAsleep = level;
             foreach (var t in _tabs) t.Sleep(level);
-            if (level > 1) foreach (var b in _bars) b.EdgeQuiet();
+            foreach (var b in _bars)
+            {
+                if (level > 1) b.EdgeQuiet();
+                b.GameQuiet(level > 1);
+            }
         }
 
         void InitShell()
