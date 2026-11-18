@@ -30,43 +30,43 @@ namespace Elysium
             @"\windowsapps\microsoft.minecraft", @"\itch\apps\", @"\battlestate games\", @"\rockstar games\"
         };
 
-        static readonly string[] NotGameExes = { "epicgameslauncher", "epicwebhelper", "riotclientservices", "riotclientux", "robloxstudiobeta", "eadesktop", "ubisoftconnect", "upc", "galaxyclient", "steamwebhelper", "unitycrashhandler64" };
+        static readonly string[] NotGameExes = { "epicgameslauncher", "epicwebhelper", "riotclientservices", "riotclientux", "robloxstudiobeta", "eadesktop", "ubisoftconnect", "upc", "galaxyclient", "steamwebhelper", "unitycrashhandler64", "blender", "wallpaper32", "wallpaper64", "ui32", "obs64", "steamvr", "vrmonitor" };
 
         static readonly string[] GameExes = { "robloxplayerbeta", "minecraft.windows", "javaw" };
 
-        static IntPtr _gameFg;
-        static bool _gameHit;
-        static readonly System.Collections.Generic.Dictionary<IntPtr, bool> Known = new();
+        static readonly System.Collections.Generic.Dictionary<IntPtr, int> Known = new();
 
         public static bool GameForeground()
         {
             var fg = Native.GetForegroundWindow();
             if (fg == IntPtr.Zero) return false;
-            if (fg != _gameFg)
-            {
-                _gameFg = fg;
-                _gameHit = IsGameWindow(fg);
-            }
-            return _gameHit || (Learned?.Invoke(fg) ?? false);
+            return IsGameWindow(fg) || (Learned?.Invoke(fg) ?? false);
         }
 
         public static bool IsGameWindow(IntPtr h)
         {
-            if (h == IntPtr.Zero) return false;
+            int kind = Kind(h);
+            if (kind == 2) return true;
+            return kind == 1 && !Native.IsZoomed(h) && CursorLock.IsFullscreen(h, out _);
+        }
+
+        static int Kind(IntPtr h)
+        {
+            if (h == IntPtr.Zero) return 0;
             if (Known.TryGetValue(h, out var known)) return known;
-            bool hit = false;
+            int hit = 0;
             try
             {
                 string path = (Native.ProcessPath(h) ?? "").ToLowerInvariant();
                 string exe = System.IO.Path.GetFileNameWithoutExtension(path);
                 if (path.Length > 0 && Array.IndexOf(NotGameExes, exe) < 0)
                 {
-                    if (exe == "javaw") hit = Native.Title(h).StartsWith("Minecraft", StringComparison.OrdinalIgnoreCase);
-                    else if (Array.IndexOf(GameExes, exe) >= 0) hit = true;
+                    if (exe == "javaw") hit = Native.Title(h).StartsWith("Minecraft", StringComparison.OrdinalIgnoreCase) ? 2 : 0;
+                    else if (Array.IndexOf(GameExes, exe) >= 0) hit = 2;
                     else foreach (var d in GameDirs)
                             if (path.Contains(d))
                             {
-                                hit = true;
+                                hit = 1;
                                 break;
                             }
                 }
@@ -78,6 +78,7 @@ namespace Elysium
             Known[h] = hit;
             return hit;
         }
+
         public static Func<bool>? OwnClip;
 
         static long _at;
