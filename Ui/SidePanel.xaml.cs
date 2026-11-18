@@ -34,9 +34,9 @@ namespace Elysium.Ui
 
             SourceInitialized += (_, _) =>
             {
-                Theme.Glass(this);
+                Theme.Solid(this);
             };
-            Theme.Applied += () => Theme.Glass(this);
+            Theme.Applied += () => Theme.Solid(this);
 
             dragSide.MouseLeftButtonDown += (_, e) => Drag(e);
             dragHead.MouseLeftButtonDown += (_, e) => Drag(e);

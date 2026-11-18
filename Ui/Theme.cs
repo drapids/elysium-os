@@ -325,6 +325,21 @@ namespace Elysium.Ui
             }
         }
 
+        public static void Solid(Window w)
+        {
+            var h = new WindowInteropHelper(w).Handle;
+            w.Background = new SolidColorBrush(IsDark ? Color.FromRgb(0x1D, 0x1D, 0x21) : Color.FromRgb(0xF3, 0xF3, 0xF6));
+            if (h == IntPtr.Zero) return;
+            int dark = IsDark ? 1 : 0;
+            Native.DwmSetWindowAttribute(h, Native.DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+            Native.RoundCorners(h);
+            if (Environment.OSVersion.Version.Build >= 22621)
+            {
+                int none = 1;
+                Native.DwmSetWindowAttribute(h, Native.DWMWA_SYSTEMBACKDROP_TYPE, ref none, sizeof(int));
+            }
+        }
+
         static Color Lighten(Color c, double amount)
         {
             byte F(byte v) => (byte)Math.Clamp(v + amount * 255, 0, 255);
